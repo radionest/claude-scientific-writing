@@ -1,0 +1,6 @@
+{
+  "name": "scientific-writing",
+  "version": "0.1.0",
+  "description": "Staged Russian scientific-medical writing (spec → write → review → fix) with a deterministic prose linter.",
+  "hooks": "./hooks/hooks.json"
+}

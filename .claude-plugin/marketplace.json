@@ -1,0 +1,7 @@
+{
+  "name": "nest-writing",
+  "owner": {"name": "nest"},
+  "plugins": [
+    {"name": "scientific-writing", "source": "./", "description": "Staged Russian scientific-medical writing with a prose linter."}
+  ]
+}
