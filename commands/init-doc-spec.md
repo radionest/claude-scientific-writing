@@ -1,0 +1,32 @@
+---
+description: Скаффолд спеки документа (разделы + термины + локальные запреты) из канона и жанрового профиля
+argument-hint: <file.qmd> [genre]
+allowed-tools: Bash, Read, Write, AskUserQuestion
+---
+
+Создай `<doc>.spec.md` для `$ARGUMENTS`.
+
+## Шаги
+1. Определи `.qmd` ($1) и жанр ($2). Жанр не задан → спроси (report/article/educational).
+2. Прочитай `canon/profiles/<жанр>.md` — возьми список разделов как стартовый.
+3. Если `.qmd` уже существует — извлеки фактические заголовки и термины, предложи их (reverse-engineer).
+4. Спроси недостающее: канонические термины (один на понятие) + их запрещённые синонимы; сокращения;
+   любые локальные запреты (напр. правило гистологической истины, канон «мастер-модель»).
+5. Запиши `<doc>.spec.md` в формате:
+
+   ```markdown
+   # Spec: <doc>
+   genre: report|article|educational
+   ## Разделы
+   - <section> — <one-line purpose>
+   ## Канонические термины
+   - <concept>: <canonical term>  (запрещённые синонимы: …)
+   ## Сокращения
+   - <ABBR> — <expansion>
+   ## Локальные запреты (layer: doc → dictionary overlay)
+   - id: <id> | pattern: <regex> | severity: warn|error | message: <…>
+   ```
+
+   Локальные запреты с `pattern` добавь как `layer: doc` записи в проектный overlay словаря (если проект
+   его использует) либо оставь в спеке как guidance для `prose-reviewer`.
+6. Сообщи путь и напомни: дальше — стадия write (агент `scientific-writing:scientific-writer`).
