@@ -18,18 +18,18 @@ allowed-tools: Bash, Read, Edit, Write
    `canon/profiles/<жанр>.md` (жанр из файла-спутника) и `<doc>.spec.md` если есть.
 4. Самопроверка словарных правил по скиллу `tuning-rules` (раздел «Самопроверка словаря»), для каждой записи ДО
    применения. Процедура зависит от класса:
-   - **FN (новое/расширенное правило):** добавь убранную фразу (`before`) в `tests/fixtures/calques.qmd`, затем
-     `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m pytest tests/test_dictionary.py tests/test_lint_prose.py` → зелёный,
+   - **FN (новое/расширенное правило):** добавь убранную фразу (`before`) в `${CLAUDE_PLUGIN_ROOT}/tests/fixtures/calques.qmd`, затем
+     `(cd "${CLAUDE_PLUGIN_ROOT}" && .venv/bin/pytest tests/test_dictionary.py tests/test_lint_prose.py)` → зелёный,
      и `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose "<edited.qmd>" --json` → id нового правила НЕ на хорошем тексте.
    - **FP (ослабление):** `calques.qmd` **не** трогай (фраза не калька — сломает оракул).
      `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose "<edited.qmd>" --json` → у `id` больше нет находки с `severity: error`
      (`except`/сужение — находка исчезает; `severity↓` — остаётся как `warn`; `--json` печатает все severity, фильтруй по полю);
-     `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m pytest tests/test_dictionary.py tests/test_lint_prose.py` → зелёный.
+     `(cd "${CLAUDE_PLUGIN_ROOT}" && .venv/bin/pytest tests/test_dictionary.py tests/test_lint_prose.py)` → зелёный.
    - провал любого → запись не применять (уточнить/в скилл).
 5. Отчёт на подтверждение: сгруппируй по слою (словарь / прозо-скиллы / профиль / спецификация / код / шум). Каждый пункт:
    фрагмент-обоснование (`- before` / `+ after`), класс, правка; для словаря — результат зелёного теста.
 6. Подтверждение → применяй правки (Edit/Write) в рабочее дерево; фикстур-строки оставь (они доказывают правило).
-   Прогони весь `pytest` (`PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m pytest -q`) → зелёный.
+   Прогони весь `pytest` (`(cd "${CLAUDE_PLUGIN_ROOT}" && .venv/bin/pytest -q)`) → зелёный.
    **Не делай коммит** — пользователь проверяет и делает коммит сам.
 
 Если вспомогательный модуль завершился с ошибкой: проверь `PYTHONPATH=${CLAUDE_PLUGIN_ROOT}`, что pristine и edited существуют, словарь на месте.

@@ -16,7 +16,7 @@
 - **Python/pytest invocation:** `PYTHONPATH=. .venv/bin/python -m pytest <args> > /tmp/test-tune-<unique>.txt 2>&1`, затем читать файл. Редирект в уникальный файл, **никогда не пайп** (`| tail`/`| tee`).
 - **Commits:** Conventional Commits (`feat:`/`fix:`/`test:`/`docs:`), **без** `Co-Authored-By`. Работать на feature-ветке/worktree, **не** на `main` (текущая ветка — `main`; перед началом создать ветку через `superpowers:using-git-worktrees`).
 - **Dictionary entry schema** (verbatim, `canon/dictionary.json`): `{id, layer, pattern, except?, severity, message, bad?, good?, note?, skill}`. `layer ∈ {universal, genre:report, genre:article, genre:educational, doc}`; `severity ∈ {error, warn, info}`.
-- **Severity policy:** `docs/design.md` строки 98–110 (error — однозначные лексические кальки, низкий FP-риск; warn — эвристики, FP-prone).
+- **Severity policy:** `docs/design.md` § «Severity policy» (error — однозначные лексические кальки, низкий FP-риск; warn — эвристики, FP-prone).
 - **Fixtures:** `tests/fixtures/calques.qmd` — одна фраза на строку, каждую обязан ловить какой-то rule. Хук `text-lint.sh` уже пропускает `tests/fixtures/*.qmd` (коммит 244a904) — добавление строк не самоблокирует коммит.
 - **Команды/скиллы пишутся по-русски** в стиле существующих (`commands/text-review.md`, `skills/writing-russian-academic-prose/SKILL.md`); идентификаторы/пути — английские. `${CLAUDE_PLUGIN_ROOT}` для путей внутри плагина.
 - **Регистр русской прозы (команды/скилл/доки):** формальный, без англицизмов-жаргона и разговорных оборотов. Запрещены, среди прочего: дог-фудинг, хелпер, сайдкар, стэш, триаж, дифф, патч (в значении «правка»), approve/reject, кейс, гейт, бриф, дёрнуть, прогон, ревьюить, плейбук, промоушен, резолв, легитимный, доку-специфичный, оверкилл. Английский — только для идентификаторов/путей/имён инструментов. Образец — копирайт-пасс `42a72ab` (спеки→спецификации, генерик→общий, хардкод→вписывать вручную, бьётся→проверяется, эскейп→подавление, режь→убирай, диспетчируй→запусти).
@@ -273,7 +273,7 @@ edited-текст), `before_dirty` (pristine сам трогал правило 
   **не** дублируй inline-флаги). Границы `\b`; морфология через `\w*`. Узкий контекст, не жадные `.*`.
 - `except` — токен-исключение для допустимого смысла (как `DICOM` у `calque-modalnost`).
 - `severity` — `error` только для однозначной лексической кальки с низким FP-риском; эвристики/контекстное —
-  `warn` (см. `docs/design.md` 98–110).
+  `warn` (см. `docs/design.md` § «Severity policy»).
 - `message` — формат «суть → как правильно»; `skill: writing-russian-academic-prose`.
 
 ## Порядок ослабления при FP (`rule_hit`)
@@ -286,8 +286,8 @@ edited-текст), `before_dirty` (pristine сам трогал правило 
 Процедура зависит от класса правки.
 
 **Новое/расширенное правило (FN — ловим пропущенную кальку):**
-1. Добавить убранную фразу (`before`) строкой в `tests/fixtures/calques.qmd` — это калька, её обязано ловить какое-то правило.
-2. `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m pytest tests/test_dictionary.py tests/test_lint_prose.py` → должно
+1. Добавить убранную фразу (`before`) строкой в `${CLAUDE_PLUGIN_ROOT}/tests/fixtures/calques.qmd` — это калька, её обязано ловить какое-то правило.
+2. `(cd "${CLAUDE_PLUGIN_ROOT}" && .venv/bin/pytest tests/test_dictionary.py tests/test_lint_prose.py)` → должно
    пройти (новое правило ловит фразу; все прежние фикстуры ловятся; `id` уникальны; схема валидна).
 3. `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose <edited.qmd> --json` → id нового правила **НЕ**
    появляется на оставленном хорошем тексте.
@@ -298,7 +298,7 @@ edited-текст), `before_dirty` (pristine сам трогал правило 
    тексте больше нет находки с `severity: error` (`except`/сужение убирают находку совсем; `severity↓ error→warn`
    оставляет её как `warn` — это и есть цель: блокирующая ошибка снята). NB: `--json` печатает находки **всех**
    severity — фильтруй по полю `severity`, а не по наличию `id`.
-2. `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m pytest tests/test_dictionary.py tests/test_lint_prose.py` → должно
+2. `(cd "${CLAUDE_PLUGIN_ROOT}" && .venv/bin/pytest tests/test_dictionary.py tests/test_lint_prose.py)` → должно
    пройти (ослабление не сломало выявление истинных калек в `calques.qmd`; схема валидна).
 
 Любой шаг провалился → запись **не применять**: уточнить паттерн/`except` или перевести в предложение для скилла.
@@ -418,18 +418,18 @@ allowed-tools: Bash, Read, Edit, Write
    `canon/profiles/<жанр>.md` (жанр из файла-спутника) и `<doc>.spec.md` если есть.
 4. Самопроверка словарных правил по скиллу `tuning-rules` (раздел «Самопроверка словаря»), для каждой записи ДО
    применения. Процедура зависит от класса:
-   - **FN (новое/расширенное правило):** добавь убранную фразу (`before`) в `tests/fixtures/calques.qmd`, затем
-     `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m pytest tests/test_dictionary.py tests/test_lint_prose.py` → зелёный,
+   - **FN (новое/расширенное правило):** добавь убранную фразу (`before`) в `${CLAUDE_PLUGIN_ROOT}/tests/fixtures/calques.qmd`, затем
+     `(cd "${CLAUDE_PLUGIN_ROOT}" && .venv/bin/pytest tests/test_dictionary.py tests/test_lint_prose.py)` → зелёный,
      и `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose "<edited.qmd>" --json` → id нового правила НЕ на хорошем тексте.
    - **FP (ослабление):** `calques.qmd` **не** трогай (фраза не калька — сломает оракул).
      `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose "<edited.qmd>" --json` → у `id` больше нет находки с `severity: error`
      (`except`/сужение — находка исчезает; `severity↓` — остаётся как `warn`; `--json` печатает все severity, фильтруй по полю);
-     `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m pytest tests/test_dictionary.py tests/test_lint_prose.py` → зелёный.
+     `(cd "${CLAUDE_PLUGIN_ROOT}" && .venv/bin/pytest tests/test_dictionary.py tests/test_lint_prose.py)` → зелёный.
    - провал любого → запись не применять (уточнить/в скилл).
 5. Отчёт на подтверждение: сгруппируй по слою (словарь / прозо-скиллы / профиль / спецификация / код / шум). Каждый пункт:
    фрагмент-обоснование (`- before` / `+ after`), класс, правка; для словаря — результат зелёного теста.
 6. Подтверждение → применяй правки (Edit/Write) в рабочее дерево; фикстур-строки оставь (они доказывают правило).
-   Прогони весь `pytest` (`PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m pytest -q`) → зелёный.
+   Прогони весь `pytest` (`(cd "${CLAUDE_PLUGIN_ROOT}" && .venv/bin/pytest -q)`) → зелёный.
    **Не делай коммит** — пользователь проверяет и делает коммит сам.
 
 Если вспомогательный модуль завершился с ошибкой: проверь `PYTHONPATH=${CLAUDE_PLUGIN_ROOT}`, что pristine и edited существуют, словарь на месте.

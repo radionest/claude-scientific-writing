@@ -40,7 +40,7 @@ edited-текст), `before_dirty` (pristine сам трогал правило 
   **не** дублируй inline-флаги). Границы `\b`; морфология через `\w*`. Узкий контекст, не жадные `.*`.
 - `except` — токен-исключение для допустимого смысла (как `DICOM` у `calque-modalnost`).
 - `severity` — `error` только для однозначной лексической кальки с низким FP-риском; эвристики/контекстное —
-  `warn` (см. `docs/design.md` 98–110).
+  `warn` (см. `docs/design.md` § «Severity policy»).
 - `message` — формат «суть → как правильно»; `skill: writing-russian-academic-prose`.
 
 ## Порядок ослабления при FP (`rule_hit`)
@@ -53,8 +53,8 @@ edited-текст), `before_dirty` (pristine сам трогал правило 
 Процедура зависит от класса правки.
 
 **Новое/расширенное правило (FN — ловим пропущенную кальку):**
-1. Добавить убранную фразу (`before`) строкой в `tests/fixtures/calques.qmd` — это калька, её обязано ловить какое-то правило.
-2. `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m pytest tests/test_dictionary.py tests/test_lint_prose.py` → должно
+1. Добавить убранную фразу (`before`) строкой в `${CLAUDE_PLUGIN_ROOT}/tests/fixtures/calques.qmd` — это калька, её обязано ловить какое-то правило.
+2. `(cd "${CLAUDE_PLUGIN_ROOT}" && .venv/bin/pytest tests/test_dictionary.py tests/test_lint_prose.py)` → должно
    пройти (новое правило ловит фразу; все прежние фикстуры ловятся; `id` уникальны; схема валидна).
 3. `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose <edited.qmd> --json` → id нового правила **НЕ**
    появляется на оставленном хорошем тексте.
@@ -65,7 +65,7 @@ edited-текст), `before_dirty` (pristine сам трогал правило 
    тексте больше нет находки с `severity: error` (`except`/сужение убирают находку совсем; `severity↓ error→warn`
    оставляет её как `warn` — это и есть цель: блокирующая ошибка снята). NB: `--json` печатает находки **всех**
    severity — фильтруй по полю `severity`, а не по наличию `id`.
-2. `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m pytest tests/test_dictionary.py tests/test_lint_prose.py` → должно
+2. `(cd "${CLAUDE_PLUGIN_ROOT}" && .venv/bin/pytest tests/test_dictionary.py tests/test_lint_prose.py)` → должно
    пройти (ослабление не сломало выявление истинных калек в `calques.qmd`; схема валидна).
 
 Любой шаг провалился → запись **не применять**: уточнить паттерн/`except` или перевести в предложение для скилла.
