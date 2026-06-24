@@ -22,7 +22,8 @@ allowed-tools: Bash, Read, Edit, Write
      `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m pytest tests/test_dictionary.py tests/test_lint_prose.py` → зелёный,
      и `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose "<edited.qmd>" --json` → id нового правила НЕ на хорошем тексте.
    - **FP (ослабление):** `calques.qmd` **не** трогай (фраза не калька — сломает оракул).
-     `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose "<edited.qmd>" --json` → id ослабляемого правила больше НЕ появляется;
+     `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose "<edited.qmd>" --json` → у `id` больше нет находки с `severity: error`
+     (`except`/сужение — находка исчезает; `severity↓` — остаётся как `warn`; `--json` печатает все severity, фильтруй по полю);
      `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m pytest tests/test_dictionary.py tests/test_lint_prose.py` → зелёный.
    - провал любого → запись не применять (уточнить/в скилл).
 5. Отчёт на подтверждение: сгруппируй по слою (словарь / прозо-скиллы / профиль / спецификация / код / шум). Каждый пункт:

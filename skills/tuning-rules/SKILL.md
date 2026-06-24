@@ -61,8 +61,10 @@ edited-текст), `before_dirty` (pristine сам трогал правило 
 
 **Ослабление правила (FP — правило переусердствовало):** фразу в `calques.qmd` **не** добавлять (это не калька —
 добавление сломает `test_every_fixture_phrase_is_flagged`).
-1. `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose <edited.qmd> --json` → id ослабляемого правила
-   больше **НЕ** появляется (форма, которую ты оставил, теперь законна).
+1. `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose <edited.qmd> --json` → у этого `id` на оставленном
+   тексте больше нет находки с `severity: error` (`except`/сужение убирают находку совсем; `severity↓ error→warn`
+   оставляет её как `warn` — это и есть цель: блокирующая ошибка снята). NB: `--json` печатает находки **всех**
+   severity — фильтруй по полю `severity`, а не по наличию `id`.
 2. `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m pytest tests/test_dictionary.py tests/test_lint_prose.py` → должно
    пройти (ослабление не сломало выявление истинных калек в `calques.qmd`; схема валидна).
 
