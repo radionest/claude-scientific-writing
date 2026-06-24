@@ -46,3 +46,13 @@ def test_before_dirty_flags_writer_miss():
     assert len(hunks) == 1
     assert hunks[0].before_dirty is True
     assert hunks[0].triage == "FN"
+
+
+def test_except_is_checked_per_line_not_per_hunk():
+    # Multi-line edit: line 1 legitimately uses the `except` token (DICOM … модальность),
+    # line 2 has a bare "модальности" calque. DICOM on line 1 must NOT suppress the calque on
+    # line 2 — `except` is per-line, matching lib.lint_prose (which scans extracted prose by line).
+    before = "Очаги сравнивали вручную.\n"
+    after = "Поле DICOM Modality задаёт модальность.\nОба метода (модальности) сравнивали.\n"
+    hunks = diff_prose(before, after, ENTRIES)
+    assert any(h.rule_hit == "calque-modalnost" for h in hunks)

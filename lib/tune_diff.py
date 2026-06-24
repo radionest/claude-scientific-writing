@@ -31,6 +31,15 @@ def _rule_hit(text: str, entries: list[dict]) -> str | None:
     return None
 
 
+def _first_hit(lines: list[str], entries: list[dict]) -> str | None:
+    """First rule id hitting any line (per-line, so `except` matches lib.lint_prose semantics)."""
+    for ln in lines:
+        h = _rule_hit(ln, entries)
+        if h:
+            return h
+    return None
+
+
 def _prose(src: str):
     pls = extract_prose(src)
     return [pl.text.strip() for pl in pls], [pl.lineno for pl in pls]
@@ -48,8 +57,8 @@ def diff_prose(pristine_src: str, edited_src: str, entries: list[dict]) -> list[
         after = " ".join(a_text[j1:j2]).strip()
         if not before and not after:
             continue
-        after_hit = _rule_hit(after, entries) if after else None
-        before_hit = _rule_hit(before, entries) if before else None
+        after_hit = _first_hit(a_text[j1:j2], entries)
+        before_hit = _first_hit(b_text[i1:i2], entries)
         if after_hit:
             triage = "FP"
         elif before and after:
