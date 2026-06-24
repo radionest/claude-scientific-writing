@@ -1,5 +1,9 @@
 {
   "name": "scientific-writing",
   "description": "Staged Russian scientific-medical writing (spec → write → review → fix) with a deterministic prose linter.",
+  "author": {"name": "radionest"},
+  "license": "MIT",
+  "repository": "https://github.com/radionest/claude-scientific-writing",
+  "keywords": ["russian", "scientific-writing", "medical", "quarto", "prose-linter", "academic-writing", "calque"],
   "hooks": "./hooks/hooks.json"
 }
