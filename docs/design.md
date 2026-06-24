@@ -235,3 +235,8 @@ originals) needs a `~/.claude`-capable session — sequence in the plan.
 - Auto-commit / auto-render of `.qmd`.
 - Replacing the docx import mechanics (`docx_review.py`) — the plugin formalizes the *pass*, not the parser.
 - Code review itself (`pr-diff-reviewer` unchanged) — the plugin only routes around it for text.
+
+## Related
+
+- `docs/tune-rules-design.md` — rule-calibration loop driven by the user's edits
+  (`tune-draft` → manual edit → `tune-learn` → rule deltas, dictionary rules proven on the test oracle).
