@@ -48,7 +48,7 @@ scientific-writing/                      # own git repo (see "Where it lives")
     marketplace.json                     # local marketplace entry (install via /plugin marketplace add)
   canon/
     canon.md                             # human-readable universal canon (prose discipline + term policy)
-    dictionary.json                       # MACHINE single source: regex + bad/good + message + severity + layer
+    dictionary.json                      # MACHINE single source: regex + bad/good + message + severity + layer
     profiles/
       report.md  article.md  educational.md   # per-genre section templates + style deltas
   skills/
