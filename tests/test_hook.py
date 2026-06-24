@@ -43,3 +43,13 @@ def test_ignores_non_git_commands(tmp_path):
     repo = _repo(tmp_path)
     r = _run_hook(repo, "ls -la")
     assert r.returncode == 0
+
+
+def test_skips_tests_fixtures(tmp_path):
+    # test fixtures intentionally contain calques (the plugin's own oracle) -> must NOT block
+    repo = _repo(tmp_path)
+    (repo / "tests" / "fixtures").mkdir(parents=True, exist_ok=True)
+    (repo / "tests" / "fixtures" / "calques.qmd").write_text("референсный стандарт\n", encoding="utf-8")
+    _git(repo, "add", "tests/fixtures/calques.qmd")
+    r = _run_hook(repo, "git commit -m x")
+    assert r.returncode == 0

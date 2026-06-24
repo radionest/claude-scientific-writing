@@ -22,6 +22,8 @@ fi
 rc=0
 for f in "${files[@]}"; do
   [ -f "$f" ] || continue
+  # skip test fixtures — they intentionally contain calques (e.g. this plugin's own oracle)
+  case "$f" in tests/fixtures/*|*/tests/fixtures/*) continue ;; esac
   # file BEFORE --diff: --diff has nargs="?", so a trailing filename would be
   # consumed as its optional REF value, leaving no positional. Files-first is unambiguous.
   if [ -n "$ref" ]; then
