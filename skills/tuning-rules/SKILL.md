@@ -50,13 +50,23 @@ edited-текст), `before_dirty` (pristine сам трогал правило 
 4. В крайнем случае — уточнение в `skills/writing-russian-academic-prose`, правило снять.
 
 ## Самопроверка словаря — ОБЯЗАТЕЛЬНО до применения
-Для каждой новой/изменённой записи:
-1. Добавить убранную фразу (`before`) строкой в `tests/fixtures/calques.qmd`.
-2. `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m pytest tests/test_dictionary.py tests/test_lint_prose.py` → должно пройти
-   (новое правило ловит фразу; все прежние фикстуры ловятся; `id` уникальны; схема валидна).
-3. `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose <edited.qmd> --json` → id нового правила **НЕ** должен
-   появиться (нет ложного срабатывания на оставленном хорошем тексте).
-4. Любой из 2–3 провалился → запись **не применять**: сузить паттерн или перевести в предложение для скилла.
+Процедура зависит от класса правки.
+
+**Новое/расширенное правило (FN — ловим пропущенную кальку):**
+1. Добавить убранную фразу (`before`) строкой в `tests/fixtures/calques.qmd` — это калька, её обязано ловить какое-то правило.
+2. `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m pytest tests/test_dictionary.py tests/test_lint_prose.py` → должно
+   пройти (новое правило ловит фразу; все прежние фикстуры ловятся; `id` уникальны; схема валидна).
+3. `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose <edited.qmd> --json` → id нового правила **НЕ**
+   появляется на оставленном хорошем тексте.
+
+**Ослабление правила (FP — правило переусердствовало):** фразу в `calques.qmd` **не** добавлять (это не калька —
+добавление сломает `test_every_fixture_phrase_is_flagged`).
+1. `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose <edited.qmd> --json` → id ослабляемого правила
+   больше **НЕ** появляется (форма, которую ты оставил, теперь законна).
+2. `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m pytest tests/test_dictionary.py tests/test_lint_prose.py` → должно
+   пройти (ослабление не сломало выявление истинных калек в `calques.qmd`; схема валидна).
+
+Любой шаг провалился → запись **не применять**: уточнить паттерн/`except` или перевести в предложение для скилла.
 
 ## Red flags — STOP
 - Предлагать правило из одной нечёткой правки без паттерна → это шум, не правило.

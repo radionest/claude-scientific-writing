@@ -283,13 +283,23 @@ edited-текст), `before_dirty` (pristine сам трогал правило 
 4. В крайнем случае — уточнение в `skills/writing-russian-academic-prose`, правило снять.
 
 ## Самопроверка словаря — ОБЯЗАТЕЛЬНО до применения
-Для каждой новой/изменённой записи:
-1. Добавить убранную фразу (`before`) строкой в `tests/fixtures/calques.qmd`.
-2. `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m pytest tests/test_dictionary.py tests/test_lint_prose.py` → должно пройти
-   (новое правило ловит фразу; все прежние фикстуры ловятся; `id` уникальны; схема валидна).
-3. `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose <edited.qmd> --json` → id нового правила **НЕ** должен
-   появиться (нет ложного срабатывания на оставленном хорошем тексте).
-4. Любой из 2–3 провалился → запись **не применять**: сузить паттерн или перевести в предложение для скилла.
+Процедура зависит от класса правки.
+
+**Новое/расширенное правило (FN — ловим пропущенную кальку):**
+1. Добавить убранную фразу (`before`) строкой в `tests/fixtures/calques.qmd` — это калька, её обязано ловить какое-то правило.
+2. `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m pytest tests/test_dictionary.py tests/test_lint_prose.py` → должно
+   пройти (новое правило ловит фразу; все прежние фикстуры ловятся; `id` уникальны; схема валидна).
+3. `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose <edited.qmd> --json` → id нового правила **НЕ**
+   появляется на оставленном хорошем тексте.
+
+**Ослабление правила (FP — правило переусердствовало):** фразу в `calques.qmd` **не** добавлять (это не калька —
+добавление сломает `test_every_fixture_phrase_is_flagged`).
+1. `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose <edited.qmd> --json` → id ослабляемого правила
+   больше **НЕ** появляется (форма, которую ты оставил, теперь законна).
+2. `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m pytest tests/test_dictionary.py tests/test_lint_prose.py` → должно
+   пройти (ослабление не сломало выявление истинных калек в `calques.qmd`; схема валидна).
+
+Любой шаг провалился → запись **не применять**: уточнить паттерн/`except` или перевести в предложение для скилла.
 
 ## Red flags — STOP
 - Предлагать правило из одной нечёткой правки без паттерна → это шум, не правило.
@@ -404,12 +414,15 @@ allowed-tools: Bash, Read, Edit, Write
 3. **Примени скилл `scientific-writing:tuning-rules`.** По нему классифицируй каждый фрагмент, маршрутизируй
    по слою и напиши правку. Контекст для классификации: `canon/dictionary.json`, оба прозо-скилла,
    `canon/profiles/<жанр>.md` (жанр из файла-спутника) и `<doc>.spec.md` если есть.
-4. Самопроверка словарных правил (по скиллу `tuning-rules`, для каждой записи ДО применения):
-   - добавь убранную фразу (`before`) строкой в `tests/fixtures/calques.qmd`;
-   - `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m pytest tests/test_dictionary.py tests/test_lint_prose.py` → зелёный;
-   - `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose "<edited.qmd>" --json` → id нового правила
-     НЕ появляется (нет FP на хорошем тексте);
-   - провал любого → запись не применять (сузить/в скилл).
+4. Самопроверка словарных правил по скиллу `tuning-rules` (раздел «Самопроверка словаря»), для каждой записи ДО
+   применения. Процедура зависит от класса:
+   - **FN (новое/расширенное правило):** добавь убранную фразу (`before`) в `tests/fixtures/calques.qmd`, затем
+     `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m pytest tests/test_dictionary.py tests/test_lint_prose.py` → зелёный,
+     и `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose "<edited.qmd>" --json` → id нового правила НЕ на хорошем тексте.
+   - **FP (ослабление):** `calques.qmd` **не** трогай (фраза не калька — сломает оракул).
+     `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose "<edited.qmd>" --json` → id ослабляемого правила больше НЕ появляется;
+     `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m pytest tests/test_dictionary.py tests/test_lint_prose.py` → зелёный.
+   - провал любого → запись не применять (уточнить/в скилл).
 5. Отчёт на подтверждение: сгруппируй по слою (словарь / прозо-скиллы / профиль / спецификация / код / шум). Каждый пункт:
    фрагмент-обоснование (`- before` / `+ after`), класс, правка; для словаря — результат зелёного теста.
 6. Подтверждение → применяй правки (Edit/Write) в рабочее дерево; фикстур-строки оставь (они доказывают правило).
