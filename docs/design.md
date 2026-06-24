@@ -2,10 +2,6 @@
 
 **Date:** 2026-06-23
 **Status:** approved design (brainstorm), pre-plan
-**Note:** cross-project infra. This doc lives in nir_liver `.claude/plans/` (local, gitignored) because the
-brainstorm ran here; **carry it into the plugin repo as `docs/design.md` when scaffolding**. The plugin
-itself is built from a session rooted at the plugin repo, **not** from nir_liver (the `/home/nest/.claude`
-+ `../clarinet` cross-project edit hook blocks those paths from this session).
 
 ## Goal
 
@@ -52,7 +48,7 @@ scientific-writing/                      # own git repo (see "Where it lives")
     marketplace.json                     # local marketplace entry (install via /plugin marketplace add)
   canon/
     canon.md                             # human-readable universal canon (prose discipline + term policy)
-    dictionary.yml                       # MACHINE single source: regex + bad/good + message + severity + layer
+    dictionary.json                       # MACHINE single source: regex + bad/good + message + severity + layer
     profiles/
       report.md  article.md  educational.md   # per-genre section templates + style deltas
   skills/
@@ -75,7 +71,7 @@ scientific-writing/                      # own git repo (see "Where it lives")
     design.md                            # this file, carried over
 ```
 
-## The dictionary — single source of truth (`canon/dictionary.yml`)
+## The dictionary — single source of truth (`canon/dictionary.json`)
 
 Consolidates what is today scattered across two skill tables + 4 feedback-memory files. The linter consumes
 `pattern/message/severity/except`; the prose skills **reference** this file as the literal-calque list and
@@ -199,7 +195,7 @@ profile enforces, while the universal calque/term discipline still applies.
 | `~/.claude/rules/russian-qmd-prose.md` | update to reference plugin skills (verify bare skill-name still resolves vs `scientific-writing:<name>` namespacing — **open question**) |
 | `~/.claude/commands/init-article.md` | keep as project bootstrap (Zotero/MCP/CSL/Makefile); **drop** its inline `quarto-article-writer`/`writing-science` agent bodies, point at the plugin's `scientific-writer` |
 | `~/.claude/agents/qmd-review-importer.md` | keep (post-path docx importer); its step-4 prose pass now uses the plugin skills |
-| feedback memories (`feedback_ru_report_phrasing`, …) | **mine into `dictionary.yml`**; keep the memory files as provenance |
+| feedback memories (`feedback_ru_report_phrasing`, …) | **mine into `dictionary.json`**; keep the memory files as provenance |
 | project `.claude/rules/russian-qmd-prose.md` (nir_liver) | unaffected — points at the (now plugin-provided) skills by name |
 
 ## Where the plugin lives + install
@@ -212,7 +208,7 @@ originals) needs a `~/.claude`-capable session — sequence in the plan.
 
 ## Build order (whole plugin, dependency-ordered)
 
-1. `lib/qmd_prose.py` + `lib/lint_prose.py` + `canon/dictionary.yml` (mine skills + memory) — the deterministic core.
+1. `lib/qmd_prose.py` + `lib/lint_prose.py` + `canon/dictionary.json` (mine skills + memory) — the deterministic core.
 2. `hooks/text-lint.sh` + diff router + marker coordination with the existing code hook.
 3. `canon/canon.md` + `canon/profiles/{report,article,educational}.md`.
 4. Migrate the two prose skills into the plugin; rewrite `russian-qmd-prose.md` references.
