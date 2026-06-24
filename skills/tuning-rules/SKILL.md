@@ -52,9 +52,9 @@ edited-текст), `before_dirty` (pristine сам трогал правило 
 ## Самопроверка словаря — ОБЯЗАТЕЛЬНО до применения
 Для каждой новой/изменённой записи:
 1. Добавить убранную фразу (`before`) строкой в `tests/fixtures/calques.qmd`.
-2. `PYTHONPATH=. .venv/bin/python -m pytest tests/test_dictionary.py tests/test_lint_prose.py` → должно пройти
+2. `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m pytest tests/test_dictionary.py tests/test_lint_prose.py` → должно пройти
    (новое правило ловит фразу; все прежние фикстуры ловятся; `id` уникальны; схема валидна).
-3. `PYTHONPATH=. .venv/bin/python -m lib.lint_prose <edited.qmd> --json` → id нового правила **НЕ** должен
+3. `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose <edited.qmd> --json` → id нового правила **НЕ** должен
    появиться (нет ложного срабатывания на оставленном хорошем тексте).
 4. Любой из 2–3 провалился → запись **не применять**: сузить паттерн или перевести в предложение для скилла.
 
