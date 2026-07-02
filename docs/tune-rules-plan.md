@@ -91,7 +91,7 @@ def test_pure_deletion_is_neutral():
 
 def test_before_dirty_flags_writer_miss():
     # pristine сам трогает правило (само-линт промахнулся) -> before_dirty True
-    before = "Оценивали оба метода визуализации (модальности).\n"
+    before = "Оценивали оба метода визуализации.\n"
     after = "Оценивали оба метода.\n"
     hunks = diff_prose(before, after, ENTRIES)
     assert len(hunks) == 1

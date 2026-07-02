@@ -85,7 +85,7 @@ Entry schema:
   pattern: '\bтаргетн\w*'       # Python re, case-insensitive, applied to extracted prose only
   except: 'терапи'              # optional: suppress if this token is near the match
   severity: error               # error (blocks PR) | warn (advisory) | info
-  message: 'калька targeted → «прицельный»; «таргетная терапия» — устоявшийся термин, не трогать'
+  message: 'калька targeted → «прицельный»; «таргетная терапия» — устоявшийся онкотермин, не трогать'
   bad: 'таргетный поиск очага'
   good: 'прицельный поиск очага'
   skill: writing-russian-academic-prose   # judgment-skill that owns the nuance
