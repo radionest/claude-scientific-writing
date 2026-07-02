@@ -8,20 +8,20 @@ def _ids(src):
 
 
 def test_flags_error_calque():
-    assert "calque-modalnost" in _ids("оба метода визуализации (модальности)\n")
+    assert "calque-harakterizacia" in _ids("высокая характеризация природы очага\n")
 
 
-def test_dicom_exception_suppresses():
-    assert "calque-modalnost" not in _ids("поле DICOM Modality = модальность\n")
+def test_except_suppresses():
+    assert "calque-targetnyj" not in _ids("таргетная терапия одобрена\n")
 
 
 def test_lint_ok_suppresses_named_id():
-    src = "законная модальность <!-- lint-ok: calque-modalnost -->\n"
-    assert "calque-modalnost" not in _ids(src)
+    src = "законный референсный стандарт <!-- lint-ok: calque-referens -->\n"
+    assert "calque-referens" not in _ids(src)
 
 
 def test_does_not_flag_inside_code_chunk():
-    src = "```{python}\nx = 'модальность'\n```\n"
+    src = "```{python}\nx = 'референсный'\n```\n"
     assert _ids(src) == []
 
 

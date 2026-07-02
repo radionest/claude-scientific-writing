@@ -8,7 +8,7 @@
 A superpowers-style plugin that turns Russian scientific medical writing into a disciplined pipeline —
 **spec → write → review → fix** — and cleanly separates **text** review from **code** review (pre and post).
 Kills the recurring calque-churn (lesion_nature_report PRs #85–#121: a large share are prose-cleanup
-re-fixing the *same* classes — метод-как-деятель, тире-калька, модальность/референсный) by making the
+re-fixing the *same* classes — метод-как-деятель, тире-калька, референсный) by making the
 "bad phrases" a single machine-checkable source and gating prose at PR time.
 
 ## Decisions settled in brainstorm
@@ -80,20 +80,20 @@ keep only the nuance regex can't express.
 Entry schema:
 
 ```yaml
-- id: calque-modalnost
+- id: calque-targetnyj
   layer: universal              # universal | genre:report|article|educational | doc
-  pattern: '\bмодальн\w*'       # Python re, case-insensitive, applied to extracted prose only
-  except: 'DICOM'               # optional: suppress if this token is near the match
+  pattern: '\bтаргетн\w*'       # Python re, case-insensitive, applied to extracted prose only
+  except: 'терапи'              # optional: suppress if this token is near the match
   severity: error               # error (blocks PR) | warn (advisory) | info
-  message: 'калька modality → «метод (лучевой диагностики)»; «модальность» только в DICOM-смысле'
-  bad: 'оба метода визуализации (модальности)'
-  good: 'оба метода'
+  message: 'калька targeted → «прицельный»; «таргетная терапия» — устоявшийся термин, не трогать'
+  bad: 'таргетный поиск очага'
+  good: 'прицельный поиск очага'
   skill: writing-russian-academic-prose   # judgment-skill that owns the nuance
 ```
 
 **Severity policy** (principle; full classification in the plan):
 - **error** (blocks) — unambiguous lexical calques, near-always-correct fix, low false-positive risk:
-  модальность(non-DICOM), референсный/референтный, характеризаци·, таргетный, «по построению»,
+  референсный/референтный, характеризаци·, таргетный, «по построению»,
   «полностью|целиком + выявить|обнаружить|распознать», гистология/морфология/цитология *as procedure*,
   «отнести … к категории», parasites «является / осуществляется / носит … характер».
 - **warn** (advisory, agent decides) — heuristic / context-dependent, false-positive-prone:
@@ -150,7 +150,7 @@ Implementable as a command dispatching parallel `Agent`s, or a `Workflow` (fan-o
 multi-section docs.
 
 ### fix
-Not blind regex-replace. Unambiguous literal swaps (модальность→метод) auto-applied; risky ones (тире,
+Not blind regex-replace. Unambiguous literal swaps (референсный→эталонный) auto-applied; risky ones (тире,
 «полностью») edited by the prose skill **with judgment**; hard rule «never bake a calque — fix or leave
 TODO» (already in `russian-qmd-prose.md`). Re-run the linter until clean.
 

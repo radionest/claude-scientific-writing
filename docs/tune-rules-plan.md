@@ -271,7 +271,7 @@ edited-текст), `before_dirty` (pristine сам трогал правило 
 - `id` — kebab-case, осмысленный (`calque-…`, `parasite-…`, `vulgar-…`, `jargon-…`, `style-…`).
 - `pattern` — Python `re`, применяется к извлечённой прозе с флагами `IGNORECASE|UNICODE` (их ставит линтер —
   **не** дублируй inline-флаги). Границы `\b`; морфология через `\w*`. Узкий контекст, не жадные `.*`.
-- `except` — токен-исключение для допустимого смысла (как `DICOM` у `calque-modalnost`).
+- `except` — токен-исключение для допустимого смысла (как `терапи` у `calque-targetnyj`).
 - `severity` — `error` только для однозначной лексической кальки с низким FP-риском; эвристики/контекстное —
   `warn` (см. `docs/design.md` § «Severity policy»).
 - `message` — формат «суть → как правильно»; `skill: writing-russian-academic-prose`.

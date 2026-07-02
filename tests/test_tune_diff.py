@@ -49,10 +49,10 @@ def test_before_dirty_flags_writer_miss():
 
 
 def test_except_is_checked_per_line_not_per_hunk():
-    # Multi-line edit: line 1 legitimately uses the `except` token (DICOM … модальность),
-    # line 2 has a bare "модальности" calque. DICOM on line 1 must NOT suppress the calque on
+    # Multi-line edit: line 1 legitimately uses the `except` token («таргетная терапия»),
+    # line 2 has a bare "таргетный" calque. «терапи» on line 1 must NOT suppress the calque on
     # line 2 — `except` is per-line, matching lib.lint_prose (which scans extracted prose by line).
     before = "Очаги сравнивали вручную.\n"
-    after = "Поле DICOM Modality задаёт модальность.\nОба метода (модальности) сравнивали.\n"
+    after = "Таргетная терапия одобрена регулятором.\nТаргетный поиск очагов применяли редко.\n"
     hunks = diff_prose(before, after, ENTRIES)
-    assert any(h.rule_hit == "calque-modalnost" for h in hunks)
+    assert any(h.rule_hit == "calque-targetnyj" for h in hunks)
