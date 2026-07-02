@@ -1,6 +1,6 @@
 ---
 name: writing-russian-academic-prose
-description: Use when writing or revising Russian-language academic/scientific prose (journal articles, research reports, abstracts, review/*.qmd, методички), especially when a draft reads like a translation from English or like канцелярит — noun-heavy, tangled, dash-ridden (избыток тире «—»), with нанизывание родительного падежа, calques (характеризация, модальность, референсный), or an instrument as grammatical subject (методы/модель «распознавали»). Fixes "грамотно, но не по-русски".
+description: Use when writing or revising Russian-language academic/scientific prose (journal articles, research reports, abstracts, review/*.qmd, методички), especially when a draft reads like a translation from English or like канцелярит — noun-heavy, tangled, dash-ridden (избыток тире «—»), with нанизывание родительного падежа, calques (характеризация, референсный), or an instrument as grammatical subject (методы/модель «распознавали»). Fixes "грамотно, но не по-русски".
 ---
 
 # Writing Russian Academic Prose
@@ -29,7 +29,7 @@ description: Use when writing or revising Russian-language academic/scientific p
   - тире на каждом шагу: «—» в роли двоеточия/запятой и по два-три на предложение;
   - 3+ существительных в родительном падеже подряд;
   - «характеризаци-/визуализаци-/верификаци-/оценк-/определени-» гуще, чем глаголов;
-  - кальки: «модальность», «референсный», «таргетный», «по построению»;
+  - кальки: «референсный», «таргетный», «по построению»;
   - наречие полноты на глаголе обнаружения: «полностью выявить», «целиком обнаружить»;
   - пассив там, где есть явный деятель;
   - прибор, метод или модель в роли подлежащего («ПЭТ-КТ выявила», «методы распознавали»).
@@ -106,7 +106,6 @@ completely* только на **точечных глаголах обнаруж
 | Калька | По-русски |
 |---|---|
 | характеризация | характеристика; определение / распознавание природы; (глаг.) охарактеризовать, распознать |
-| модальность (imaging modality) | метод (лучевой диагностики) — «модальность» оставить только в DICOM-смысле |
 | референтный / референсный стандарт | эталонный стандарт, эталон сравнения («золотой стандарт» — устоявшийся, оставить) |
 | визуализация (в значении «видно») | изображение; «при визуализации» → «на изображениях» / «при выявлении» |
 | таргетный, направленный по очагу | прицельный |

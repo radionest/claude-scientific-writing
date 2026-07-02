@@ -1,6 +1,5 @@
 {
   "entries": [
-    {"id": "calque-modalnost", "layer": "universal", "pattern": "\\bмодальн\\w*", "except": "DICOM", "severity": "error", "message": "калька modality → «метод (лучевой диагностики)»; «модальность» только в DICOM-смысле", "bad": "оба метода визуализации (модальности)", "good": "оба метода", "skill": "writing-russian-academic-prose"},
     {"id": "calque-referens", "layer": "universal", "pattern": "\\bреференс\\w*|\\bреферентн\\w*", "severity": "error", "message": "калька reference → «эталонный стандарт»/«эталон сравнения» («золотой стандарт» — оставить)", "skill": "writing-russian-academic-prose"},
     {"id": "calque-harakterizacia", "layer": "universal", "pattern": "\\bхарактеризаци\\w*", "severity": "error", "message": "калька characterization → «определение/распознавание природы»; глаг. «охарактеризовать»", "skill": "writing-russian-academic-prose"},
     {"id": "calque-targetnyj", "layer": "universal", "pattern": "\\bтаргетн\\w*|направленн\\w+ по (каждому )?очаг\\w*", "except": "терапи", "severity": "error", "message": "калька targeted → «прицельный»; «таргетная терапия» — устоявшийся онкотермин, не трогать", "skill": "writing-russian-academic-prose"},

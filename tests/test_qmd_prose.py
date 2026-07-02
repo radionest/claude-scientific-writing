@@ -37,7 +37,7 @@ def test_keeps_heading_prose():
 
 
 def test_captures_lint_ok_ids_on_line():
-    src = "законная модальность тут <!-- lint-ok: calque-modalnost -->\n"
+    src = "законный референсный тут <!-- lint-ok: calque-referens -->\n"
     prose = extract_prose(src)
-    assert prose[0].suppress == {"calque-modalnost"}
-    assert "модальность" in prose[0].text
+    assert prose[0].suppress == {"calque-referens"}
+    assert "референсный" in prose[0].text
