@@ -23,10 +23,17 @@ allowed-tools: Bash, Read, Write, AskUserQuestion
    - <concept>: <canonical term>  (запрещённые синонимы: …)
    ## Сокращения
    - <ABBR> — <expansion>
-   ## Локальные запреты (layer: doc → расширение словаря)
+   ## Локальные запреты (layer: doc)
    - id: <id> | pattern: <regex> | severity: warn|error | message: <…>
    ```
 
-   Локальные запреты с `pattern` добавь как `layer: doc` записи в проектное расширение словаря (если проект
-   его использует) либо оставь в спецификации как ориентир для `prose-reviewer`.
-6. Сообщи путь и напомни: дальше — стадия write (агент `scientific-writing:scientific-writer`).
+   Перечисляй в спецификации **все** локальные запреты (и regex-, и суждение-правила) — как читаемый ориентир.
+
+6. **Засей локальный словарь.** Для каждого локального запрета с `pattern` (машинно-проверяемого) добавь запись в
+   локальный словарь проекта `<git-root>/.claude/scientific-writing/dictionary.json`:
+   - корень: `git rev-parse --show-toplevel`;
+   - нет файла → создай `{"entries": []}`; есть → прочитай и слей по `id` (та же `id` — замена; `{"id": "<id>", "disabled": true}` — отключить унаследованное правило);
+   - запись: `{"id", "layer": "doc", "pattern", "severity": "warn"|"error", "message", "skill"?}`.
+   Линтер (хук `text-lint.sh` + `/text-review`) подхватит эти записи автоматически — правка плагинного `canon/dictionary.json` не нужна.
+   Правила без `pattern` (референт-дрейф, семантика) оставляй только в прозе спецификации — их применяет `prose-reviewer`.
+7. Сообщи путь и напомни: дальше — стадия write (агент `scientific-writing:scientific-writer`).
