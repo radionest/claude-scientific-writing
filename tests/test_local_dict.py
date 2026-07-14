@@ -6,7 +6,7 @@ import pytest
 
 from lib import lint_prose
 from lib.lint_prose import ConfigError, load_raw, merge_entries
-from lib.lint_prose import local_dict_path, load_entries, main
+from lib.lint_prose import local_dict_path, main
 
 
 def _write(tmp_path: Path, entries) -> Path:
@@ -119,9 +119,6 @@ def test_merge_preserves_base_order_then_new():
         {"id": "calque-referens", "pattern": "референс", "severity": "warn", "message": "m"},
     ])
     assert [e["id"] for e in merged] == ["calque-referens", "jargon-kogorta", "zzz-new"]
-
-
-BASE = load_entries(None)
 
 
 @pytest.fixture(autouse=True)
