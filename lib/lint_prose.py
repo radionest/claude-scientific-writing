@@ -62,6 +62,25 @@ def load_raw(path: Path) -> list[dict]:
     return data["entries"]
 
 
+def merge_entries(base: list[dict], local: list[dict]) -> list[dict]:
+    """Effective rule set: base ⊕ local. Local upserts by id; `disabled` drops an id."""
+    overrides: dict[str, dict] = {}
+    disabled: set[str] = set()
+    extra: list[dict] = []
+    base_ids = {e["id"] for e in base}
+    for e in local:
+        eid = e["id"]
+        if e.get("disabled"):
+            disabled.add(eid)
+        elif eid in base_ids:
+            overrides[eid] = e
+        else:
+            extra.append(e)
+    result = [overrides.get(e["id"], e) for e in base if e["id"] not in disabled]
+    result.extend(extra)
+    return result
+
+
 def lint_text(source: str, entries: list[dict], file: str = "<text>") -> list[Finding]:
     findings: list[Finding] = []
     for pl in extract_prose(source):
