@@ -70,3 +70,10 @@ def test_load_raw_non_string_pattern(tmp_path):
     p = _write(tmp_path, [{"id": "x", "pattern": ["a", "b"], "severity": "warn", "message": "m"}])
     with pytest.raises(ConfigError):
         load_raw(p)
+
+
+def test_load_raw_invalid_utf8(tmp_path):
+    p = tmp_path / "dict.json"
+    p.write_bytes(b"\xff\xfe{bad}")
+    with pytest.raises(ConfigError):
+        load_raw(p)

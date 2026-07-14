@@ -36,7 +36,7 @@ def load_raw(path: Path) -> list[dict]:
     """Load + validate a project-local dictionary; compile `_rx` on non-disabled entries."""
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as e:
+    except (OSError, ValueError) as e:
         raise ConfigError(f"{path}: {e}") from e
     if not isinstance(data, dict) or not isinstance(data.get("entries"), list):
         raise ConfigError(f"{path}: ожидается объект с полем «entries» (список)")
