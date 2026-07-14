@@ -1,9 +1,12 @@
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
 
+from lib import lint_prose
 from lib.lint_prose import ConfigError, load_raw, merge_entries
+from lib.lint_prose import local_dict_path, load_entries, main
 
 
 def _write(tmp_path: Path, entries) -> Path:
@@ -116,3 +119,114 @@ def test_merge_preserves_base_order_then_new():
         {"id": "calque-referens", "pattern": "референс", "severity": "warn", "message": "m"},
     ])
     assert [e["id"] for e in merged] == ["calque-referens", "jargon-kogorta", "zzz-new"]
+
+
+BASE = load_entries(None)
+
+
+@pytest.fixture(autouse=True)
+def _clear_git_cache():
+    lint_prose._GIT_ROOT_CACHE.clear()
+    yield
+    lint_prose._GIT_ROOT_CACHE.clear()
+
+
+def _git_repo(tmp_path: Path) -> Path:
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    return tmp_path
+
+
+def _write_local(root: Path, entries) -> Path:
+    d = root / ".claude" / "scientific-writing"
+    d.mkdir(parents=True, exist_ok=True)
+    p = d / "dictionary.json"
+    p.write_text(json.dumps({"entries": entries}, ensure_ascii=False), encoding="utf-8")
+    return p
+
+
+def _qmd(root: Path, text: str) -> Path:
+    p = root / "doc.qmd"
+    p.write_text(text, encoding="utf-8")
+    return p
+
+
+MASTER = {"id": "canon-master-model", "layer": "doc", "severity": "warn",
+          "pattern": "модель печени", "message": "канон «мастер-модель»"}
+
+
+def test_local_dict_path_in_repo(tmp_path):
+    root = _git_repo(tmp_path)
+    assert local_dict_path(root / "doc.qmd") == root / ".claude" / "scientific-writing" / "dictionary.json"
+
+
+def test_local_dict_path_none_outside_repo(tmp_path):
+    assert local_dict_path(tmp_path / "doc.qmd") is None
+
+
+def test_local_rule_fires(tmp_path, capsys):
+    root = _git_repo(tmp_path)
+    _write_local(root, [MASTER])
+    q = _qmd(root, "мы построили модель печени и отметили очаги\n")
+    main([str(q), "--json"])
+    assert "canon-master-model" in capsys.readouterr().out
+
+
+def test_local_error_sets_exit_1(tmp_path):
+    root = _git_repo(tmp_path)
+    _write_local(root, [{**MASTER, "severity": "error"}])
+    q = _qmd(root, "мы построили модель печени\n")
+    assert main([str(q)]) == 1
+
+
+def test_no_local_flag_ignores_dict(tmp_path, capsys):
+    root = _git_repo(tmp_path)
+    _write_local(root, [MASTER])
+    q = _qmd(root, "мы построили модель печени\n")
+    main([str(q), "--json", "--no-local"])
+    assert "canon-master-model" not in capsys.readouterr().out
+
+
+def test_local_dictionary_flag_forces_path(tmp_path, capsys):
+    d = _write(tmp_path, [MASTER])  # tmp_path/dict.json, outside .claude/, no repo needed
+    q = tmp_path / "doc.qmd"
+    q.write_text("мы построили модель печени\n", encoding="utf-8")
+    main([str(q), "--json", "--local-dictionary", str(d)])
+    assert "canon-master-model" in capsys.readouterr().out
+
+
+def test_override_tightens_pattern_removes_finding(tmp_path, capsys):
+    root = _git_repo(tmp_path)
+    _write_local(root, [{"id": "jargon-kogorta", "pattern": "когортищ",
+                         "severity": "warn", "message": "m"}])
+    q = _qmd(root, "пациенты когорты наблюдались\n")
+    main([str(q), "--json"])
+    assert "jargon-kogorta" not in capsys.readouterr().out
+
+
+def test_no_repo_base_only_no_crash(tmp_path, capsys):
+    _write_local(tmp_path, [MASTER])  # placed, but tmp_path is not a git repo -> ignored
+    q = tmp_path / "doc.qmd"
+    q.write_text("референсный стандарт применён\n", encoding="utf-8")
+    rc = main([str(q), "--json"])
+    out = capsys.readouterr().out
+    assert rc == 1                          # base calque-referens (error) still fires
+    assert "canon-master-model" not in out  # local ignored (no git root)
+
+
+def test_malformed_local_returns_2_and_message(tmp_path, capsys):
+    root = _git_repo(tmp_path)
+    d = root / ".claude" / "scientific-writing"
+    d.mkdir(parents=True)
+    (d / "dictionary.json").write_text("{broken", encoding="utf-8")
+    q = _qmd(root, "любой текст\n")
+    rc = main([str(q)])
+    assert rc == 2
+    assert "ошибка локального словаря" in capsys.readouterr().err
+
+
+def test_forced_missing_local_dictionary_errors(tmp_path, capsys):
+    q = tmp_path / "doc.qmd"
+    q.write_text("текст\n", encoding="utf-8")
+    rc = main([str(q), "--local-dictionary", str(tmp_path / "nope.json")])
+    assert rc == 2
+    assert "ошибка локального словаря" in capsys.readouterr().err

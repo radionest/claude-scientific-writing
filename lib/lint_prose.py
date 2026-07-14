@@ -7,6 +7,8 @@ from pathlib import Path
 from lib.qmd_prose import extract_prose
 
 _DEFAULT_DICT = Path(__file__).resolve().parents[1] / "canon" / "dictionary.json"
+_LOCAL_RELPATH = Path(".claude") / "scientific-writing" / "dictionary.json"
+_GIT_ROOT_CACHE: dict[str, "Path | None"] = {}
 
 
 class ConfigError(Exception):
@@ -128,6 +130,43 @@ def changed_lines(path: str, ref: str | None) -> set[int]:
     return changed
 
 
+def _git_root(start: Path) -> Path | None:
+    key = str(start)
+    if key in _GIT_ROOT_CACHE:
+        return _GIT_ROOT_CACHE[key]
+    try:
+        out = subprocess.run(["git", "-C", str(start), "rev-parse", "--show-toplevel"],
+                             capture_output=True, text=True, check=False)
+        root = Path(out.stdout.strip()) if out.returncode == 0 and out.stdout.strip() else None
+    except OSError:
+        root = None
+    _GIT_ROOT_CACHE[key] = root
+    return root
+
+
+def local_dict_path(target: str | Path) -> Path | None:
+    root = _git_root(Path(target).resolve().parent)
+    return root / _LOCAL_RELPATH if root else None
+
+
+def _resolve_local(target: str, forced: str | None, use_local: bool,
+                   cache: dict[str, list[dict]]) -> list[dict]:
+    if not use_local:
+        return []
+    if forced:
+        p: Path | None = Path(forced)
+        if not p.exists():
+            raise ConfigError(f"{forced}: файл локального словаря не найден")
+    else:
+        p = local_dict_path(target)
+        if p is None or not p.exists():
+            return []
+    key = str(p.resolve())
+    if key not in cache:
+        cache[key] = load_raw(p)
+    return cache[key]
+
+
 def _format_text(findings: list[Finding]) -> str:
     if not findings:
         return "lint_prose: чисто."
@@ -143,15 +182,26 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--diff", nargs="?", const="__staged__", default=None,
                     help="lint only changed lines; optional REF (default: staged)")
     ap.add_argument("--dictionary", default=None)
+    ap.add_argument("--local-dictionary", default=None,
+                    help="use this file as the project-local dictionary (overrides auto-discovery)")
+    ap.add_argument("--no-local", action="store_true",
+                    help="ignore any project-local dictionary")
     args = ap.parse_args(argv)
-    entries = load_entries(args.dictionary)
+    base = load_entries(args.dictionary)
+    local_cache: dict[str, list[dict]] = {}
     findings: list[Finding] = []
-    for f in args.files:
-        changed = None
-        if args.diff is not None:
-            ref = None if args.diff == "__staged__" else args.diff
-            changed = changed_lines(f, ref)
-        findings += lint_file(f, entries, changed)
+    try:
+        for f in args.files:
+            local = _resolve_local(f, args.local_dictionary, not args.no_local, local_cache)
+            entries = merge_entries(base, local) if local else base
+            changed = None
+            if args.diff is not None:
+                ref = None if args.diff == "__staged__" else args.diff
+                changed = changed_lines(f, ref)
+            findings += lint_file(f, entries, changed)
+    except ConfigError as e:
+        print(f"lint_prose: ошибка локального словаря {e}", file=sys.stderr)
+        return 2
     if args.json:
         print(json.dumps([asdict(x) for x in findings], ensure_ascii=False, indent=2))
     else:
