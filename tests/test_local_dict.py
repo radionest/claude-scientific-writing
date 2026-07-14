@@ -58,3 +58,15 @@ def test_load_raw_disabled_needs_only_id(tmp_path):
     entries = load_raw(p)
     assert entries[0]["id"] == "jargon-kogorta"
     assert "_rx" not in entries[0]
+
+
+def test_load_raw_non_dict_entry(tmp_path):
+    p = _write(tmp_path, ["not-an-object"])
+    with pytest.raises(ConfigError):
+        load_raw(p)
+
+
+def test_load_raw_non_string_pattern(tmp_path):
+    p = _write(tmp_path, [{"id": "x", "pattern": ["a", "b"], "severity": "warn", "message": "m"}])
+    with pytest.raises(ConfigError):
+        load_raw(p)

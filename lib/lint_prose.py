@@ -42,6 +42,8 @@ def load_raw(path: Path) -> list[dict]:
         raise ConfigError(f"{path}: ожидается объект с полем «entries» (список)")
     seen: set[str] = set()
     for e in data["entries"]:
+        if not isinstance(e, dict):
+            raise ConfigError(f"{path}: запись не является объектом")
         eid = e.get("id")
         if not isinstance(eid, str) or not eid:
             raise ConfigError(f"{path}: запись без строкового «id»")
@@ -55,7 +57,7 @@ def load_raw(path: Path) -> list[dict]:
             raise ConfigError(f"{path}: правило «{eid}» без обязательных полей: {', '.join(missing)}")
         try:
             e["_rx"] = re.compile(e["pattern"], re.IGNORECASE | re.UNICODE)
-        except re.error as err:
+        except (re.error, TypeError) as err:
             raise ConfigError(f"{path}: правило «{eid}» — некорректный паттерн: {err}") from err
     return data["entries"]
 
