@@ -9,6 +9,10 @@ from lib.qmd_prose import extract_prose
 _DEFAULT_DICT = Path(__file__).resolve().parents[1] / "canon" / "dictionary.json"
 
 
+class ConfigError(Exception):
+    """Malformed project-local dictionary."""
+
+
 @dataclass
 class Finding:
     file: str
@@ -25,6 +29,34 @@ def load_entries(path: str | None) -> list[dict]:
     data = json.loads(p.read_text(encoding="utf-8"))
     for e in data["entries"]:
         e["_rx"] = re.compile(e["pattern"], re.IGNORECASE | re.UNICODE)
+    return data["entries"]
+
+
+def load_raw(path: Path) -> list[dict]:
+    """Load + validate a project-local dictionary; compile `_rx` on non-disabled entries."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        raise ConfigError(f"{path}: {e}") from e
+    if not isinstance(data, dict) or not isinstance(data.get("entries"), list):
+        raise ConfigError(f"{path}: ожидается объект с полем «entries» (список)")
+    seen: set[str] = set()
+    for e in data["entries"]:
+        eid = e.get("id")
+        if not isinstance(eid, str) or not eid:
+            raise ConfigError(f"{path}: запись без строкового «id»")
+        if eid in seen:
+            raise ConfigError(f"{path}: повтор id «{eid}»")
+        seen.add(eid)
+        if e.get("disabled"):
+            continue
+        missing = [k for k in ("pattern", "severity", "message") if not e.get(k)]
+        if missing:
+            raise ConfigError(f"{path}: правило «{eid}» без обязательных полей: {', '.join(missing)}")
+        try:
+            e["_rx"] = re.compile(e["pattern"], re.IGNORECASE | re.UNICODE)
+        except re.error as err:
+            raise ConfigError(f"{path}: правило «{eid}» — некорректный паттерн: {err}") from err
     return data["entries"]
 
 
