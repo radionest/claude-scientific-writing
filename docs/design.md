@@ -48,7 +48,7 @@ scientific-writing/                      # own git repo (see "Where it lives")
     marketplace.json                     # local marketplace entry (install via /plugin marketplace add)
   canon/
     canon.md                             # human-readable universal canon (prose discipline + term policy)
-    dictionary.json                      # MACHINE single source: regex + bad/good + message + severity + layer
+    dictionary.json                      # MACHINE universal source: regex + bad/good + message + severity + layer
     profiles/
       report.md  article.md  educational.md   # per-genre section templates + style deltas
   skills/
@@ -71,11 +71,15 @@ scientific-writing/                      # own git repo (see "Where it lives")
     design.md                            # this file, carried over
 ```
 
-## The dictionary — single source of truth (`canon/dictionary.json`)
+## The dictionary — universal source of truth (`canon/dictionary.json`)
 
 Consolidates what is today scattered across two skill tables + 4 feedback-memory files. The linter consumes
 `pattern/message/severity/except`; the prose skills **reference** this file as the literal-calque list and
 keep only the nuance regex can't express.
+
+A **project-local overlay** (`<git-root>/.claude/scientific-writing/dictionary.json`, `layer: doc`) is merged
+on top per-repo: a new `id` adds a rule, a reused `id` overrides it wholesale, and `{"id": "<id>", "disabled": true}`
+mutes it. Document-specific rules live there; this file stays cross-project.
 
 Entry schema:
 
@@ -112,11 +116,12 @@ Sourcing for initial entries: the tables in both prose skills + memories `feedba
 
 | Aspect | Contract |
 |---|---|
-| Input | a `.qmd` (whole-file mode) or a git range (`--diff`/`--since REF`, changed prose lines only) |
+| Input | a `.qmd` (whole-file mode) or a git range (`--diff [REF]`, changed prose lines only) |
 | Prose extraction (`qmd_prose.py`) | exclude fenced ` ```{...} ` chunks, inline `` {python} ``, YAML front matter, markdown tables (`\|`-rows), BibTeX/`[@…]` citations, HTML comments, bare URLs. Headings **included** (calques appear there too) |
 | Output | findings `{file,line,col,id,severity,message,matched,suggestion}`; human + `--json` |
-| Exit | non-zero if any **error**-severity finding (drives the hook) |
+| Exit | `1` if any **error**-severity finding (drives the hook); `2` on a malformed project-local dictionary |
 | Modes | whole-file (for `/text-review`) vs **diff-only** (for the hook — see below) |
+| Project-local overlay | `<git-root>/.claude/scientific-writing/dictionary.json` merged onto the base by `id` (add / override / `disabled`); `--no-local` ignores it, `--local-dictionary <path>` forces a file |
 
 **The hook scans the diff, not the whole file.** Pre-existing calque debt must not block every PR; only
 **newly introduced** error-severity findings gate. `/text-review` may scan whole-file on demand.
