@@ -53,3 +53,17 @@ def test_skips_tests_fixtures(tmp_path):
     _git(repo, "add", "tests/fixtures/calques.qmd")
     r = _run_hook(repo, "git commit -m x")
     assert r.returncode == 0
+
+
+def test_blocks_with_dict_message_on_malformed_local_dict(tmp_path):
+    repo = _repo(tmp_path)
+    d = repo / ".claude" / "scientific-writing"
+    d.mkdir(parents=True)
+    (d / "dictionary.json").write_text("{broken", encoding="utf-8")
+    (repo / "r.qmd").write_text("чистая проза\nещё чистая проза\n", encoding="utf-8")
+    _git(repo, "add", "r.qmd")
+    r = _run_hook(repo, "git commit -m x")
+    out = r.stdout + r.stderr
+    assert r.returncode == 2          # still blocks
+    assert "словаря" in out           # names the local dictionary
+    assert "кальки" not in out        # NOT the calque message — the file has none
