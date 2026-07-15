@@ -58,6 +58,9 @@ def load_raw(path: Path) -> list[dict]:
         missing = [k for k in ("pattern", "severity", "message") if not e.get(k)]
         if missing:
             raise ConfigError(f"{path}: правило «{eid}» без обязательных полей: {', '.join(missing)}")
+        for k in ("pattern", "severity", "message"):
+            if not isinstance(e[k], str):
+                raise ConfigError(f"{path}: правило «{eid}» — поле «{k}» должно быть строкой")
         if e["severity"] not in _SEVERITIES:
             raise ConfigError(
                 f"{path}: правило «{eid}» — недопустимая severity «{e['severity']}»: "

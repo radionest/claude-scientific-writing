@@ -263,3 +263,15 @@ def test_load_raw_string_except_ok(tmp_path):
     p = _write(tmp_path, [{"id": "x", "pattern": "a", "severity": "warn", "message": "m",
                            "except": "b"}])
     assert load_raw(p)[0]["except"] == "b"
+
+
+def test_load_raw_unhashable_severity(tmp_path):
+    p = _write(tmp_path, [{"id": "x", "pattern": "a", "severity": ["error"], "message": "m"}])
+    with pytest.raises(ConfigError):
+        load_raw(p)
+
+
+def test_load_raw_non_string_message(tmp_path):
+    p = _write(tmp_path, [{"id": "x", "pattern": "a", "severity": "warn", "message": ["m"]}])
+    with pytest.raises(ConfigError):
+        load_raw(p)
