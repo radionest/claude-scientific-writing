@@ -27,12 +27,20 @@ for f in "${files[@]}"; do
   # file BEFORE --diff: --diff has nargs="?", so a trailing filename would be
   # consumed as its optional REF value, leaving no positional. Files-first is unambiguous.
   if [ -n "$ref" ]; then
-    PYTHONPATH="$PLUGIN_DIR" python3 -m lib.lint_prose "$f" --diff "$ref" || rc=$?
+    s=0
+    PYTHONPATH="$PLUGIN_DIR" python3 -m lib.lint_prose "$f" --diff "$ref" || s=$?
+    if [ "$s" -gt "$rc" ]; then rc=$s; fi
   else
-    PYTHONPATH="$PLUGIN_DIR" python3 -m lib.lint_prose "$f" --diff || rc=$?
+    s=0
+    PYTHONPATH="$PLUGIN_DIR" python3 -m lib.lint_prose "$f" --diff || s=$?
+    if [ "$s" -gt "$rc" ]; then rc=$s; fi
   fi
 done
 
+if [ "$rc" -eq 2 ]; then
+  echo "text-lint: ошибка локального словаря (см. выше). Поправь .claude/scientific-writing/dictionary.json." >&2
+  exit 2
+fi
 if [ "$rc" -ne 0 ]; then
   echo "text-lint: запрещённые кальки в изменённой прозе (см. выше). Поправь или добавь <!-- lint-ok: id -->." >&2
   exit 2
