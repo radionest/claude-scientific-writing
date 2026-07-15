@@ -244,3 +244,22 @@ def test_two_files_two_repos_each_gets_own_local(tmp_path, capsys):
     ids_b = {f["id"] for f in findings if f["file"] == str(doc_b)}
     assert "local-alpha" in ids_a and "local-beta" not in ids_a
     assert "local-beta" in ids_b and "local-alpha" not in ids_b
+
+
+def test_load_raw_bad_severity(tmp_path):
+    p = _write(tmp_path, [{"id": "x", "pattern": "a", "severity": "Error", "message": "m"}])
+    with pytest.raises(ConfigError):
+        load_raw(p)
+
+
+def test_load_raw_non_string_except(tmp_path):
+    p = _write(tmp_path, [{"id": "x", "pattern": "a", "severity": "warn", "message": "m",
+                           "except": ["b", "c"]}])
+    with pytest.raises(ConfigError):
+        load_raw(p)
+
+
+def test_load_raw_string_except_ok(tmp_path):
+    p = _write(tmp_path, [{"id": "x", "pattern": "a", "severity": "warn", "message": "m",
+                           "except": "b"}])
+    assert load_raw(p)[0]["except"] == "b"

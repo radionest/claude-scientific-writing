@@ -9,6 +9,7 @@ from lib.qmd_prose import extract_prose
 _DEFAULT_DICT = Path(__file__).resolve().parents[1] / "canon" / "dictionary.json"
 _LOCAL_RELPATH = Path(".claude") / "scientific-writing" / "dictionary.json"
 _GIT_ROOT_CACHE: dict[str, "Path | None"] = {}
+_SEVERITIES = {"error", "warn", "info"}
 
 
 class ConfigError(Exception):
@@ -57,6 +58,13 @@ def load_raw(path: Path) -> list[dict]:
         missing = [k for k in ("pattern", "severity", "message") if not e.get(k)]
         if missing:
             raise ConfigError(f"{path}: правило «{eid}» без обязательных полей: {', '.join(missing)}")
+        if e["severity"] not in _SEVERITIES:
+            raise ConfigError(
+                f"{path}: правило «{eid}» — недопустимая severity «{e['severity']}»: "
+                f"ожидается {', '.join(sorted(_SEVERITIES))}")
+        exc = e.get("except")
+        if exc is not None and not isinstance(exc, str):
+            raise ConfigError(f"{path}: правило «{eid}» — «except» должно быть строкой")
         try:
             e["_rx"] = re.compile(e["pattern"], re.IGNORECASE | re.UNICODE)
         except (re.error, TypeError) as err:
