@@ -227,3 +227,20 @@ def test_forced_missing_local_dictionary_errors(tmp_path, capsys):
     rc = main([str(q), "--local-dictionary", str(tmp_path / "nope.json")])
     assert rc == 2
     assert "ошибка локального словаря" in capsys.readouterr().err
+
+
+def test_two_files_two_repos_each_gets_own_local(tmp_path, capsys):
+    repo_a = _git_repo(tmp_path / "a")
+    repo_b = _git_repo(tmp_path / "b")
+    _write_local(repo_a, [{"id": "local-alpha", "layer": "doc", "pattern": "альфаметка",
+                           "severity": "warn", "message": "a"}])
+    _write_local(repo_b, [{"id": "local-beta", "layer": "doc", "pattern": "бетаметка",
+                           "severity": "warn", "message": "b"}])
+    doc_a = _qmd(repo_a, "здесь альфаметка и бетаметка присутствуют\n")
+    doc_b = _qmd(repo_b, "здесь альфаметка и бетаметка присутствуют\n")
+    main([str(doc_a), str(doc_b), "--json"])
+    findings = json.loads(capsys.readouterr().out)
+    ids_a = {f["id"] for f in findings if f["file"] == str(doc_a)}
+    ids_b = {f["id"] for f in findings if f["file"] == str(doc_b)}
+    assert "local-alpha" in ids_a and "local-beta" not in ids_a
+    assert "local-beta" in ids_b and "local-alpha" not in ids_b
