@@ -275,3 +275,15 @@ def test_load_raw_non_string_message(tmp_path):
     p = _write(tmp_path, [{"id": "x", "pattern": "a", "severity": "warn", "message": ["m"]}])
     with pytest.raises(ConfigError):
         load_raw(p)
+
+
+def test_load_raw_non_bool_disabled(tmp_path):
+    p = _write(tmp_path, [{"id": "x", "disabled": "false"}])
+    with pytest.raises(ConfigError):
+        load_raw(p)
+
+
+def test_load_raw_disabled_false_still_validated(tmp_path):
+    p = _write(tmp_path, [{"id": "x", "pattern": "a", "severity": "warn", "message": "m",
+                           "disabled": False}])
+    assert load_raw(p)[0]["_rx"].search("a")

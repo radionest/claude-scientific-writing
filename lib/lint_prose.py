@@ -53,7 +53,10 @@ def load_raw(path: Path) -> list[dict]:
         if eid in seen:
             raise ConfigError(f"{path}: повтор id «{eid}»")
         seen.add(eid)
-        if e.get("disabled"):
+        disabled = e.get("disabled")
+        if disabled is not None and not isinstance(disabled, bool):
+            raise ConfigError(f"{path}: правило «{eid}» — «disabled» должно быть булевым")
+        if disabled:
             continue
         missing = [k for k in ("pattern", "severity", "message") if not e.get(k)]
         if missing:
