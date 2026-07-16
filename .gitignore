@@ -4,3 +4,10 @@ __pycache__/
 .pytest_cache/
 .claude/worktrees/
 .claude/settings.local.json
+
+# Superpowers session artifacts (plans, specs, SDD briefs/reports/diffs)
+.superpowers/
+docs/superpowers/
+
+# OpenSpec local spec store (Claude working memory, synced via doc-review gate)
+/openspec
