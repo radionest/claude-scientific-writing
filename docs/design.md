@@ -89,11 +89,12 @@ So a rule is now one of two kinds, and checks see more than a line:
 
 | Kind | Declared in | Sees | Examples |
 |---|---|---|---|
-| `regex` (default) | `canon/dictionary.json` (lexical), `canon/orthography.json` (punctuation) | one prose line | `calque-referens`, `style-takzhe-slitno`, `punct-comma-kotoryj` |
+| `regex` (default) | `canon/dictionary.json` (lexical), `canon/orthography.json` (punctuation) | one prose line | `calque-referens`, `style-takzhe-slitno`, `punct-percent-spacing` |
 | `check` | `canon/orthography.json` with `kind: "check"`, implemented in `lib/checks/*.py` | a sentence or the whole document | `ortho-hyphen-linebreak`, `punct-comma-prichastie`, `doc-abbrev-variants` |
 
-Both kinds share `severity`, `message`, `except`, `allow`, the project-local overlay and
-`<!-- lint-ok: id -->`. `lib/document.py` supplies the sentence/document view; a check
+Both kinds share `severity`, `message`, `except`, the project-local overlay and
+`<!-- lint-ok: id -->` (`allow` is read by check functions only). `lib/document.py` supplies the
+sentence/document view; a check
 yields `Hit(lineno, col, matched, detail)` and `lib/lint_prose.py` stamps the entry's
 metadata onto it.
 
@@ -165,8 +166,9 @@ Entry schema:
   degraded severity here, and `_effective_severity` applies it when the extra is absent (the hook's normal
   case). `ortho-hyphen-linebreak` is `error` with morphology and `warn` without.
 - Punctuation is in scope for **error** only where measured precision is 100 % on a real review —
-  `punct-comma-slozhnyj-soyuz`, `style-takzhe-slitno`. Everything else in that class is `warn`: a gate that
-  false-blocks on commas gets switched off, and then it protects nothing.
+  in practice just `style-takzhe-slitno` and `ortho-hyphen-linebreak` (with morphology). Everything else in
+  that class is `warn`: a gate that false-blocks on commas gets switched off, and then it protects nothing.
+  Compound-conjunction commas were demoted for exactly this reason — both placements are correct Russian.
 
 Inline suppression: `<!-- lint-ok: <id> -->` on/above a line (eslint-disable-style), for the genuinely-legit
 case the regex can't tell apart. Keeps error-severity usable without false blocks.

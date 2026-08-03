@@ -1,7 +1,7 @@
 """Punctuation rules that need sentence scope, morphology, or both.
 
-Purely lexical punctuation patterns (составные союзы, «так же», тире, слэш, проценты)
-are regex entries in `canon/orthography.json` instead. What lives here needs to know
+Purely lexical punctuation patterns («так же», тире, слэш, проценты) are regex entries in
+`canon/orthography.json` instead. What lives here needs to know
 where a sentence starts, or needs a part-of-speech decision.
 """
 from __future__ import annotations
@@ -37,7 +37,7 @@ def comma_deeprichastie(doc, morph, entry: dict) -> Iterable[Hit]:
                 continue
             if not morph.has_pos(word, "GRND"):
                 continue
-            left = sent.text[:m.start()].rstrip()
+            left = _strip_markup(sent.text[:m.start()])
             if not left or left[-1] in ",(«—–-:;":
                 continue
             yield Hit(lineno=sent.lineno, col=sent.col + m.start(), matched=word,
@@ -160,11 +160,19 @@ def _comma_before_prepositional_group(head: str) -> bool:
 
 def _possessive(morph, head: str, pronoun: str) -> bool:
     """«…, размеры которых превышали…» — a genitive «который» after a noun is possessive
-    ("whose"), belongs to that noun phrase, and takes no comma before it."""
+    ("whose"): it belongs to that noun phrase and takes no comma of its own.
+
+    Case must **disagree** for that reading. «размеры»(nomn) vs «которых»(gent) is
+    possessive; «пациента»(accs) vs «которого»(accs) is an ordinary relative clause that
+    does need the comma — keying on the genitive tag alone silenced it.
+    """
     if not morph.available or "gent" not in morph.top_tag(pronoun):
         return False
     words = _WORD.findall(head)
-    return bool(words) and morph.has_pos(words[-1], "NOUN")
+    if not words or not morph.has_pos(words[-1], "NOUN"):
+        return False
+    noun_tag = morph.top_tag(words[-1])
+    return not any(c in noun_tag for c in ("gent",))
 
 
 _COMPOUND_CONJ = re.compile(

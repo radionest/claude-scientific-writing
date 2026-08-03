@@ -94,7 +94,7 @@ def triage(items: list[ReviewItem], morph: Morph | None = None) -> list[ReviewIt
     m = morph or Morph.load()
     out = []
     for it in items:
-        probe = it.sentence or it.after or it.before
+        probe = it.sentence or it.before or it.after
         lo = it.anchor_at - _NEAR
         hi = it.anchor_at + len(it.anchor) + _NEAR
         hit = None

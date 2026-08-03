@@ -64,6 +64,40 @@ def test_kotoryj_still_flags_a_missing_comma():
     assert "punct-comma-kotoryj" in _ids("Отметили метастаз который был виден только на МРТ.")
 
 
+@pytest.mark.morph
+@pytest.mark.skipif(not MORPH.available, reason="needs case tags")
+def test_possessive_guard_does_not_silence_a_relative_clause():
+    """«пациента которого» agrees in case — an ordinary relative clause that does need the
+    comma. Keying the possessive reading on the genitive tag alone muted it."""
+    assert "punct-comma-kotoryj" in _ids("Мы описали пациента которого оперировали дважды.")
+
+
+@pytest.mark.parametrize("sentence", [
+    "Однако выборка была мала.",
+    "Наконец мы получили результат.",
+    "Тем не менее различие сохранялось.",
+])
+def test_sentence_initial_conjunctions_are_not_parenthetical(sentence):
+    """«Однако», «наконец», «тем не менее» opening a sentence are conjunctions and take no
+    comma (Rosenthal §25). The rule used to demand one — advising an outright error."""
+    assert "punct-comma-vvodnoe" not in _ids(sentence)
+
+
+@pytest.mark.parametrize("sentence", [
+    "Например нанести метку на мастер-модель.",
+    "Таким образом чувствительность выросла.",
+])
+def test_real_parentheticals_still_flagged(sentence):
+    assert "punct-comma-vvodnoe" in _ids(sentence)
+
+
+@pytest.mark.morph
+@pytest.mark.skipif(not MORPH.available, reason="gerund tagging needs morphology")
+def test_gerund_guard_survives_markup():
+    """A heading or bullet must not make a fronted gerund look mid-sentence."""
+    assert "punct-comma-deeprichastie" not in _ids("## Учитывая объём резекции хирург выбрал доступ.")
+
+
 def test_tak_zhe_comparative_is_not_a_conjunction():
     """«так же …, как» is comparison, not the conjunction «также» — the rule's own message
     says so, but it errored on it anyway."""
