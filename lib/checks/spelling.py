@@ -18,7 +18,7 @@ from lib.checks import Hit, register
 _WORD = re.compile(r"(?<![\w-])[А-Яа-яЁё]{4,}(?![\w-])")
 
 
-@register("ortho-spelling")
+@register("ortho-spelling", needs_morph=True)
 def spelling(doc, morph, entry: dict) -> Iterable[Hit]:
     if not morph.available:
         return

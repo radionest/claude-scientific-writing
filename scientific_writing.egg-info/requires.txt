@@ -1,0 +1,4 @@
+
+[morph]
+mawo-pymorphy3>=1.0.4
+dawg-python>=0.7.2

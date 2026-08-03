@@ -21,7 +21,7 @@ _COORD = frozenset("но а и или либо однако зато что чт
 _CASES = ("nomn", "gent", "datv", "accs", "ablt", "loct")
 
 
-@register("punct-comma-deeprichastie")
+@register("punct-comma-deeprichastie", needs_morph=True)
 def comma_deeprichastie(doc, morph, entry: dict) -> Iterable[Hit]:
     """Деепричастие/деепричастный оборот not set off by a comma.
 
@@ -44,13 +44,15 @@ def comma_deeprichastie(doc, morph, entry: dict) -> Iterable[Hit]:
                       detail="деепричастный оборот выделяется запятой")
 
 
-@register("punct-comma-prichastie")
+@register("punct-comma-prichastie", needs_morph=True)
 def comma_prichastie(doc, morph, entry: dict) -> Iterable[Hit]:
     """Постпозитивный причастный оборот without a comma: «изображения полученные …».
 
-    Requires the participle to follow the noun it agrees with, to head a phrase of its
-    own (≥2 more words before the clause boundary), and the noun not to be governed by a
-    preposition — that last filter is what removes «по данным», «к имеющимся», «со сниженными».
+    Requires the participle to follow a noun it agrees with in case and number, and to head
+    a phrase of its own (≥2 more words before the clause boundary). The false positives an
+    explicit preposition filter was meant to catch («по данным», «к имеющимся») are already
+    gone: `has_pos` takes only the top *dictionary* parse, under which «данным» is a noun and
+    «по» is not, so the pair never forms.
     """
     if not morph.available:
         return
@@ -109,6 +111,72 @@ def comma_fronted_adverbial(doc, morph, entry: dict) -> Iterable[Hit]:
         yield Hit(lineno=sent.lineno, col=sent.col + m.end() + comma,
                   matched=f"{m.group(1)} {head.strip()},",
                   detail="обстоятельство в начале предложения запятой не отделяется")
+
+
+_KOTORYJ = re.compile(r"\bкотор(?:ый|ая|ое|ые|ого|ой|ых|ым|ыми|ому|ую|ом)\b", re.IGNORECASE)
+_PREPOSITION = frozenset("""
+в во на с со для из к ко по о об обо при у за от над под перед через между среди
+до без про около после вокруг вместо кроме сквозь ради благодаря согласно
+""".split())
+
+
+@register("punct-comma-kotoryj")
+def comma_kotoryj(doc, morph, entry: dict) -> Iterable[Hit]:
+    """Missing comma before a «который» clause.
+
+    As a pattern this could not tell «фазу, в которую» from «метастаз который»: any letter
+    followed by a space satisfied the anchor, so the preposition matched itself and five of
+    eight hits on the calibration corpus already had their comma. Walking back over an
+    optional preposition and looking at the real previous character is exact.
+    """
+    for sent in doc.sentences:
+        for m in _KOTORYJ.finditer(sent.text):
+            head = sent.text[:m.start()].rstrip()
+            if not head or head[-1] in ",(«—–-:;":
+                continue
+            if _comma_before_prepositional_group(head):
+                continue  # «…, в каждый из которых…» — the comma sits before the group
+            yield Hit(lineno=sent.lineno, col=sent.col + m.start(), matched=m.group(0),
+                      detail="придаточное с «который» отделяется запятой")
+
+
+def _comma_before_prepositional_group(head: str) -> bool:
+    """True when a preposition governs the clause and a comma already precedes that group.
+
+    The group may be several words long («в каждый из которых»), so scan back a short
+    window for the outermost preposition rather than just the adjacent token.
+    """
+    words = head.split()
+    for back in range(1, min(4, len(words)) + 1):
+        if words[-back].lower() not in _PREPOSITION:
+            continue
+        before = head.rsplit(words[-back], 1)[0].rstrip()
+        if not before or before[-1] in ",(«—–-:;":
+            return True
+    return False
+
+
+_COMPOUND_CONJ = re.compile(
+    r"\bв\s+случае\s+если\b|\bв\s+то\s+время\s+как\b|\bнесмотря\s+на\s+то\s+что\b"
+    r"|\bпо\s+мере\s+того\s+как\b|\bв\s+связи\s+с\s+тем\s+что\b"
+    r"|\bв\s+зависимости\s+от\s+того\s+как\b|\bдля\s+того\s+чтобы\b", re.IGNORECASE)
+
+
+@register("punct-comma-slozhnyj-soyuz")
+def comma_compound_conjunction(doc, morph, entry: dict) -> Iterable[Hit]:
+    """Compound conjunction that needs its internal comma: «в случае, если».
+
+    Position decides, which is why this is not a plain pattern. The conjunction splits only
+    when the subordinate clause **follows** the main one; fronted, it stays whole —
+    «В то время как одни авторы отмечают рост, другие его не находят» is correct, and
+    flagging it at `error` would block a commit on a well-formed sentence.
+    """
+    for sent in doc.sentences:
+        for m in _COMPOUND_CONJ.finditer(sent.text):
+            if not sent.text[:m.start()].strip():
+                continue  # fronted clause — the conjunction is not split
+            yield Hit(lineno=sent.lineno, col=sent.col + m.start(), matched=m.group(0),
+                      detail="запятая внутри союза: «в случае, если»")
 
 
 # «;» is deliberately not a check here. It fired 16 times on a review where the editor

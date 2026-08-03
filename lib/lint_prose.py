@@ -115,6 +115,16 @@ def load_raw(path: Path, base_ids: frozenset[str] = frozenset()) -> list[dict]:
         allow = e.get("allow")
         if allow is not None and not (isinstance(allow, list) and all(isinstance(x, str) for x in allow)):
             raise ConfigError(f"{path}: правило «{eid}» — «allow» должно быть списком строк")
+        degraded = e.get("severity_without_morph")
+        if degraded is not None and degraded not in _SEVERITIES:
+            # Under the hook's system python3 this *is* the gate severity: a typo here would
+            # silently turn an error into a pass.
+            raise ConfigError(
+                f"{path}: правило «{eid}» — недопустимая severity_without_morph «{degraded}»: "
+                f"ожидается {', '.join(sorted(_SEVERITIES))}")
+        freq = e.get("term_frequency")
+        if freq is not None and (isinstance(freq, bool) or not isinstance(freq, int)):
+            raise ConfigError(f"{path}: правило «{eid}» — «term_frequency» должно быть целым числом")
         if kind == "check":
             if check_registry.get(eid) is None:
                 raise ConfigError(f"{path}: правило «{eid}» — нет такой проверки; доступны: "
@@ -296,6 +306,19 @@ def _resolve_local(target: str, forced: str | None, use_local: bool,
     return cache[key]
 
 
+def _degraded_note(check_entries: list[dict]) -> str:
+    """Derived from the entries, so a new morphology-dependent check cannot make it stale."""
+    demoted = [e["id"] for e in check_entries if e.get("severity_without_morph")]
+    skipped = [e["id"] for e in check_entries
+               if not e.get("severity_without_morph") and check_registry.needs_morph(e["id"])]
+    parts = ["lint_prose: без морфологии (pip install -e '.[morph]')"]
+    if skipped:
+        parts.append(f"проверки {', '.join(sorted(skipped))} пропущены")
+    if demoted:
+        parts.append(f"{', '.join(sorted(demoted))} работает в ослабленном режиме")
+    return " — ".join(parts) + "."
+
+
 def _format_text(findings: list[Finding]) -> str:
     if not findings:
         return "lint_prose: чисто."
@@ -346,9 +369,7 @@ def main(argv: list[str] | None = None) -> int:
     if not morph.available:
         # stderr, so the stdout contract (a flat findings array) stays what
         # /text-review and /tune-draft already parse.
-        print("lint_prose: без морфологии (pip install '.[morph]') — проверки "
-              "ortho-spelling, punct-comma-prichastie и punct-comma-deeprichastie "
-              "пропущены, ortho-hyphen-linebreak понижена до warn.", file=sys.stderr)
+        print(_degraded_note(base_checks), file=sys.stderr)
     return 1 if any(f.severity == "error" for f in findings) else 0
 
 

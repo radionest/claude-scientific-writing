@@ -1,0 +1,9 @@
+Metadata-Version: 2.4
+Name: scientific-writing
+Version: 0
+Requires-Python: >=3.10
+License-File: LICENSE
+Provides-Extra: morph
+Requires-Dist: mawo-pymorphy3>=1.0.4; extra == "morph"
+Requires-Dist: dawg-python>=0.7.2; extra == "morph"
+Dynamic: license-file

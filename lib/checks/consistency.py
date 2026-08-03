@@ -68,25 +68,45 @@ def abbrev_first_use(doc, morph, entry: dict) -> Iterable[Hit]:
 
 @register("doc-token-case")
 def token_case(doc, morph, entry: dict) -> Iterable[Hit]:
-    """The same alphanumeric token in two casings: «3d» and «3D», «icg» and «ICG»."""
+    """The same alphanumeric token in two casings: «3d» and «3D», «icg» and «ICG».
+
+    Reports **every** occurrence of each non-dominant spelling, not just the first: in
+    `--diff` mode (the hook path) a finding anchored on an untouched line is filtered out,
+    so a newly introduced «3d» would otherwise slip through silently.
+
+    The dominant spelling is simply the most frequent one. On a tie there is no evidence for
+    a norm, so every spelling is reported and the message names none of them canonical —
+    picking one anyway pointed at the correct «3D» and called the typo «3d» the standard.
+    """
     allow = {w.lower() for w in entry.get("allow", ())}
-    seen: dict[str, Counter] = defaultdict(Counter)
-    where: dict[str, dict[str, tuple[int, int]]] = defaultdict(dict)
+    counts: dict[str, Counter] = defaultdict(Counter)
+    spots: dict[str, dict[str, list[tuple[int, int]]]] = defaultdict(lambda: defaultdict(list))
+    order: dict[str, dict[str, int]] = defaultdict(dict)
+    seq = 0
     for pl in doc.lines:
         for m in _MIXED_TOKEN.finditer(pl.text):
             tok = m.group(0)
             if tok.lower() in allow:
                 continue
-            seen[tok.lower()][tok] += 1
-            where[tok.lower()].setdefault(tok, (pl.lineno, m.start() + 1))
-    for key, variants in sorted(seen.items()):
+            counts[tok.lower()][tok] += 1
+            spots[tok.lower()][tok].append((pl.lineno, m.start() + 1))
+            order[tok.lower()].setdefault(tok, seq)
+            seq += 1
+    for key, variants in sorted(counts.items()):
         if len(variants) < 2:
             continue
-        rare = min(variants, key=lambda v: (variants[v], v))
-        common = max(variants, key=lambda v: (variants[v], v))
-        lineno, col = where[key][rare]
-        yield Hit(lineno=lineno, col=col, matched=rare,
-                  detail=f"регистр непоследователен: «{rare}» ×{variants[rare]} vs «{common}» ×{variants[common]}")
+        top = max(variants.values())
+        leaders = [v for v in variants if variants[v] == top]
+        dominant = leaders[0] if len(leaders) == 1 else None
+        tally = ", ".join(f"«{v}» ×{variants[v]}"
+                          for v in sorted(variants, key=lambda v: (-variants[v], order[key][v])))
+        for variant in sorted(variants, key=lambda v: order[key][v]):
+            if variant == dominant:
+                continue
+            detail = (f"регистр непоследователен: {tally} — приведи к «{dominant}»"
+                      if dominant else f"регистр непоследователен: {tally} — выбери одно написание")
+            for lineno, col in spots[key][variant]:
+                yield Hit(lineno=lineno, col=col, matched=variant, detail=detail)
 
 
 _REPEAT_WINDOW = 12  # tokens; wider than this reads as normal scientific prose

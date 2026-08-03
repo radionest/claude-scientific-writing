@@ -31,11 +31,23 @@ Check = Callable[["Document", "Morph", dict], Iterable[Hit]]
 _REGISTRY: dict[str, Check] = {}
 
 
-def register(rule_id: str) -> Callable[[Check], Check]:
+_NEEDS_MORPH: set[str] = set()
+
+
+def register(rule_id: str, *, needs_morph: bool = False) -> Callable[[Check], Check]:
+    """`needs_morph=True` marks a check that yields nothing without the optional extra, so
+    the CLI can say which checks went silent instead of carrying a hand-kept list."""
     def deco(fn: Check) -> Check:
         _REGISTRY[rule_id] = fn
+        if needs_morph:
+            _NEEDS_MORPH.add(rule_id)
         return fn
     return deco
+
+
+def needs_morph(rule_id: str) -> bool:
+    _load_all()
+    return rule_id in _NEEDS_MORPH
 
 
 def get(rule_id: str) -> Check | None:

@@ -105,7 +105,6 @@ whose precision depends on the dictionary declares `severity_without_morph`.
 | | with morphology | without |
 |---|---|---|
 | `ortho-hyphen-linebreak` | `error` — 7/7 with no false positives on the review | `warn` — "occurs once in the document" heuristic, ~50 % precision |
-
 | `ortho-spelling` | `info`, needs a project `allow` wordlist | skipped |
 | `punct-comma-prichastie`, `-deeprichastie` | `warn` | skipped |
 
@@ -134,7 +133,8 @@ Consolidates what is today scattered across two skill tables + 4 feedback-memory
 keep only the nuance regex can't express.
 
 A **project-local overlay** (`<git-root>/.claude/scientific-writing/dictionary.json`, `layer: doc`) is merged
-on top per-repo: a new `id` adds a rule, a reused `id` overrides it wholesale, and `{"id": "<id>", "disabled": true}`
+on top per-repo: a new `id` adds a rule, a reused `id` overrides it **field-wise** (restate only what
+changes — `{"id": "ortho-spelling", "allow": [...]}` is a complete entry), and `{"id": "<id>", "disabled": true}`
 mutes it. Document-specific rules live there; this file stays cross-project.
 
 Entry schema:

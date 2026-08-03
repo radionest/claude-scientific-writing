@@ -1,8 +1,19 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "scientific-writing"
 version = "0"
 requires-python = ">=3.10"
 dependencies = []
+
+# The repo root is a Claude Code plugin, not a Python package root: canon/, hooks/, skills/,
+# agents/ and commands/ sit beside lib/. Naming lib/ explicitly stops flat-layout
+# auto-discovery from aborting on "multiple top-level packages", which would make the
+# documented `pip install -e '.[morph]'` fail.
+[tool.setuptools]
+packages = ["lib", "lib.checks"]
 
 # Russian morphology. Optional on purpose: hooks/text-lint.sh runs the linter under the
 # system python3, which may not have it. Without the extra the linter still runs — the
