@@ -136,6 +136,8 @@ def comma_kotoryj(doc, morph, entry: dict) -> Iterable[Hit]:
                 continue
             if _comma_before_prepositional_group(head):
                 continue  # «…, в каждый из которых…» — the comma sits before the group
+            if _possessive(morph, head, m.group(0)):
+                continue  # «Очаги, размеры которых превышали…» — genitive, no comma here
             yield Hit(lineno=sent.lineno, col=sent.col + m.start(), matched=m.group(0),
                       detail="придаточное с «который» отделяется запятой")
 
@@ -146,14 +148,23 @@ def _comma_before_prepositional_group(head: str) -> bool:
     The group may be several words long («в каждый из которых»), so scan back a short
     window for the outermost preposition rather than just the adjacent token.
     """
-    words = head.split()
-    for back in range(1, min(4, len(words)) + 1):
-        if words[-back].lower() not in _PREPOSITION:
+    spans = [(m.group(0), m.start()) for m in _WORD.finditer(head)]
+    for word, start in reversed(spans[-4:]):
+        if word.lower() not in _PREPOSITION:
             continue
-        before = head.rsplit(words[-back], 1)[0].rstrip()
+        before = head[:start].rstrip()  # index-based: `rsplit` matched the token mid-word
         if not before or before[-1] in ",(«—–-:;":
             return True
     return False
+
+
+def _possessive(morph, head: str, pronoun: str) -> bool:
+    """«…, размеры которых превышали…» — a genitive «который» after a noun is possessive
+    ("whose"), belongs to that noun phrase, and takes no comma before it."""
+    if not morph.available or "gent" not in morph.top_tag(pronoun):
+        return False
+    words = _WORD.findall(head)
+    return bool(words) and morph.has_pos(words[-1], "NOUN")
 
 
 _COMPOUND_CONJ = re.compile(
@@ -166,17 +177,32 @@ _COMPOUND_CONJ = re.compile(
 def comma_compound_conjunction(doc, morph, entry: dict) -> Iterable[Hit]:
     """Compound conjunction that needs its internal comma: «в случае, если».
 
-    Position decides, which is why this is not a plain pattern. The conjunction splits only
-    when the subordinate clause **follows** the main one; fronted, it stays whole —
-    «В то время как одни авторы отмечают рост, другие его не находят» is correct, and
-    flagging it at `error` would block a commit on a well-formed sentence.
+    Two placements are correct, so this is advisory (`warn`), not a gate: the comma may go
+    before the whole conjunction («Резекцию отложили, несмотря на то что риск был низким»)
+    or inside it, and which reads better depends on emphasis — Rosenthal §108. Only the
+    third case, no comma anywhere, is reported:
+
+    - fronted clause → the conjunction is never split, so skip;
+    - a comma already precedes → already punctuated, skip.
     """
     for sent in doc.sentences:
         for m in _COMPOUND_CONJ.finditer(sent.text):
-            if not sent.text[:m.start()].strip():
+            head = _strip_markup(sent.text[:m.start()])
+            if not head:
                 continue  # fronted clause — the conjunction is not split
+            if head[-1] in ",(«—–-:;":
+                continue  # «…, в то время как …» — the comma is placed before the group
             yield Hit(lineno=sent.lineno, col=sent.col + m.start(), matched=m.group(0),
-                      detail="запятая внутри союза: «в случае, если»")
+                      detail="нужна запятая: «в случае, если» или перед всем союзом")
+
+
+_MARKUP_PREFIX = re.compile(r"^[\s>#*_`~+.)\d-]*")
+
+
+def _strip_markup(head: str) -> str:
+    """Drop list bullets, heading marks and emphasis so "is this the start of the sentence?"
+    is not answered by column 1 alone — «- В то время как …» is still a fronted clause."""
+    return _MARKUP_PREFIX.sub("", head).strip()
 
 
 # «;» is deliberately not a check here. It fired 16 times on a review where the editor

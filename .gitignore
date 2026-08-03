@@ -11,3 +11,6 @@ docs/superpowers/
 
 # OpenSpec local spec store (Claude working memory, synced via doc-review gate)
 /openspec
+
+# Python packaging metadata from `pip install -e .`
+*.egg-info/

@@ -20,16 +20,48 @@ def _ids(text: str, severity: str | None = None):
     "В то время как одни авторы отмечают рост, другие его не находят.",
     "Несмотря на то что выборка мала, различие значимо.",
     "По мере того как доза растёт, чувствительность падает.",
+    # a bullet or heading does not stop the clause from being fronted
+    "- В то время как одни авторы отмечают рост, другие его не находят.",
+    "## Несмотря на то что выборка мала, различие значимо.",
+    "1) В случае если объём достаточен, выполняли резекцию.",
+    # the comma may equally go before the whole conjunction
+    "Чувствительность КТ была выше, в то время как специфичность не различалась.",
+    "Резекцию отложили, несмотря на то что риск был низким.",
 ])
-def test_fronted_compound_conjunction_is_not_split(sentence):
-    """A fronted subordinate clause keeps the conjunction whole. Flagging it at `error`
-    blocked the commit hook on well-formed sentences."""
+def test_correctly_punctuated_compound_conjunction_is_not_flagged(sentence):
     assert "punct-comma-slozhnyj-soyuz" not in _ids(sentence)
 
 
-def test_compound_conjunction_after_main_clause_still_errors():
-    ids = _ids("Волюмометрию делали в случае если объём был более 50 %.", severity="error")
+def test_compound_conjunction_without_any_comma_is_flagged():
+    ids = _ids("Волюмометрию делали в случае если объём был более 50 %.")
     assert "punct-comma-slozhnyj-soyuz" in ids
+
+
+def test_compound_conjunction_never_gates():
+    """Both placements are correct Russian, so this rule must not block a commit."""
+    hits = [f for f in _find("Волюмометрию делали в случае если объём был более 50 %.")
+            if f.id == "punct-comma-slozhnyj-soyuz"]
+    assert hits and all(f.severity == "warn" for f in hits)
+
+
+@pytest.mark.parametrize("sentence", [
+    "Очаги, в состав которых входит фиброз, исключили из анализа.",   # substring-matched preposition
+    "Фазу, в каждый из катетеров которой вводили препарат, сравнили.",
+])
+def test_kotoryj_not_flagged_when_already_correct(sentence):
+    assert "punct-comma-kotoryj" not in _ids(sentence)
+
+
+@pytest.mark.morph
+@pytest.mark.skipif(not MORPH.available, reason="possessive «который» needs case tags")
+def test_kotoryj_skips_genitive_possessive():
+    """«…, размеры которых превышали…» — genitive «который» belongs to the preceding noun
+    phrase and takes no comma of its own. Only morphology can see the case."""
+    assert "punct-comma-kotoryj" not in _ids("Очаги, размеры которых превышали 10 мм, резецировали.")
+
+
+def test_kotoryj_still_flags_a_missing_comma():
+    assert "punct-comma-kotoryj" in _ids("Отметили метастаз который был виден только на МРТ.")
 
 
 def test_tak_zhe_comparative_is_not_a_conjunction():

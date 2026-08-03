@@ -41,8 +41,21 @@ class ReviewItem:
     anchor_at: int = 0  # anchor offset within `sentence`
 
 
+class DocxError(Exception):
+    """Not a readable .docx."""
+
+
 def extract(path: Path, context: int = _CONTEXT) -> list[ReviewItem]:
-    z = zipfile.ZipFile(path)
+    try:
+        with zipfile.ZipFile(path) as z:
+            return _extract(z, context)
+    except zipfile.BadZipFile as e:
+        raise DocxError(f"{path}: не .docx (не zip-архив)") from e
+    except KeyError as e:
+        raise DocxError(f"{path}: в архиве нет части {e} — файл повреждён или это не .docx") from e
+
+
+def _extract(z: zipfile.ZipFile, context: int) -> list[ReviewItem]:
     comments, authors = _comments(z)
     text, spans, para_at = _document(z)
     items: list[ReviewItem] = []
@@ -206,7 +219,11 @@ def main(argv: list[str] | None = None) -> int:
     if not path.exists():
         print(f"docx_review: файл не найден: {path}", file=sys.stderr)
         return 2
-    items = triage(extract(path, args.context))
+    try:
+        items = triage(extract(path, args.context))
+    except (DocxError, OSError) as e:
+        print(f"docx_review: {e}", file=sys.stderr)
+        return 2
     if args.only_missed:
         items = [i for i in items if i.triage == "FN"]
     if args.json:
