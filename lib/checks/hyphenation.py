@@ -26,10 +26,13 @@ _PAIR = re.compile(r"(?<![\w-])([а-яё]{2,})-([а-яё]{2,})(?![\w-])")
 def hyphen_linebreak(doc, morph, entry: dict) -> Iterable[Hit]:
     allow = {w.lower() for w in entry.get("allow", ())}
     if morph.available:
-        decide = lambda l, r: morph.known(l + r) and not (morph.known(l) and morph.known(r))
+        def decide(left: str, right: str) -> bool:
+            return morph.known(left + right) and not (morph.known(left) and morph.known(right))
     else:
         counts = _pair_counts(doc)
-        decide = lambda l, r: counts[f"{l}-{r}".lower()] == 1
+
+        def decide(left: str, right: str) -> bool:
+            return counts[f"{left}-{right}"] == 1
     for pl in doc.lines:
         for m in _PAIR.finditer(pl.text):
             left, right = m.group(1).lower(), m.group(2).lower()

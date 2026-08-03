@@ -8,6 +8,7 @@ Run from repo root: `.venv/bin/pytest` — pytest `pythonpath` is set in `pyproj
 Morphology-dependent tests skip themselves when the optional extra is absent: `.venv/bin/pip install -e '.[morph]'`.
 
 ## Where a rule goes
+
 | Rule is about | Put it in |
 |---|---|
 | a lexical calque, jargon, term canon | `canon/dictionary.json` (regex) |

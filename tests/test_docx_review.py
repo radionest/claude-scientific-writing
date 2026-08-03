@@ -1,6 +1,8 @@
 import zipfile
 
-from lib.docx_review import extract, triage
+import pytest
+
+from lib.docx_review import DocxError, extract, triage
 
 W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
 
@@ -86,3 +88,37 @@ def test_missing_comments_part_is_not_fatal(tmp_path):
     with zipfile.ZipFile(p, "w") as z:
         z.writestr("word/document.xml", doc)
     assert extract(p) == []
+
+
+def test_sentence_survives_an_abbreviation(tmp_path):
+    """«и др.» must not end the sentence: `triage` lints this slice, so a truncated
+    sentence loses the left context a rule needs and flips covered → FN."""
+    p = _docx(tmp_path,
+              [_para(_run("Применяли КТ, МРТ и др. методы для оценки "),
+                     _anchor("1", "очага"), _run(" в печени."))],
+              [("1", "Ред", "уточнить")])
+    assert extract(p)[0].sentence == "Применяли КТ, МРТ и др. методы для оценки очага в печени."
+
+
+def _broken_docx(tmp_path, document_xml, name):
+    p = tmp_path / name
+    with zipfile.ZipFile(p, "w") as z:
+        z.writestr("word/document.xml", document_xml)
+    return p
+
+
+def test_dtd_is_refused(tmp_path):
+    """`.docx` parts never carry a DOCTYPE, and ElementTree expands internal entities —
+    a hostile file could blow memory up before anything reads it."""
+    bomb = ('<?xml version="1.0"?><!DOCTYPE d [<!ENTITY a "aaaaaaaaaa">'
+            '<!ENTITY b "&a;&a;&a;&a;&a;&a;&a;&a;&a;&a;">]>'
+            f'<w:document {W}><w:body><w:p><w:r><w:t>&b;</w:t></w:r></w:p></w:body></w:document>')
+    with pytest.raises(DocxError, match="DTD"):
+        extract(_broken_docx(tmp_path, bomb, "bomb.docx"))
+
+
+def test_malformed_xml_reports_instead_of_crashing(tmp_path):
+    """A valid zip whose XML is broken must reach the CLI's friendly message, not a
+    traceback — the zip-level guards never see it."""
+    with pytest.raises(DocxError, match="XML"):
+        extract(_broken_docx(tmp_path, f"<w:document {W}><w:body></w:document>", "torn.docx"))

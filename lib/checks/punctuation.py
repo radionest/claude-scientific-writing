@@ -82,6 +82,11 @@ def comma_fronted_adverbial(doc, morph, entry: dict) -> Iterable[Hit]:
 
     Legitimate when the fronted phrase contains its own оборот, so a gerund anywhere before
     the comma suppresses the finding.
+
+    The anchor is regex, so the rule still works without morphology — but all three
+    suppressors below (gerund, predicate, enumeration) are morphology-only, and precision
+    drops once they go silent. Hence `severity_without_morph: "info"` on the entry rather
+    than `needs_morph=True`, which would drop the rule entirely.
     """
     for sent in doc.sentences:
         m = _FRONTED.match(sent.text)

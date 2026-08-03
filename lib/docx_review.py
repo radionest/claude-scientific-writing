@@ -15,11 +15,12 @@ Each item is `{line, before, after, triage, rule_hit, comment}`:
 - `rule_hit` — the rule id when covered.
 """
 from __future__ import annotations
-import argparse, json, sys, zipfile
+import argparse, json, sys, xml.parsers.expat, zipfile
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
+from lib.document import _is_abbreviation
 from lib.lint_prose import lint_source, load_check_entries, load_entries
 from lib.morph import Morph
 
@@ -45,6 +46,37 @@ class DocxError(Exception):
     """Not a readable .docx."""
 
 
+def _parse_xml(data: bytes) -> ET.Element:
+    """Parse an OOXML part, refusing any DTD.
+
+    A `.docx` part never carries a DOCTYPE, while `ET.fromstring` happily expands internal
+    entities — so a hostile file can exhaust memory («billion laughs»). Driving expat
+    directly is what lets the DTD be refused: the C `XMLParser` does not expose its expat
+    handlers, and `defusedxml` is a dependency this module cannot take — it is stdlib-only
+    so the plugin hook can run under the system interpreter.
+
+    `namespace_separator="}"` makes expat emit `uri}local`, one `{` short of the Clark
+    notation the `_W + "tag"` lookups below use.
+    """
+    builder = ET.TreeBuilder()
+    parser = xml.parsers.expat.ParserCreate(namespace_separator="}")
+    parser.buffer_text = True
+
+    def forbid_dtd(*_args: object) -> None:
+        raise DocxError("XML-часть содержит DTD — файл отклонён")
+
+    def clark(name: str) -> str:
+        return "{" + name if "}" in name else name
+
+    parser.StartDoctypeDeclHandler = forbid_dtd
+    parser.StartElementHandler = lambda tag, attrs: builder.start(
+        clark(tag), {clark(k): v for k, v in attrs.items()})
+    parser.EndElementHandler = lambda tag: builder.end(clark(tag))
+    parser.CharacterDataHandler = builder.data
+    parser.Parse(data, True)
+    return builder.close()
+
+
 def extract(path: Path, context: int = _CONTEXT) -> list[ReviewItem]:
     try:
         with zipfile.ZipFile(path) as z:
@@ -53,6 +85,8 @@ def extract(path: Path, context: int = _CONTEXT) -> list[ReviewItem]:
         raise DocxError(f"{path}: не .docx (не zip-архив)") from e
     except KeyError as e:
         raise DocxError(f"{path}: в архиве нет части {e} — файл повреждён или это не .docx") from e
+    except xml.parsers.expat.ExpatError as e:
+        raise DocxError(f"{path}: повреждённый XML внутри .docx — {e}") from e
 
 
 def _extract(z: zipfile.ZipFile, context: int) -> list[ReviewItem]:
@@ -110,11 +144,26 @@ def triage(items: list[ReviewItem], morph: Morph | None = None) -> list[ReviewIt
     return out
 
 
+_SENT_CHARS = ".!?…\n"
+_ABBR_WINDOW = 40  # all the left context `_is_abbreviation` needs to read the last word
+
+
 def _sentence_bounds(text: str, start: int, end: int) -> tuple[int, int]:
-    left = max(text.rfind(c, 0, start) for c in ".!?\n")
-    right_candidates = [p for p in (text.find(c, end) for c in ".!?\n") if p != -1]
-    right = min(right_candidates) + 1 if right_candidates else len(text)
-    return (left + 1 if left != -1 else 0), right
+    """Bounds of the sentence holding `[start, end)`.
+
+    A period is a boundary only when `lib.document._is_abbreviation` says it is not part of
+    «т.е.», «др.» or an initial — the same guard `split_sentences` applies. `triage` feeds
+    this slice straight to `lint_source` to decide covered vs FN, so a sentence truncated
+    at an abbreviation flips that verdict.
+    """
+    def breaks_at(i: int) -> bool:
+        if text[i] not in _SENT_CHARS:
+            return False
+        return text[i] != "." or not _is_abbreviation(text[max(0, i - _ABBR_WINDOW):i])
+
+    left = next((i for i in range(start - 1, -1, -1) if breaks_at(i)), -1)
+    right = next((i + 1 for i in range(end, len(text)) if breaks_at(i)), len(text))
+    return left + 1, right
 
 
 def _norm(s: str) -> str:
@@ -130,7 +179,7 @@ def _as_int(v: str) -> int:
 
 def _comments(z: zipfile.ZipFile) -> tuple[dict[str, str], dict[str, str]]:
     try:
-        root = ET.fromstring(z.read("word/comments.xml"))
+        root = _parse_xml(z.read("word/comments.xml"))
     except KeyError:
         return {}, {}
     bodies, authors = {}, {}
@@ -143,7 +192,7 @@ def _comments(z: zipfile.ZipFile) -> tuple[dict[str, str], dict[str, str]]:
 
 def _document(z: zipfile.ZipFile):
     """Flatten the body to text, recording comment-range offsets and paragraph starts."""
-    root = ET.fromstring(z.read("word/document.xml"))
+    root = _parse_xml(z.read("word/document.xml"))
     parts: list[str] = []
     pos = 0
     starts: dict[str, int] = {}
@@ -192,7 +241,7 @@ def _document(z: zipfile.ZipFile):
 
 def _tracked_changes(text: str, z: zipfile.ZipFile) -> list[ReviewItem]:
     """w:ins / w:del pairs, when the editor tracked changes instead of commenting."""
-    root = ET.fromstring(z.read("word/document.xml"))
+    root = _parse_xml(z.read("word/document.xml"))
     items: list[ReviewItem] = []
     for para_no, p in enumerate(root.iter(_W + "p"), start=1):
         ins = "".join(t.text or "" for node in p.iter(_W + "ins") for t in node.iter(_W + "t"))

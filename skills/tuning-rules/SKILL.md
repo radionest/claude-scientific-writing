@@ -46,7 +46,7 @@ description: Use when turning a diff between a canon-clean draft and the user's 
 - **весь документ** — аббревиатуры, регистр, повторы.
 
 Новая проверка: функция в `lib/checks/<модуль>.py` под `@register("<id>")`, возвращает `Hit(lineno,
-col, matched, detail)`; запись в `canon/orthography.json` c `kind: "check"`. Правило, чья точность
+col, matched, detail)`; запись в `canon/orthography.json` с `kind: "check"`. Правило, чья точность
 падает без морфологии, объявляет `severity_without_morph` (так делает `ortho-hyphen-linebreak`:
 `error` со словарём, `warn` без него).
 

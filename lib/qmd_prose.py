@@ -17,10 +17,18 @@ _TABLE_ROW_RE = re.compile(r"^\s*\|")
 _LINT_OK_RE = re.compile(r"<!--\s*lint-ok:\s*([^>]*?)\s*-->")
 _HEADING_RE = re.compile(r"^(#{1,6})\s+(.*)$")
 # Tolerates numbering («7. Литература»), Quarto attributes («{.unnumbered}», «{#sec-refs}»)
-# and the longer Russian variants («Список использованной литературы»).
+# and both Russian word orders: «Список использованной литературы» and its reverses
+# «Использованная литература», «Библиографический список».
+# The modifier is an explicit allowlist rather than `\w+`, because «Обзор литературы» is a
+# prose section — matching it here would silently drop a whole chapter from the linter.
 _BIBLIO_RE = re.compile(
-    r"^\s*(?:\d+[.)]\s*)?(?:список\s+(?:\w+\s+)?)?"
-    r"(?:литератур\w*|библиограф\w*|references|bibliography)\s*(?:\{[^}]*\})?\s*$",
+    r"^\s*(?:\d+[.)]\s*)?"
+    r"(?:(?:список|перечень)\s+(?:\w+\s+)?(?:литератур\w*|источник\w*)"
+    r"|(?:использованн\w+\s+|цитированн\w+\s+)?литератур\w*"
+    r"|библиографическ\w+\s+(?:список|перечень)\w*"
+    r"|библиограф\w*"
+    r"|references|bibliography)"
+    r"\s*(?:\{[^}]*\})?\s*$",
     re.IGNORECASE)
 _CYRILLIC_RE = re.compile(r"[А-Яа-яЁё]")
 _LATIN_RE = re.compile(r"[A-Za-z]")

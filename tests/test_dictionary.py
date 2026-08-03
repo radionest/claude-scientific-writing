@@ -72,12 +72,16 @@ def test_every_fixture_phrase_is_flagged(fixture):
 def test_good_examples_do_not_trip_their_own_rule():
     """Every entry carrying bad/good must flag the bad and leave the good alone —
     the false-positive gate the tune-rules design mandates."""
+    from lib import checks as check_registry
     entries, checks_ = load_entries(None), load_check_entries()
     for e in _load():
         if not (e.get("bad") and e.get("good")):
             continue
         bad = {f.id for f in lint_source(e["bad"] + "\n", entries, checks_, MORPH)}
         good = {f.id for f in lint_source(e["good"] + "\n", entries, checks_, MORPH)}
-        if MORPH.available or e.get("kind") != "check":
+        # Only a check that goes silent without the extra may skip the «bad» gate. The
+        # token-level ones (`doc-*`, `ortho-hyphen-linebreak`, fronted-adverbial) still
+        # fire in degraded mode, so keying on `kind == "check"` left them unverified.
+        if MORPH.available or not check_registry.needs_morph(e["id"]):
             assert e["id"] in bad, f"{e['id']}: не ловит собственный пример «bad»"
         assert e["id"] not in good, f"{e['id']}: срабатывает на собственном примере «good»"
