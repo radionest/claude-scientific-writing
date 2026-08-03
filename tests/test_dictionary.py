@@ -20,6 +20,12 @@ def test_entries_wellformed_and_unique():
         assert e["message"].strip()
 
 
+def test_patterns_avoid_cyrillic_range_without_yo():
+    """[а-я] исключает «ё» (U+0451): «отнес[а-я]+» не матчит «отнесённые». В хвостах — \\w."""
+    for e in _load():
+        assert "[а-я]" not in e["pattern"], f"{e['id']}: [а-я] не матчит «ё» — используй \\w"
+
+
 def test_every_fixture_phrase_is_flagged():
     entries = _load()
     pats = [(e["id"], re.compile(e["pattern"], re.IGNORECASE | re.UNICODE)) for e in entries]
