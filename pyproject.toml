@@ -1,3 +1,16 @@
+[project]
+name = "scientific-writing"
+version = "0"
+requires-python = ">=3.10"
+dependencies = []
+
+# Russian morphology. Optional on purpose: hooks/text-lint.sh runs the linter under the
+# system python3, which may not have it. Without the extra the linter still runs — the
+# checks that need dictionary lookups demote to warn or skip (see lib/morph.py).
+[project.optional-dependencies]
+morph = ["mawo-pymorphy3>=1.0.4", "dawg-python>=0.7.2"]
+
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+markers = ["morph: requires the optional morphology extra"]

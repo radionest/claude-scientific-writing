@@ -71,6 +71,44 @@ scientific-writing/                      # own git repo (see "Where it lives")
     design.md                            # this file, carried over
 ```
 
+## Check kinds and scopes (added 2026-08-03)
+
+The original design had one rule shape — a regex over one prose line. A real editor review
+(105 comments on `lesion_nature_report`'s article) showed that shape reaches about a fifth
+of what an editor flags: half the review was **punctuation and orthography**, and another
+chunk was **document-scoped consistency**, neither of which a per-line regex can express.
+So a rule is now one of two kinds, and checks see more than a line:
+
+| Kind | Declared in | Sees | Examples |
+|---|---|---|---|
+| `regex` (default) | `canon/dictionary.json` (lexical), `canon/orthography.json` (punctuation) | one prose line | `calque-referens`, `style-takzhe-slitno`, `punct-comma-kotoryj` |
+| `check` | `canon/orthography.json` with `kind: "check"`, implemented in `lib/checks/*.py` | a sentence or the whole document | `ortho-hyphen-linebreak`, `punct-comma-prichastie`, `doc-abbrev-variants` |
+
+Both kinds share `severity`, `message`, `except`, `allow`, the project-local overlay and
+`<!-- lint-ok: id -->`. `lib/document.py` supplies the sentence/document view; a check
+yields `Hit(lineno, col, matched, detail)` and `lib/lint_prose.py` stamps the entry's
+metadata onto it.
+
+**Optional morphology** (`lib/morph.py`, extra `pip install '.[morph]'` →
+`mawo-pymorphy3` + `dawg-python`). Soft import: `hooks/text-lint.sh` runs the linter under
+the system `python3`, which usually lacks it, so the linter must never hard-fail. A rule
+whose precision depends on the dictionary declares `severity_without_morph`.
+
+| | with morphology | without |
+|---|---|---|
+| `ortho-hyphen-linebreak` | `error` — 7/7 with no false positives on the review | `warn` — "occurs once in the document" heuristic, ~50 % precision |
+| `ortho-spelling` | `info`, needs a project `allow` wordlist | skipped |
+| `punct-comma-prichastie`, `-deeprichastie` | `warn` | skipped |
+
+What morphology buys is *dictionary membership*, not part-of-speech tagging as such: bare
+POS tags read «время» as GRND and «данным» as PRTF. Every POS query goes through
+`Morph.has_pos`, which requires the reading to be the top **dictionary** parse.
+
+**Not everything punctuational belongs here.** «;» was implemented and removed: it fired 16
+times on a review where the editor asked for a comma twice, because the two legitimate uses
+(перечень рубрик, однородные ряды с запятыми внутри) are a judgment call.
+`skills/writing-russian-academic-prose` § «Точка с запятой» owns it.
+
 ## The dictionary — universal source of truth (`canon/dictionary.json`)
 
 Consolidates what is today scattered across two skill tables + 4 feedback-memory files. The linter consumes
@@ -179,6 +217,14 @@ The deliverable for "разграничить pre/post review для кода и
 Post-path formalization: `apply-docx-review` → `qmd-review-importer` already runs a prose pass (step 4, added
 2026-06-22); the plugin makes "apply → review → lint-clean before commit" the contract, closing the
 editor-reinjects-calque loop at its source.
+
+**The editor's review also feeds the rules** (added 2026-08-03). `lib/docx_review.py` reads
+comment anchors and tracked changes straight out of the OOXML parts (keeping exact offsets,
+unlike the pandoc round-trip in `~/.claude/scripts/docx_review.py`) and emits the triage shape
+`lib/tune_diff.py` produces, so `/tune-learn --from-docx <review.docx>` runs a real editor
+review through the same `tuning-rules` skill. An item counts as `covered` only when a rule fires
+**on the anchor**, not merely somewhere in the sentence — the loose version is what made the old
+dictionary look like it covered a review it in fact missed entirely.
 
 ## Genre profiles (`canon/profiles/`)
 
