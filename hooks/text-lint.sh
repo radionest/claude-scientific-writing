@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# hooks/text-lint.sh — PreToolUse gate: block gh pr create / git commit on NEW error-severity calques.
+# hooks/text-lint.sh — PreToolUse gate: block gh pr create / git commit on NEW error-severity
+# findings (lexical calques, punctuation, orthography).
 set -euo pipefail
 PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 payload="$(cat)"
@@ -42,7 +43,7 @@ if [ "$rc" -eq 2 ]; then
   exit 2
 fi
 if [ "$rc" -ne 0 ]; then
-  echo "text-lint: запрещённые кальки в изменённой прозе (см. выше). Поправь или добавь <!-- lint-ok: id -->." >&2
+  echo "text-lint: запрещённые кальки и ошибки пунктуации/орфографии в изменённой прозе (см. выше). Поправь или добавь <!-- lint-ok: id -->." >&2
   exit 2
 fi
 exit 0

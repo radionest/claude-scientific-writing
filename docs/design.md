@@ -49,15 +49,18 @@ scientific-writing/                      # own git repo (see "Where it lives")
   canon/
     canon.md                             # human-readable universal canon (prose discipline + term policy)
     dictionary.json                      # MACHINE universal source: regex + bad/good + message + severity + layer
+    orthography.json                     # punctuation/orthography rules + kind:"check" declarations
     profiles/
       report.md  article.md  educational.md   # per-genre section templates + style deltas
   skills/
     writing-scientific-documents/SKILL.md      # NEW orchestrator-entry (spec→write→review→fix)
     writing-russian-academic-prose/SKILL.md    # MIGRATED from ~/.claude/skills (phrase level)
     say-it-once-academic-prose/SKILL.md        # MIGRATED (document level)
+    tuning-rules/SKILL.md                      # rule-derivation discipline (see tune-draft/tune-learn)
   commands/
     init-doc-spec.md                     # scaffold a per-document spec from canon + genre (interactive)
     text-review.md                       # advisory ensemble orchestrator (linter + prose subagents)
+    tune-draft.md  tune-learn.md         # rule-calibration loop (generate → hand-edit → derive rules)
   agents/
     scientific-writer.md                 # spec/canon/genre-aware writer
     prose-reviewer.md                    # one parameterized ensemble agent, dispatched once per dimension (dimension = arg)
@@ -65,8 +68,13 @@ scientific-writing/                      # own git repo (see "Where it lives")
     hooks.json                           # PreToolUse registration
     text-lint.sh                         # gate gh pr create / git commit on linter ERROR findings
   lib/
-    lint_prose.py                        # deterministic linter
-    qmd_prose.py                         # shared: extract narrative prose from .qmd (skip code/yaml/tables/refs)
+    lint_prose.py                        # deterministic linter (regex entries + code checks)
+    qmd_prose.py                         # shared: extract narrative prose from .qmd (skip code/yaml/tables/refs/biblio/latin)
+    document.py                          # sentence + whole-document view over the extracted prose
+    morph.py                             # OPTIONAL Russian morphology adapter (soft import)
+    checks/                              # kind:"check" implementations: hyphenation, spelling, punctuation, consistency
+    tune_diff.py                         # pristine→edited prose diff + FN/FP triage
+    docx_review.py                       # editor .docx review → the same triage shape
   docs/
     design.md                            # this file, carried over
 ```
@@ -97,12 +105,22 @@ whose precision depends on the dictionary declares `severity_without_morph`.
 | | with morphology | without |
 |---|---|---|
 | `ortho-hyphen-linebreak` | `error` — 7/7 with no false positives on the review | `warn` — "occurs once in the document" heuristic, ~50 % precision |
+
 | `ortho-spelling` | `info`, needs a project `allow` wordlist | skipped |
 | `punct-comma-prichastie`, `-deeprichastie` | `warn` | skipped |
 
 What morphology buys is *dictionary membership*, not part-of-speech tagging as such: bare
 POS tags read «время» as GRND and «данным» as PRTF. Every POS query goes through
 `Morph.has_pos`, which requires the reading to be the top **dictionary** parse.
+
+`ortho-hyphen-linebreak` shows the shape of that: its discriminator is membership, not a
+wordlist of legitimate compounds —
+
+    artifact  iff  known(left + right)  and not (known(left) and known(right))
+
+«невоз-можности» joins into a word whose halves are not words; «мастер-модели» is the mirror
+image. Without morphology it falls back to "this hyphenated form occurs exactly once in the
+document", which halves precision — hence the demotion to `warn`.
 
 **Not everything punctuational belongs here.** «;» was implemented and removed: it fired 16
 times on a review where the editor asked for a comma twice, because the two legitimate uses
@@ -143,6 +161,12 @@ Entry schema:
   «когорт·», sentences > 40 words.
 - **judgment-only** (NOT in dictionary as error) — legitimate-тире (nulevaya svyazka, ellipsis, range «–»),
   graduable «полностью удалить/резецировать» — these live in the prose skill, never block.
+- **`severity_without_morph`** — a check whose precision depends on the morphology dictionary declares its
+  degraded severity here, and `_effective_severity` applies it when the extra is absent (the hook's normal
+  case). `ortho-hyphen-linebreak` is `error` with morphology and `warn` without.
+- Punctuation is in scope for **error** only where measured precision is 100 % on a real review —
+  `punct-comma-slozhnyj-soyuz`, `style-takzhe-slitno`. Everything else in that class is `warn`: a gate that
+  false-blocks on commas gets switched off, and then it protects nothing.
 
 Inline suppression: `<!-- lint-ok: <id> -->` on/above a line (eslint-disable-style), for the genuinely-legit
 case the regex can't tell apart. Keeps error-severity usable without false blocks.
@@ -155,11 +179,12 @@ Sourcing for initial entries: the tables in both prose skills + memories `feedba
 | Aspect | Contract |
 |---|---|
 | Input | a `.qmd` (whole-file mode) or a git range (`--diff [REF]`, changed prose lines only) |
-| Prose extraction (`qmd_prose.py`) | exclude fenced ` ```{...} ` chunks, inline `` {python} ``, YAML front matter, markdown tables (`\|`-rows), BibTeX/`[@…]` citations, HTML comments, bare URLs. Headings **included** (calques appear there too) |
-| Output | findings `{file,line,col,id,severity,message,matched,suggestion}`; human + `--json` |
+| Prose extraction (`qmd_prose.py`) | exclude fenced ` ```{...} ` chunks, inline `` {python} ``, YAML front matter, markdown tables (`\|`-rows), BibTeX/`[@…]` citations, HTML comments, bare URLs, **reference sections** (a «Литература»/«References»/«Библиография» heading and everything under it until a same-or-higher heading) and **Latin-script blocks** (an English abstract — `qmd_prose.is_russian`). Headings otherwise **included** (calques appear there too) |
+| Output | findings `{file,line,col,id,severity,message,matched}` — **every** match on a line, not just the first — sorted by `(line, col, id)`; human or `--json` (a flat array; the degraded-morphology note goes to stderr so the array stays the contract) |
 | Exit | `1` if any **error**-severity finding (drives the hook); `2` on a malformed project-local dictionary |
 | Modes | whole-file (for `/text-review`) vs **diff-only** (for the hook — see below) |
-| Project-local overlay | `<git-root>/.claude/scientific-writing/dictionary.json` merged onto the base by `id` (add / override / `disabled`); `--no-local` ignores it, `--local-dictionary <path>` forces a file |
+| Morphology | optional (`pip install -e '.[morph]'`); `--no-morph` forces the degraded path that the hook's system `python3` normally takes |
+| Project-local overlay | `<git-root>/.claude/scientific-writing/dictionary.json` merged onto the base by `id` (add / **field-wise** override / `disabled`); an override restates only what it changes, so `{"id": "ortho-spelling", "allow": [...]}` is a complete entry. `--no-local` ignores it, `--local-dictionary <path>` forces a file |
 
 **The hook scans the diff, not the whole file.** Pre-existing calque debt must not block every PR; only
 **newly introduced** error-severity findings gate. `/text-review` may scan whole-file on demand.
@@ -223,8 +248,10 @@ comment anchors and tracked changes straight out of the OOXML parts (keeping exa
 unlike the pandoc round-trip in `~/.claude/scripts/docx_review.py`) and emits the triage shape
 `lib/tune_diff.py` produces, so `/tune-learn --from-docx <review.docx>` runs a real editor
 review through the same `tuning-rules` skill. An item counts as `covered` only when a rule fires
-**on the anchor**, not merely somewhere in the sentence — the loose version is what made the old
-dictionary look like it covered a review it in fact missed entirely.
+**on the anchor** — within ±25 characters of it (`docx_review._NEAR`), and `info`-severity findings
+never count, since `ortho-spelling` fires on live terminology. The loose version, crediting any
+finding in the same sentence, is what made the old dictionary look like it covered a review it in
+fact missed entirely.
 
 ## Genre profiles (`canon/profiles/`)
 
@@ -289,5 +316,7 @@ originals) needs a `~/.claude`-capable session — sequence in the plan.
 
 ## Related
 
-- `docs/tune-rules-design.md` — rule-calibration loop driven by the user's edits
-  (`tune-draft` → manual edit → `tune-learn` → rule deltas, dictionary rules proven on the test oracle).
+- `skills/tuning-rules/SKILL.md` — rule-calibration loop driven by the user's edits
+  (`tune-draft` → manual edit → `tune-learn` → rule deltas, rules proven on the test oracle) and by an
+  editor's `.docx` review (`tune-learn --from-docx`). The design/plan docs it grew from were retired once
+  they started contradicting the code they described.

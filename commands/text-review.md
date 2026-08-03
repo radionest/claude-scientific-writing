@@ -24,4 +24,4 @@ allowed-tools: Bash, Read, Task
    (с суждением; не слепой replace).
 
 Если линтер завершился с ошибкой: проверь `PYTHONPATH=${CLAUDE_PLUGIN_ROOT}`, что путь к словарю
-(`canon/dictionary.json`) на месте и файл существует.
+(`canon/dictionary.json`, `canon/orthography.json`) на месте и файл существует.

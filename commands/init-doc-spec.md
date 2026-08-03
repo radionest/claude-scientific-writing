@@ -32,8 +32,11 @@ allowed-tools: Bash, Read, Write, AskUserQuestion
 6. **Засей локальный словарь.** Для каждого локального запрета с `pattern` (машинно-проверяемого) добавь запись в
    локальный словарь проекта `<git-root>/.claude/scientific-writing/dictionary.json`:
    - корень: `git rev-parse --show-toplevel`;
-   - нет файла → создай `{"entries": []}`; есть → прочитай и слей по `id` (та же `id` — замена целиком: если у унаследованного правила был `except`, укажи его заново; `{"id": "<id>", "disabled": true}` — отключить унаследованное правило);
+   - нет файла → создай `{"entries": []}`; есть → прочитай и слей по `id` (та же `id` — переопределение по полям: указывай только то, что меняешь; `{"id": "<id>", "disabled": true}` — отключить унаследованное правило);
    - запись: `{"id", "layer": "doc", "pattern", "severity": "warn"|"error", "message", "except"?, "skill"?}`.
-   Линтер (хук `text-lint.sh` + `/text-review`) подхватит эти записи автоматически — правка плагинного `canon/dictionary.json` не нужна.
+   - **словник и аббревиатуры документа** (шаги 4–5) заведи в `allow` соответствующих check-правил — иначе `ortho-spelling` будет ругаться на живые термины проекта, а `doc-abbrev-variants` — на законные варианты:
+     `{"id": "ortho-spelling", "allow": ["<термины документа>"]}`,
+     `{"id": "doc-abbrev-variants", "allow": ["<аббревиатуры документа>"]}`.
+   Линтер (хук `text-lint.sh` + `/text-review`) подхватит эти записи автоматически — правка плагинных `canon/dictionary.json` и `canon/orthography.json` не нужна.
    Правила без `pattern` (референт-дрейф, семантика) оставляй только в прозе спецификации — их применяет `prose-reviewer`.
 7. Сообщи путь и напомни: дальше — стадия write (агент `scientific-writing:scientific-writer`).

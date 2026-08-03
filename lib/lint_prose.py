@@ -61,8 +61,13 @@ def load_check_entries(path: str | None = None) -> list[dict]:
     return out
 
 
-def load_raw(path: Path) -> list[dict]:
-    """Load + validate a project-local dictionary; compile `_rx` on non-disabled entries."""
+def load_raw(path: Path, base_ids: frozenset[str] = frozenset()) -> list[dict]:
+    """Load + validate a project-local dictionary; compile `_rx` on non-disabled entries.
+
+    An entry whose id already exists in the base is a *partial* override: it inherits every
+    field it omits, so a project can add an `allow` wordlist to `ortho-spelling` without
+    restating its severity, message and pattern.
+    """
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as e:
@@ -92,13 +97,15 @@ def load_raw(path: Path) -> list[dict]:
             raise ConfigError(f"{path}: правило «{eid}» — недопустимый «kind» «{kind}»: "
                               f"ожидается {', '.join(sorted(_KINDS))}")
         required = ("severity", "message") if kind == "check" else ("pattern", "severity", "message")
+        if eid in base_ids:
+            required = tuple(k for k in required if k in e)  # partial override inherits the rest
         missing = [k for k in required if not e.get(k)]
         if missing:
             raise ConfigError(f"{path}: правило «{eid}» без обязательных полей: {', '.join(missing)}")
         for k in required:
             if not isinstance(e[k], str):
                 raise ConfigError(f"{path}: правило «{eid}» — поле «{k}» должно быть строкой")
-        if e["severity"] not in _SEVERITIES:
+        if "severity" in e and e["severity"] not in _SEVERITIES:
             raise ConfigError(
                 f"{path}: правило «{eid}» — недопустимая severity «{e['severity']}»: "
                 f"ожидается {', '.join(sorted(_SEVERITIES))}")
@@ -113,6 +120,8 @@ def load_raw(path: Path) -> list[dict]:
                 raise ConfigError(f"{path}: правило «{eid}» — нет такой проверки; доступны: "
                                   f"{', '.join(sorted(check_registry.known_ids()))}")
             continue
+        if "pattern" not in e:
+            continue  # partial override of a regex rule — the base pattern stands
         try:
             e["_rx"] = re.compile(e["pattern"], re.IGNORECASE | re.UNICODE)
         except (re.error, TypeError) as err:
@@ -121,7 +130,11 @@ def load_raw(path: Path) -> list[dict]:
 
 
 def merge_entries(base: list[dict], local: list[dict]) -> list[dict]:
-    """Effective rule set: base ⊕ local. Local upserts by id; `disabled` drops an id."""
+    """Effective rule set: base ⊕ local. Local upserts by id; `disabled` drops an id.
+
+    An override merges field-wise, so omitted fields keep their base values — that is what
+    lets a project add only an `allow` list to a check rule.
+    """
     overrides: dict[str, dict] = {}
     disabled: set[str] = set()
     extra: list[dict] = []
@@ -134,9 +147,17 @@ def merge_entries(base: list[dict], local: list[dict]) -> list[dict]:
             overrides[eid] = e
         else:
             extra.append(e)
-    result = [overrides.get(e["id"], e) for e in base if e["id"] not in disabled]
+    result = [_apply_override(e, overrides[e["id"]]) if e["id"] in overrides else e
+              for e in base if e["id"] not in disabled]
     result.extend(extra)
     return result
+
+
+def _apply_override(base: dict, local: dict) -> dict:
+    merged = {**base, **local}
+    if "pattern" in local and "_rx" not in local:
+        merged.pop("_rx", None)  # never keep a compiled regex from a superseded pattern
+    return merged
 
 
 def partition_kinds(entries: list[dict]) -> tuple[list[dict], list[dict]]:
@@ -257,7 +278,8 @@ def local_dict_path(target: str | Path) -> Path | None:
 
 
 def _resolve_local(target: str, forced: str | None, use_local: bool,
-                   cache: dict[str, list[dict]]) -> list[dict]:
+                   cache: dict[str, list[dict]],
+                   base_ids: frozenset[str] = frozenset()) -> list[dict]:
     if not use_local:
         return []
     if forced:
@@ -270,7 +292,7 @@ def _resolve_local(target: str, forced: str | None, use_local: bool,
             return []
     key = str(p.resolve())
     if key not in cache:
-        cache[key] = load_raw(p)
+        cache[key] = load_raw(p, base_ids)
     return cache[key]
 
 
@@ -300,10 +322,12 @@ def main(argv: list[str] | None = None) -> int:
     base_checks = load_check_entries(args.dictionary)
     morph = Morph(available=False) if args.no_morph else Morph.load()
     local_cache: dict[str, list[dict]] = {}
+    base_ids = frozenset(e["id"] for e in base) | frozenset(e["id"] for e in base_checks)
     findings: list[Finding] = []
     try:
         for f in args.files:
-            local = _resolve_local(f, args.local_dictionary, not args.no_local, local_cache)
+            local = _resolve_local(f, args.local_dictionary, not args.no_local, local_cache,
+                                   base_ids)
             local_rx, local_ck = partition_kinds(local)
             entries = merge_entries(base, local_rx) if local else base
             check_entries = merge_entries(base_checks, local_ck) if local else base_checks
