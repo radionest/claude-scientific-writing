@@ -151,6 +151,28 @@ MASTER = {"id": "canon-master-model", "layer": "doc", "severity": "warn",
           "pattern": "модель печени", "message": "канон «мастер-модель»"}
 
 
+def test_partial_override_of_a_check_inherits_severity_and_message(tmp_path, capsys):
+    """The documented way to teach `ortho-spelling` a project's terms is an `allow` list and
+    nothing else. Requiring severity/message there made the overlay raise ConfigError —
+    exit 2 — which blocks the very commit hook the overlay exists to satisfy."""
+    root = _git_repo(tmp_path)
+    _write_local(root, [{"id": "ortho-spelling", "allow": ["ремнант", "волюмометрия"]}])
+    q = _qmd(root, "Волюмометрия ремнанта печени показала достаточный объём.\n")
+    assert main([str(q), "--json"]) == 0
+    ids = {f["id"] for f in json.loads(capsys.readouterr().out)}
+    assert "ortho-spelling" not in ids
+
+
+def test_partial_override_can_retune_severity_only(tmp_path, capsys):
+    root = _git_repo(tmp_path)
+    _write_local(root, [{"id": "jargon-kogorta", "severity": "error"}])
+    q = _qmd(root, "пациенты когорты прошли обследование\n")
+    assert main([str(q), "--json"]) == 1
+    kog = [f for f in json.loads(capsys.readouterr().out) if f["id"] == "jargon-kogorta"]
+    assert kog and kog[0]["severity"] == "error"
+    assert "выборка" in kog[0]["message"], "message must be inherited from the base entry"
+
+
 def test_local_dict_path_in_repo(tmp_path):
     root = _git_repo(tmp_path)
     assert local_dict_path(root / "doc.qmd") == root / ".claude" / "scientific-writing" / "dictionary.json"

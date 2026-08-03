@@ -15,6 +15,23 @@ _FENCE_RE = re.compile(r"^\s*(?:```+|~~~+)")
 _YAML_DELIM_RE = re.compile(r"^---\s*$")
 _TABLE_ROW_RE = re.compile(r"^\s*\|")
 _LINT_OK_RE = re.compile(r"<!--\s*lint-ok:\s*([^>]*?)\s*-->")
+_HEADING_RE = re.compile(r"^(#{1,6})\s+(.*)$")
+# Tolerates numbering («7. Литература»), Quarto attributes («{.unnumbered}», «{#sec-refs}»)
+# and both Russian word orders: «Список использованной литературы» and its reverses
+# «Использованная литература», «Библиографический список».
+# The modifier is an explicit allowlist rather than `\w+`, because «Обзор литературы» is a
+# prose section — matching it here would silently drop a whole chapter from the linter.
+_BIBLIO_RE = re.compile(
+    r"^\s*(?:\d+[.)]\s*)?"
+    r"(?:(?:список|перечень)\s+(?:\w+\s+)?(?:литератур\w*|источник\w*)"
+    r"|(?:использованн\w+\s+|цитированн\w+\s+)?литератур\w*"
+    r"|библиографическ\w+\s+(?:список|перечень)\w*"
+    r"|библиограф\w*"
+    r"|references|bibliography)"
+    r"\s*(?:\{[^}]*\})?\s*$",
+    re.IGNORECASE)
+_CYRILLIC_RE = re.compile(r"[А-Яа-яЁё]")
+_LATIN_RE = re.compile(r"[A-Za-z]")
 
 _HTML_COMMENT_INLINE_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 _INLINE_PYTHON_RE = re.compile(r"`\{[a-zA-Z0-9_]+\}[^`]*`")
@@ -32,12 +49,22 @@ def _strip_inline(line: str) -> str:
     return line
 
 
+def is_russian(text: str) -> bool:
+    """False only for substantial Latin-script text — an English abstract, a Latin
+    reference entry. The rules are Russian-specific and would call every English word a
+    typo. Short lines and Russian prose carrying Latin terms («3D Slicer») stay in."""
+    cyr = len(_CYRILLIC_RE.findall(text))
+    lat = len(_LATIN_RE.findall(text))
+    return not (lat >= 25 and cyr * 2 < lat)
+
+
 def extract_prose(source: str) -> list[ProseLine]:
     lines = source.splitlines()
     out: list[ProseLine] = []
     in_fence = False
     in_yaml = bool(lines) and _YAML_DELIM_RE.match(lines[0]) is not None
     in_html_comment = False
+    biblio_level = 0  # >0 while inside a reference list
     for idx, raw in enumerate(lines):
         lineno = idx + 1
         if in_yaml:
@@ -53,6 +80,16 @@ def extract_prose(source: str) -> list[ProseLine]:
             if "-->" in raw:
                 in_html_comment = False
             continue
+        heading = _HEADING_RE.match(raw)
+        if heading:
+            level = len(heading.group(1))
+            if _BIBLIO_RE.match(heading.group(2).strip()):
+                biblio_level = level
+                continue
+            if biblio_level and level <= biblio_level:
+                biblio_level = 0
+        if biblio_level:
+            continue
         if _TABLE_ROW_RE.match(raw):
             continue
         suppress = set()
@@ -65,6 +102,6 @@ def extract_prose(source: str) -> list[ProseLine]:
             in_html_comment = True
             working = raw.split("<!--", 1)[0]
         cleaned = _strip_inline(working)
-        if cleaned.strip():
+        if cleaned.strip() and is_russian(cleaned):
             out.append(ProseLine(lineno=lineno, text=cleaned, suppress=suppress))
     return out
