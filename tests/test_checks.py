@@ -113,6 +113,105 @@ def test_tak_zhe_as_conjunction_still_errors(sentence):
     assert "style-takzhe-slitno" in _ids(sentence, severity="error")
 
 
+@pytest.mark.parametrize("sentence", [
+    # a comma opening a subordinate clause is not the fronted adverbial's comma
+    "При планировании резекции, когда пропуск очага нежелателен, опираются на оба метода.",
+    "Для каждого пациента, если очаг был один, разметку не уточняли.",
+    # inline code strips to a space, so the comma ended up hanging after a blank
+    "При ней `{python} qn(x)` `{python} q(y)`, не выявленные при КТ, учитывали отдельно.",
+    # …and the same gap mid-head, where only morphology used to save the rule
+    "Для каждого метода на `{python} q(n)` рассчитывали чувствительность, специфичность и ППЦ.",
+])
+def test_fronted_adverbial_not_flagged_when_comma_belongs_elsewhere(sentence):
+    assert "punct-comma-fronted-adverbial" not in _ids(sentence)
+
+
+@pytest.mark.morph
+@pytest.mark.skipif(not MORPH.available, reason="short participle tagging needs morphology")
+def test_fronted_adverbial_skips_short_participle_predicate():
+    """«были» top-parses as the noun «быль», so the clause was only visible through the
+    краткое причастие «потеряны»."""
+    assert "punct-comma-fronted-adverbial" not in _ids(
+        "При замене были бы потеряны метастазы, выявленные только при КТ.")
+
+
+def test_fronted_adverbial_still_flags_its_own_case():
+    assert "punct-comma-fronted-adverbial" in _ids(
+        "После создания мастер-модели, врач-рентгенолог проецировал очаги.")
+
+
+@pytest.mark.morph
+@pytest.mark.skipif(not MORPH.available, reason="participle tagging needs morphology")
+@pytest.mark.parametrize("sentence", [
+    # «;» separates enumeration items exactly as a comma does
+    "Критерии включения: завершённая химиотерапия; планируемая резекция метастазов печени.",
+    # «в», «и», «Из» all have a NOUN top parse — letter names, not nouns of the оборот
+    "Из включённых очагов пять не выявили ни при КТ, ни при КТ-АГ.",
+    "Отсюда следует и предполагаемое клиническое место методики.",
+    "Очаг попал в резецируемый фрагмент печени.",
+])
+def test_prichastie_not_flagged_across_a_clause_break(sentence):
+    assert "punct-comma-prichastie" not in _ids(sentence)
+
+
+@pytest.mark.morph
+@pytest.mark.skipif(not MORPH.available, reason="participle tagging needs morphology")
+def test_prichastie_still_flags_a_missing_comma():
+    assert "punct-comma-prichastie" in _ids(
+        "Врач проецировал очаги на изображения полученные в капиллярную фазу.")
+
+
+@pytest.mark.parametrize("sentence", [
+    "Внутриартериальное контрастирование имеет смысл перенести на КТ.",
+    "Чтобы распространить нумерацию на КТ-АГ, очаги проецировали заново.",
+    "Работы последнего десятилетия опираются в основном на МРТ и ИОУЗИ.",
+    "Анализ нужно распространить на МРТ и ПДКТ.",
+    "Метку ставили на КТ-изображениях капиллярной фазы.",
+])
+def test_na_modalnosti_not_flagged_when_a_verb_governs_na(sentence):
+    assert "term-na-modalnosti" not in _ids(sentence)
+
+
+@pytest.mark.parametrize("sentence", [
+    "Метастазы, не видимые на КТ и МРТ, попали на мастер-модель.",
+    "Отметили на КТ-АГ очаг в шестом сегменте.",
+])
+def test_na_modalnosti_still_flags_the_locative(sentence):
+    assert "term-na-modalnosti" in _ids(sentence)
+
+
+def test_instrument_agent_does_not_cross_a_sentence_boundary():
+    """«…по данным других методов. Выявляемость…» — two sentences, not an instrument-agent."""
+    assert "agent-instrument-detect" not in _ids(
+        "Они попали на мастер-модель по данным других методов. Выявляемость очагов приведена в таблице.")
+
+
+def test_instrument_agent_still_flags_within_a_sentence():
+    assert "agent-instrument-detect" in _ids("Методы лучевой диагностики распознавали метастазы.")
+
+
+def test_repeat_window_allows_the_citation_formula():
+    assert "doc-repeat-window" not in _ids(
+        "У Park и соавт. охарактеризованы 350 очагов, у Tani и соавт. — 78 очагов.")
+
+
+def test_abbrev_first_use_treats_front_matter_as_its_own_scope():
+    """Title and abstract are a separate scope: the body re-expands on its own first use."""
+    src = ("**Сравнительная эффективность КТ-АГ и КТ**\n\n"
+           "## Аннотация\n\n"
+           "**Цель.** Сравнить эффективность КТ и КТ-АГ.\n\n"
+           "# Введение\n\n"
+           "Основным методом остаётся компьютерная томография (КТ) с контрастированием.\n")
+    assert "doc-abbrev-first-use" not in {f.id for f in lint_source(src, ENTRIES, CHECKS, MORPH)}
+
+
+def test_abbrev_first_use_still_flags_a_late_expansion_in_the_body():
+    src = ("# Введение\n\n"
+           "Резекцию выполняли под контролем ИОУЗИ.\n\n"
+           "Интраоперационное ультразвуковое исследование (ИОУЗИ) проводил хирург.\n")
+    assert "doc-abbrev-first-use" in {f.id for f in lint_source(src, ENTRIES, CHECKS, MORPH)}
+
+
 def test_token_case_tie_claims_no_norm():
     """With equal counts there is no evidence for a canonical spelling; the old tie-break
     sorted uppercase first and reported the correct «3D» as the deviation."""

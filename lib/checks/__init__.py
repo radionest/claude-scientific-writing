@@ -68,4 +68,4 @@ def _load_all() -> None:
     if _loaded:
         return
     _loaded = True
-    from lib.checks import consistency, hyphenation, punctuation, spelling  # noqa: F401
+    from lib.checks import consistency, hyphenation, punctuation, spelling, terms  # noqa: F401

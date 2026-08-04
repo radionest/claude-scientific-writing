@@ -19,8 +19,12 @@ _WORD = re.compile(r"[^\W\d_]{5,}", re.UNICODE)
 # Words whose repetition is terminological, not clumsy.
 _STOP_REPEAT = frozenset("""
 очаг очаги метастаз метастазы печень пациент пациенты исследование метод методы
-резекция контрастирование чувствительность специфичность модель
+резекция контрастирование чувствительность специфичность модель соавт
 """.split())
+# The title block, abstract and keywords are their own abbreviation scope: a journal article
+# re-expands abbreviations at their first use in the body. Everything before the first
+# level-1 heading is that front matter.
+_BODY_HEADING = re.compile(r"^\s*#\s+\S")
 
 
 @register("doc-abbrev-variants")
@@ -46,24 +50,40 @@ def abbrev_variants(doc, morph, entry: dict) -> Iterable[Hit]:
 
 @register("doc-abbrev-first-use")
 def abbrev_first_use(doc, morph, entry: dict) -> Iterable[Hit]:
-    """An abbreviation expanded — «… (ИОУЗИ)» — later than its first bare use."""
+    """An abbreviation expanded — «… (ИОУЗИ)» — later than its first bare use.
+
+    Front matter and body are separate scopes, so «КТ» in the title and abstract does not
+    make the Introduction's «компьютерная томография (КТ)» a late expansion.
+    """
     allow = {w.upper() for w in entry.get("allow", ())}
-    first: dict[str, tuple[int, int]] = {}
-    defined: dict[str, tuple[int, int]] = {}
+    body = _body_start(doc)
+    first: dict[tuple[bool, str], tuple[int, int]] = {}
+    defined: dict[tuple[bool, str], tuple[int, int]] = {}
     for pl in doc.lines:
         for m in _ABBR.finditer(pl.text):
             tok = m.group(0).upper()
             if tok in allow:
                 continue
-            first.setdefault(tok, (pl.lineno, m.start() + 1))
+            key = (pl.lineno >= body, tok)
+            first.setdefault(key, (pl.lineno, m.start() + 1))
             before = pl.text[:m.start()].rstrip()
-            if before.endswith("(") and tok not in defined:
-                defined[tok] = (pl.lineno, m.start() + 1)
-    for tok, (dline, dcol) in sorted(defined.items()):
-        fline, fcol = first[tok]
+            if before.endswith("(") and key not in defined:
+                defined[key] = (pl.lineno, m.start() + 1)
+    for key, (dline, dcol) in sorted(defined.items()):
+        tok = key[1]
+        fline, fcol = first[key]
         if (dline, dcol) > (fline, fcol):
             yield Hit(lineno=dline, col=dcol, matched=tok,
                       detail=f"раскрытие после первого употребления (строка {fline})")
+
+
+def _body_start(doc) -> int:
+    """Line of the first level-1 heading, or 0 when the document has none (a report or a
+    fragment — then everything is one scope, as before)."""
+    for pl in doc.lines:
+        if _BODY_HEADING.match(pl.text):
+            return pl.lineno
+    return 0
 
 
 @register("doc-token-case")

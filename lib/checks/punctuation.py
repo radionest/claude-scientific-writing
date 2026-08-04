@@ -17,7 +17,13 @@ _FRONTED = re.compile(
     r"|С\s+целью|На\s+основании|В\s+процессе|В\s+течение|Во\s+время|В\s+условиях)\s+",
     re.IGNORECASE)
 _GERUND_SUFFIX = re.compile(r"(?:[ая]сь|[ая]я|[ыои]в|вши|учи|ючи)$", re.UNICODE)
+_CLAUSE_BREAK = re.compile(r"[,;:()«»—–]")
 _COORD = frozenset("но а и или либо однако зато что чтобы тогда как".split())
+# Subordinators: the comma opens a clause of its own, so it is not the adverbial's comma.
+_SUBORD = frozenset("""
+когда если где куда пока поскольку хотя чем кто чей
+который которая которое которые которого которой которых которым которыми которую
+""".split())
 _CASES = ("nomn", "gent", "datv", "accs", "ablt", "loct")
 
 
@@ -49,10 +55,12 @@ def comma_prichastie(doc, morph, entry: dict) -> Iterable[Hit]:
     """Постпозитивный причастный оборот without a comma: «изображения полученные …».
 
     Requires the participle to follow a noun it agrees with in case and number, and to head
-    a phrase of its own (≥2 more words before the clause boundary). The false positives an
-    explicit preposition filter was meant to catch («по данным», «к имеющимся») are already
-    gone: `has_pos` takes only the top *dictionary* parse, under which «данным» is a noun and
-    «по» is not, so the pair never forms.
+    a phrase of its own (≥2 more words before the clause boundary). Multi-letter prepositions
+    («по данным», «к имеющимся») never form the pair — `has_pos` takes only the top
+    *dictionary* parse, under which «данным» is a noun and «по» is not. One- and two-letter
+    tokens do: «в», «и», «Из» all top-parse as NOUN (letter names, abbreviations), so
+    «Из включённых очагов» looked like a noun + participle. Length and the preposition list
+    drop them.
     """
     if not morph.available:
         return
@@ -64,10 +72,13 @@ def comma_prichastie(doc, morph, entry: dict) -> Iterable[Hit]:
             if toks[j][0].lower() == "не" and j > 0:
                 j -= 1  # «пациентов не получавших …» — the negation sits inside the оборот
             prev, prev_pos = toks[j]
+            if len(prev) <= 2 or prev.lower() in _PREPOSITION:
+                continue
             if not morph.has_pos(word, "PRTF") or not morph.has_pos(prev, "NOUN"):
                 continue
-            if "," in sent.text[prev_pos + len(prev):pos]:
-                continue
+            if _CLAUSE_BREAK.search(sent.text[prev_pos + len(prev):pos]):
+                continue  # «…химиотерапия; планируемая резекция…» — «;» separates the
+                #           enumeration items just as a comma would
             if not _heads_a_phrase(sent.text, pos + len(word)):
                 continue
             if not _agree(morph, prev, word):
@@ -97,20 +108,32 @@ def comma_fronted_adverbial(doc, morph, entry: dict) -> Iterable[Hit]:
         if comma < 0 or comma > 70:
             continue
         head = rest[:comma]
+        if head and (head[-1].isspace() or "  " in head):
+            continue  # the head crossed inline code, which `_strip_inline` left as a blank:
+            #           «При ней `{python} …`, не …», «Для каждого метода на `{python} …`
+            #           рассчитывали чувствительность, специфичность». Word count and
+            #           adjacency mean nothing there, and real prose has neither a comma
+            #           after a blank nor a double space
         head_words = _WORD.findall(head)
         if not head_words or len(head_words) > 6 or any(c in head for c in ".;:—–("):
             continue
         if morph.available and any(morph.has_pos(w, "GRND") for w in head_words):
             continue  # «Учитывая объём резекции, …» — the оборот earns its comma
-        if morph.available and any(morph.has_pos(w, "VERB") for w in head_words):
+        if morph.available and any(morph.has_pos(w, "VERB") or morph.has_pos(w, "PRTS")
+                                   for w in head_words):
             continue  # a predicate before the comma means the clause already started:
-            #           «Для каждого метода … рассчитывали чувствительность, специфичность»
+            #           «Для каждого метода … рассчитывали чувствительность, специфичность».
+            #           PRTS too — «При замене были бы потеряны метастазы, выявленные…»:
+            #           «были» has a NOUN top parse («быль»), so only «потеряны» sees it
         after = rest[comma + 1:].lstrip()
         after_words = _WORD.findall(after)
         if not after or not after[0].islower() or not after_words:
             continue
         if after_words[0].lower() in _COORD:
             continue  # «…, но метки сравнивали» — the comma joins clauses
+        if after_words[0].lower() in _SUBORD:
+            continue  # «При планировании резекции, когда пропуск нежелателен, …» — the
+            #           comma opens a subordinate clause and is required
         if _enumeration(morph, head_words[-1], after_words[0]):
             continue  # «Для чувствительности, специфичности, …» — an enumeration
         yield Hit(lineno=sent.lineno, col=sent.col + m.end() + comma,
