@@ -44,7 +44,7 @@ repeats).
 ```
 scientific-writing/                      # own git repo (see "Where it lives")
   .claude-plugin/
-    plugin.json                          # manifest
+    plugin.json                          # manifest (no version/hooks fields — see CLAUDE.md)
     marketplace.json                     # local marketplace entry (install via /plugin marketplace add)
   canon/
     canon.md                             # human-readable universal canon (prose discipline + term policy)
@@ -65,7 +65,7 @@ scientific-writing/                      # own git repo (see "Where it lives")
     scientific-writer.md                 # spec/canon/genre-aware writer
     prose-reviewer.md                    # one parameterized ensemble agent, dispatched once per dimension (dimension = arg)
   hooks/
-    hooks.json                           # PreToolUse registration
+    hooks.json                           # PreToolUse registration (auto-read; never declared in plugin.json)
     text-lint.sh                         # gate gh pr create / git commit on linter ERROR findings
   lib/
     lint_prose.py                        # deterministic linter (regex entries + code checks)
