@@ -1,6 +1,6 @@
 ---
 name: writing-scientific-documents
-description: Use when writing or substantially revising a Russian scientific-medical document (research report, journal article, educational article) in Quarto .qmd — when starting a new section, drafting from a spec, or preparing prose for a PR/editor. Routes through spec → write → review → fix and the calque linter.
+description: Use when writing or substantially revising a Russian scientific-medical document (research report, journal article, educational article, chapter of a Quarto book) in Quarto .qmd — when starting a new section, drafting from a spec, or preparing prose for a PR/editor. Routes through spec → write → review → fix and the calque linter.
 ---
 
 # Writing Scientific Documents (orchestrator)
@@ -11,8 +11,12 @@ keeps prose canon-clean is **placement**: each stage invokes the right sub-skill
 repeats are caught before a PR, not in a later cleanup commit.
 
 ## Stages
-1. **Spec.** No document without a spec. If `<doc>.spec.md` is absent → run `/scientific-writing:init-doc-spec`.
-   The spec fixes sections (from the genre profile) + canonical terms + doc-local forbidden phrasings.
+1. **Spec.** No document without a spec. A standalone document's spec is `<doc>.spec.md` beside it;
+   if absent → run `/scientific-writing:init-doc-spec`. The spec fixes sections (from the genre
+   profile) + canonical terms + doc-local forbidden phrasings. A chapter of a multi-chapter Quarto
+   book carries no spec of its own: the chapters share a per-book spec in `<book>/specs/*.md` next
+   to the book's `_quarto.yml` (in rtk_lung_segmentation: `review/final_act/specs/`) — read that,
+   and create a spec there only if the book has none.
 2. **Write.** Dispatch the `scientific-writer` agent (or write per the spec yourself). Obey the genre
    profile's style; every quantitative claim cited; never introduce a dictionary calque.
 3. **Review.** Run `/scientific-writing:text-review` on the changed prose: the deterministic linter + the

@@ -1,6 +1,6 @@
 ---
 name: scientific-writing
-description: Use when writing or substantially revising a Russian scientific-medical document (research report, journal article, educational article, review/*.qmd, отчёт, методичка) in any clarinet downstream project — when starting a new document or section, drafting from a spec, or preparing prose for a PR/editor. Routes through spec → write → review → fix with the deterministic calque linter (canon: dictionary.json + orthography.json + genre profiles). Hermes-native bridge over the claude-scientific-writing plugin repo.
+description: Use when writing or substantially revising a Russian scientific-medical document (research report, journal article, educational article, review/*.qmd, главы Quarto-книг (review/*/chapters/*.qmd), отчёт, методичка) in any clarinet downstream project — when starting a new document or section, drafting from a spec, or preparing prose for a PR/editor. Routes through spec → write → review → fix with the deterministic calque linter (canon: dictionary.json + orthography.json + genre profiles). Hermes-native bridge over the claude-scientific-writing plugin repo.
 ---
 
 # Scientific Writing (Hermes bridge)
@@ -16,7 +16,7 @@ description: Use when writing or substantially revising a Russian scientific-med
 
 ## Стадии
 
-1. **Spec.** Документ без спецификации не начинается. Если `<doc>.spec.md` рядом с `.qmd` отсутствует — создай его:
+1. **Spec.** Документ без спецификации не начинается. Если `<doc>.spec.md` рядом с `.qmd` отсутствует — создай его (исключение — глава Quarto-книги: per-chapter спеки не заводятся, главы делят спеку книги `<book>/specs/*.md` рядом с её `_quarto.yml`; в rtk_lung — `review/final_act/specs/`):
    - жанр из `$2` или спроси владельца (report/article/educational);
    - разделы — стартовый список из `canon/profiles/<жанр>.md`; если `.qmd` уже существует — извлеки фактические заголовки и термины;
    - зафиксируй канонические термины (один на понятие) + запрещённые синонимы, сокращения, локальные запреты;
