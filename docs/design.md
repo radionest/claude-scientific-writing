@@ -154,7 +154,7 @@ Entry schema:
 
 **Severity policy** (principle; full classification in the plan):
 - **error** (blocks) — unambiguous lexical calques, near-always-correct fix, low false-positive risk:
-  референсный/референтный, характеризаци·, таргетный, «по построению»,
+  референсный, характеризаци·, таргетный, «по построению»,
   «полностью|целиком + выявить|обнаружить|распознать», гистология/морфология/цитология *as procedure*,
   «отнести … к категории», parasites «является / осуществляется / носит … характер».
 - **warn** (advisory, agent decides) — heuristic / context-dependent, false-positive-prone:

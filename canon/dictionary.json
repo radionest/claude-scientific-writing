@@ -1,6 +1,6 @@
 {
   "entries": [
-    {"id": "calque-referens", "layer": "universal", "pattern": "\\bреференс\\w*|\\bреферентн\\w*", "severity": "error", "message": "калька reference → «эталонный стандарт»/«эталон сравнения» («золотой стандарт» — оставить)", "skill": "writing-russian-academic-prose"},
+    {"id": "calque-referens", "layer": "universal", "pattern": "\\bреференс\\w*", "severity": "error", "message": "калька reference → «эталонный стандарт»/«эталон сравнения» («золотой стандарт» — оставить)", "skill": "writing-russian-academic-prose"},
     {"id": "calque-harakterizacia", "layer": "universal", "pattern": "\\bхарактеризаци\\w*", "severity": "error", "message": "калька characterization → «определение/распознавание природы»; глаг. «охарактеризовать»", "skill": "writing-russian-academic-prose"},
     {"id": "calque-targetnyj", "layer": "universal", "pattern": "\\bтаргетн\\w*|направленн\\w+ по (каждому )?очаг\\w*", "except": "терапи", "severity": "error", "message": "калька targeted → «прицельный»; «таргетная терапия» — устоявшийся онкотермин, не трогать", "skill": "writing-russian-academic-prose"},
     {"id": "calque-po-postroeniyu", "layer": "universal", "pattern": "по построению", "severity": "error", "message": "калька by construction → «заведомо»/«в силу самого способа расчёта»", "skill": "writing-russian-academic-prose"},
