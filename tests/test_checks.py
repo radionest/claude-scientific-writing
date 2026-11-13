@@ -236,15 +236,16 @@ def test_abbrev_first_use_still_flags_a_late_expansion_in_the_body():
 
 
 def test_abbrev_variants_flags_every_deviation_not_just_the_first():
-    """`--diff` mode keeps only findings on changed lines, so anchoring once on the
-    dominant variant's opposite would let a newly added spelling through untouched."""
+    """`--diff` mode keeps only findings on changed lines, so every occurrence is
+    anchored — the dominant spelling too, each with a «преобладает» message."""
     src = ("Контроль на ИОУЗИ. Венозную фазу — на ИОУЗИ. Артерии — тоже на ИОУЗИ.\n"
            "Разметку переносили под контролем ио-УЗИ.\n"
            "Описание вели по протоколу ио-УЗИ.\n")
     findings = [f for f in _find(src) if f.id == "doc-abbrev-variants"]
-    assert [f.line for f in findings] == [2, 3]
-    assert all(f.matched == "ио-УЗИ" for f in findings)
-    assert all("приведи к «ИОУЗИ»" in f.message for f in findings)
+    assert {f.matched for f in findings} == {"ИОУЗИ", "ио-УЗИ"}
+    assert [f.line for f in findings if f.matched == "ио-УЗИ"] == [2, 3]
+    assert all("преобладает" in f.message for f in findings if f.matched == "ИОУЗИ")
+    assert all("приведи к «ИОУЗИ»" in f.message for f in findings if f.matched == "ио-УЗИ")
 
 
 def test_abbrev_variants_tie_claims_no_norm():
@@ -285,6 +286,21 @@ def test_abbrev_findings_survive_the_diff_filter(tmp_path):
     assert [x.line for x in first_use if x.id == "doc-abbrev-first-use"] == [8]
 
 
+def test_abbrev_variant_anchor_survives_diff_when_edit_flips_dominance(tmp_path):
+    """Issue repro: the untouched line keeps the old spelling, the edit flips dominance —
+    the newly introduced spelling becomes dominant, so without an anchor of its own its
+    occurrences produce no hits and `--diff` loses the whole inconsistency."""
+    src = ("Контроль на ИОУЗИ.\n"
+           "Разметку переносили под контролем ио-УЗИ.\n"
+           "Описание вели по протоколу ио-УЗИ.\n")
+    f = tmp_path / "doc.qmd"
+    f.write_text(src, encoding="utf-8")
+    findings = lint_file(str(f), ENTRIES, changed={2, 3}, check_entries=CHECKS, morph=MORPH)
+    variants = [x for x in findings if x.id == "doc-abbrev-variants"]
+    assert [x.line for x in variants] == [2, 3]
+    assert all(x.matched == "ио-УЗИ" for x in variants)
+
+
 def test_token_case_tie_claims_no_norm():
     """With equal counts there is no evidence for a canonical spelling; the old tie-break
     sorted uppercase first and reported the correct «3D» as the deviation."""
@@ -295,10 +311,12 @@ def test_token_case_tie_claims_no_norm():
 
 
 def test_token_case_flags_every_deviation_not_just_the_first():
-    """`--diff` mode keeps only findings on changed lines, so anchoring once would let a
-    newly added «3d» through untouched."""
+    """`--diff` mode keeps only findings on changed lines, so every occurrence is
+    anchored — the dominant «3D» included, each with a «преобладает» message."""
     findings = [f for f in _find(
         "Строили в 3D Slicer. Открывали 3D модель. Смотрели 3D карту. Затем 3d обзор и 3d срез.")
         if f.id == "doc-token-case"]
-    assert [f.matched for f in findings] == ["3d", "3d"]
-    assert all("приведи к «3D»" in f.message for f in findings)
+    assert {f.matched for f in findings} == {"3D", "3d"}
+    assert [f.line for f in findings if f.matched == "3d"] == [1, 1]
+    assert all("«3D» преобладает" in f.message for f in findings if f.matched == "3D")
+    assert all("приведи к «3D»" in f.message for f in findings if f.matched == "3d")

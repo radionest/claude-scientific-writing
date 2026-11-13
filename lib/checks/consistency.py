@@ -29,17 +29,21 @@ def _abbr_key(tok: str) -> str:
 
 
 def _variant_hits(doc, pattern: re.Pattern[str], key: Callable[[str], str],
-                  allow: set[str], detail: Callable[[str | None, str], str]) -> Iterable[Hit]:
-    """Hits at **every** occurrence of each non-dominant spelling of a token the document
-    writes in several ways.
+                  allow: set[str], detail: Callable[[str | None, str], str],
+                  dominant_detail: Callable[[str, str], str]) -> Iterable[Hit]:
+    """Hits at **every** occurrence of each spelling of a token the document writes in
+    several ways, the dominant one included.
 
     In `--diff` mode (the hook path) a finding anchored on an untouched line is filtered
-    out, so a single anchor would let newly introduced deviations slip through. The
-    dominant spelling is the most frequent one; on a tie there is no evidence for a norm,
-    so every spelling is reported and the message names none of them canonical.
+    out, so a single anchor would let newly introduced deviations slip through. That is
+    why the dominant spelling is anchored too: when an edit flips dominance, its own
+    occurrences sit on the changed lines. The dominant spelling is the most frequent one;
+    on a tie there is no evidence for a norm, so every spelling is reported and the
+    message names none of them canonical.
 
-    `key` folds a surface token to its canonical form, `allow` holds exempt keys, and
-    `detail(dominant, tally)` renders the message for a deviating occurrence.
+    `key` folds a surface token to its canonical form, `allow` holds exempt keys,
+    `detail(dominant, tally)` renders the message for a deviating occurrence and
+    `dominant_detail(dominant, tally)` for the dominant spelling's own occurrences.
     """
     counts: dict[str, Counter] = defaultdict(Counter)
     spots: dict[str, dict[str, list[tuple[int, int]]]] = defaultdict(lambda: defaultdict(list))
@@ -66,10 +70,9 @@ def _variant_hits(doc, pattern: re.Pattern[str], key: Callable[[str], str],
                           for v in sorted(variants, key=lambda v: (-variants[v], order[k][v])))
         text = detail(dominant, tally)
         for variant in sorted(variants, key=lambda v: order[k][v]):
-            if variant == dominant:
-                continue
             for lineno, col in spots[k][variant]:
-                yield Hit(lineno=lineno, col=col, matched=variant, detail=text)
+                yield Hit(lineno=lineno, col=col, matched=variant,
+                          detail=dominant_detail(dominant, tally) if variant == dominant else text)
 
 
 @register("doc-abbrev-variants")
@@ -79,7 +82,8 @@ def abbrev_variants(doc, morph, entry: dict) -> Iterable[Hit]:
         doc, _ABBR, key=_abbr_key,
         allow={_abbr_key(w) for w in entry.get("allow", ())},
         detail=lambda dominant, tally:
-            f"{tally} — приведи к «{dominant}»" if dominant else f"{tally} — выбери одно написание")
+            f"{tally} — приведи к «{dominant}»" if dominant else f"{tally} — выбери одно написание",
+        dominant_detail=lambda d, t: f"{t} — это написание преобладает, остальные приведи к нему")
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,7 +154,9 @@ def token_case(doc, morph, entry: dict) -> Iterable[Hit]:
         allow={w.lower() for w in entry.get("allow", ())},
         detail=lambda dominant, tally:
             f"регистр непоследователен: {tally} — приведи к «{dominant}»"
-            if dominant else f"регистр непоследователен: {tally} — выбери одно написание")
+            if dominant else f"регистр непоследователен: {tally} — выбери одно написание",
+        dominant_detail=lambda d, t:
+            f"регистр непоследователен: {t} — «{d}» преобладает, остальные приведи к нему")
 
 
 _REPEAT_WINDOW = 12  # tokens; wider than this reads as normal scientific prose
