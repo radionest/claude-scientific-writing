@@ -38,7 +38,7 @@ for f in "${files[@]}"; do
   fi
 done
 
-if [ "$rc" -eq 2 ]; then
+if [ "$rc" -eq 3 ]; then
   echo "text-lint: ошибка локального словаря (см. выше). Поправь .claude/scientific-writing/dictionary.json." >&2
   exit 2
 fi

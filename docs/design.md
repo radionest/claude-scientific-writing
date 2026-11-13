@@ -183,7 +183,7 @@ Sourcing for initial entries: the tables in both prose skills + memories `feedba
 | Input | a `.qmd` (whole-file mode) or a git range (`--diff [REF]`, changed prose lines only) |
 | Prose extraction (`qmd_prose.py`) | exclude fenced ` ```{...} ` chunks, inline `` {python} ``, YAML front matter, markdown tables (`\|`-rows), BibTeX/`[@…]` citations, HTML comments, bare URLs, **reference sections** (a «Литература»/«References»/«Библиография» heading and everything under it until a same-or-higher heading) and **Latin-script blocks** (an English abstract — `qmd_prose.is_russian`). Headings otherwise **included** (calques appear there too) |
 | Output | findings `{file,line,col,id,severity,message,matched}` — **every** match on a line, not just the first — sorted by `(line, col, id)`; human or `--json` (a flat array; the degraded-morphology note goes to stderr so the array stays the contract) |
-| Exit | `1` if any **error**-severity finding (drives the hook); `2` on a malformed project-local dictionary |
+| Exit | `1` if any **error**-severity finding (drives the hook); `3` on a malformed project-local dictionary (`2` is argparse's own usage-error code, kept distinct) |
 | Modes | whole-file (for `/text-review`) vs **diff-only** (for the hook — see below) |
 | Morphology | optional (`pip install -e '.[morph]'`); `--no-morph` forces the degraded path that the hook's system `python3` normally takes |
 | Project-local overlay | `<git-root>/.claude/scientific-writing/dictionary.json` merged onto the base by `id` (add / **field-wise** override / `disabled`); an override restates only what it changes, so `{"id": "ortho-spelling", "allow": [...]}` is a complete entry. `--no-local` ignores it, `--local-dictionary <path>` forces a file |

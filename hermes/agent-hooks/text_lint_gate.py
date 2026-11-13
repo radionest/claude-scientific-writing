@@ -96,7 +96,7 @@ def main() -> int:
             run_args, cwd=cwd, capture_output=True, text=True, timeout=60,
             env={**os.environ, "PYTHONPATH": str(root)},
         )
-        if proc.returncode == 2:  # битый локальный словарь — жёсткая блокировка
+        if proc.returncode == 3:  # битый локальный словарь — жёсткая блокировка
             print(json.dumps({
                 "action": "block",
                 "message": (
