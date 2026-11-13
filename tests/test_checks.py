@@ -1,7 +1,7 @@
 """Regressions for false blocks and mis-anchored findings found in pre-PR review."""
 import pytest
 
-from lib.lint_prose import lint_file, lint_source, load_check_entries, load_entries
+from lib.lint_prose import lint_file, lint_source, load_check_entries, load_entries, merge_entries
 from lib.morph import Morph
 
 MORPH = Morph.load()
@@ -193,6 +193,29 @@ def test_instrument_agent_still_flags_within_a_sentence():
 def test_repeat_window_allows_the_citation_formula():
     assert "doc-repeat-window" not in _ids(
         "У Park и соавт. охарактеризованы 350 очагов, у Tani и соавт. — 78 очагов.")
+
+
+def test_repeat_window_canon_allow_exempts_a_short_text():
+    """«модель» twice in a short fragment: the document frequency (2) stays under the
+    term_frequency threshold, so the exemption comes from the canon allow list."""
+    assert "doc-repeat-window" not in _ids("Модель построена, модель перепроверена.")
+
+
+def test_repeat_window_still_flags_a_word_outside_the_allow_list():
+    assert "doc-repeat-window" in _ids("Структура изменена, структура описана.")
+
+
+def test_repeat_window_overlay_allow_replaces_canon_list():
+    """`allow` is a field-wise override: a project overlay replaces the canon list —
+    to add a word, the project re-lists the exemptions it wants to keep."""
+    checks = merge_entries(CHECKS, [{"id": "doc-repeat-window", "allow": ["метод"]}])
+    # «модель» was exempt in canon; the overlay's list dropped it, so the repeat fires…
+    assert "doc-repeat-window" in {
+        f.id for f in lint_source("Модель построена, модель перепроверена.\n",
+                                  ENTRIES, checks, MORPH)}
+    # …while the overlay's own word is exempt.
+    assert "doc-repeat-window" not in {
+        f.id for f in lint_source("Метод выбран, метод описан.\n", ENTRIES, checks, MORPH)}
 
 
 def test_abbrev_first_use_treats_front_matter_as_its_own_scope():
