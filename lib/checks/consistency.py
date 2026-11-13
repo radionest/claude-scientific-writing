@@ -17,11 +17,6 @@ _ABBR = re.compile(r"(?<![\w-])(?:[А-ЯЁ]{2,}(?:-[А-ЯЁа-яё]{1,5})?|[а-�
 # boundaries, so «3D-модель» contributes «3D» and compares against a bare «3d».
 _MIXED_TOKEN = re.compile(r"(?<!\w)(?=\w*\d)(?=\w*[A-Za-zА-Яа-яЁё])\w{2,}(?!\w)")
 _WORD = re.compile(r"[^\W\d_]{5,}", re.UNICODE)
-# Words whose repetition is terminological, not clumsy.
-_STOP_REPEAT = frozenset("""
-очаг очаги метастаз метастазы печень пациент пациенты исследование метод методы
-резекция контрастирование чувствительность специфичность модель соавт
-""".split())
 # The title block, abstract and keywords are their own abbreviation scope: a journal article
 # re-expands abbreviations at their first use in the body. Everything before the first
 # level-1 heading is that front matter.
@@ -166,10 +161,12 @@ def repeat_window(doc, morph, entry: dict) -> Iterable[Hit]:
     """The same lemma twice within a few words — «с использованием … с использованием».
 
     Terminology is *supposed* to repeat, so a lemma the document uses often is treated as
-    a term and exempted. That threshold is derived from the document itself, which beats
-    any fixed stop-list: «очаг» and «контрастирование» disqualify themselves.
+    a term and exempted. The threshold is derived from the document itself and does not
+    see a short text, where a term stays under it — those terms come in through the
+    entry's `allow` list in canon/orthography.json, which a project overlay replaces
+    field-wise.
     """
-    allow = {w.lower() for w in entry.get("allow", ())} | _STOP_REPEAT
+    allow = {w.lower() for w in entry.get("allow", ())}
     freq = _lemma_freq(doc, morph)
     limit = max(4, entry.get("term_frequency", 6))
     for sent in doc.sentences:
