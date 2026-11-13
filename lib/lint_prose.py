@@ -17,7 +17,7 @@ _GIT_ROOT_CACHE: dict[str, "Path | None"] = {}
 _MAIN_ROOT_CACHE: dict[str, "Path | None"] = {}
 _SEVERITIES = {"error", "warn", "info"}
 _KINDS = {"regex", "check"}
-# Same enum the base dictionaries are held to (tests/test_dictionary.py).
+# Single source of the layer enum — the dictionary test imports it.
 _LAYERS = {"universal", "genre:report", "genre:article", "genre:educational", "doc"}
 
 
@@ -291,17 +291,18 @@ def _git_root(start: Path) -> Path | None:
 
 
 def _git_main_root(root: Path) -> Path | None:
-    # `--git-common-dir` is `<toplevel>/.git` for a plain repo and `<main>/.git` from a
-    # linked worktree; anything else (bare, submodule gitfile) yields None — no fallback.
+    # The first `worktree` line of `worktree list --porcelain` is the main working tree —
+    # unlike `--git-common-dir`, it ignores GIT_COMMON_DIR and never strips a bare
+    # `*.git` dir to a bogus sibling checkout.
     key = str(root)
     if key in _MAIN_ROOT_CACHE:
         return _MAIN_ROOT_CACHE[key]
     try:
         out = subprocess.run(
-            ["git", "-C", str(root), "rev-parse", "--path-format=absolute", "--git-common-dir"],
+            ["git", "-C", str(root), "worktree", "list", "--porcelain"],
             capture_output=True, text=True, check=False)
-        s = out.stdout.strip()
-        main = Path(s[:-len("/.git")]) if out.returncode == 0 and s.endswith("/.git") else None
+        first = next((l for l in out.stdout.splitlines() if l.startswith("worktree ")), "")
+        main = Path(first[len("worktree "):]) if out.returncode == 0 and first else None
     except OSError:
         main = None
     _MAIN_ROOT_CACHE[key] = main

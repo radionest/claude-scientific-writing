@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from lib import lint_prose
-from lib.lint_prose import ConfigError, load_raw, merge_entries
+from lib.lint_prose import ConfigError, effective_entries, load_raw, merge_entries
 from lib.lint_prose import local_dict_path, main
 
 
@@ -37,7 +37,7 @@ def test_load_raw_missing_entries_key(tmp_path):
 
 
 def test_load_raw_missing_required_field(tmp_path):
-    p = _write(tmp_path, [{"id": "x", "severity": "warn", "message": "m"}])  # no pattern
+    p = _write(tmp_path, [{"id": "x", "layer": "doc", "severity": "warn", "message": "m"}])  # no pattern
     with pytest.raises(ConfigError):
         load_raw(p)
 
@@ -176,6 +176,30 @@ def test_partial_override_can_retune_severity_only(tmp_path, capsys):
     kog = [f for f in json.loads(capsys.readouterr().out) if f["id"] == "jargon-kogorta"]
     assert kog and kog[0]["severity"] == "error"
     assert "выборка" in kog[0]["message"], "message must be inherited from the base entry"
+
+
+def test_effective_entries_overlay_end_to_end(tmp_path):
+    """One overlay doing all four moves — retune, add, disable, allow — observed through
+    the same (regex, check) split `effective_entries` hands to the linter."""
+    root = _git_repo(tmp_path)
+    _write_local(root, [
+        {"id": "jargon-kogorta", "severity": "error"},
+        MASTER,
+        {"id": "calque-referens", "disabled": True},
+        {"id": "ortho-spelling", "allow": ["ремнант"]},
+    ])
+    q = _qmd(root, "любой текст\n")
+    entries, checks = effective_entries(q)
+    by_id = {e["id"]: e for e in entries}
+    assert "calque-referens" not in by_id
+    kog = by_id["jargon-kogorta"]
+    assert kog["severity"] == "error"
+    assert kog["layer"] == "universal"
+    assert "выборка" in kog["message"]
+    assert by_id["canon-master-model"]["pattern"] == "модель печени"
+    ortho = [e for e in checks if e["id"] == "ortho-spelling"][0]
+    assert ortho["allow"] == ["ремнант"]
+    assert ortho["severity"] == "info"
 
 
 def test_local_dict_path_in_repo(tmp_path):
@@ -400,6 +424,14 @@ def test_load_raw_override_inherits_layer(tmp_path):
     """An override-by-id keeps the base entry's layer — no need to restate it."""
     p = _write(tmp_path, [{"id": "jargon-kogorta", "severity": "error"}])
     assert "layer" not in load_raw(p, frozenset({"jargon-kogorta"}))[0]
+
+
+def test_merged_override_inherits_base_layer():
+    """Same inheritance after `merge_entries`, not only in the raw overlay dict."""
+    base = [{"id": "jargon-kogorta", "pattern": "когорт", "severity": "warn",
+             "message": "m", "layer": "universal"}]
+    merged = merge_entries(base, [{"id": "jargon-kogorta", "severity": "error"}])
+    assert [e for e in merged if e["id"] == "jargon-kogorta"][0]["layer"] == "universal"
 
 
 def test_load_raw_layer_universal_is_legal(tmp_path):
