@@ -129,9 +129,10 @@ times on a review where the editor asked for a comma twice, because the two legi
 
 ## The dictionary — universal source of truth (`canon/dictionary.json`)
 
-Consolidates what is today scattered across two skill tables + 4 feedback-memory files. The linter consumes
-`pattern/message/severity/except`; the prose skills **reference** this file as the literal-calque list and
-keep only the nuance regex can't express.
+Consolidates what was scattered across two skill tables + 4 feedback-memory files. The linter consumes
+`pattern/message/severity/except`; the prose skills **reference** this file as the machine-readable source
+and keep only the nuance regex can't express — since #17 the inline calque tables are gone from the skills
+(the `skill` field marks a rule's owning skill — the linter itself does not route findings by it; on divergence canon wins).
 
 A **project-local overlay** (`<git-root>/.claude/scientific-writing/dictionary.json`, `layer: doc`) is merged
 on top per-repo: a new `id` adds a rule, a reused `id` overrides it **field-wise** (restate only what
@@ -173,7 +174,8 @@ Entry schema:
 Inline suppression: `<!-- lint-ok: <id> -->` on/above a line (eslint-disable-style), for the genuinely-legit
 case the regex can't tell apart. Keeps error-severity usable without false blocks.
 
-Sourcing for initial entries: the tables in both prose skills + memories `feedback_ru_report_phrasing`,
+Sourcing for initial entries: the tables in both prose skills (since #17 consolidated away — the skills
+now point here) + memories `feedback_ru_report_phrasing`,
 `feedback_russian_prose_skill`, `feedback_no_bold_in_docx_reports`, `project_docx_apply_bypasses_prose_pass`.
 
 ## The linter (`lib/lint_prose.py`)
