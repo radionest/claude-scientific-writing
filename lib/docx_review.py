@@ -21,7 +21,7 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 
 from lib.document import _is_abbreviation
-from lib.lint_prose import lint_source, load_check_entries, load_entries
+from lib.lint_prose import ConfigError, effective_entries, lint_source, load_check_entries, load_entries
 from lib.morph import Morph
 
 _W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
@@ -116,15 +116,23 @@ def _extract(z: zipfile.ZipFile, context: int) -> list[ReviewItem]:
 _NEAR = 25  # chars either side of the anchor a finding may land and still count
 
 
-def triage(items: list[ReviewItem], morph: Morph | None = None) -> list[ReviewItem]:
+def triage(items: list[ReviewItem], morph: Morph | None = None,
+           target: str | Path | None = None) -> list[ReviewItem]:
     """Mark items the current rule set already catches, so tuning only sees real misses.
 
     A rule counts as covering a comment only when it fires *on the anchor* — the sentence
     is linted, but a finding elsewhere in it is a different defect that happens to share a
     sentence, which is exactly how the old dictionary looked like it covered this review
     when it covered none of it.
+
+    `target` — the reviewed .docx, passed by `main`: the project-local dictionary at its
+    git root joins the rule set, exactly as for the files the hook lints. None keeps the
+    canon-only rule set.
     """
-    entries, checks = load_entries(None), load_check_entries()
+    if target is None:
+        entries, checks = load_entries(None), load_check_entries()
+    else:
+        entries, checks = effective_entries(target)
     m = morph or Morph.load()
     out = []
     for it in items:
@@ -269,7 +277,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"docx_review: файл не найден: {path}", file=sys.stderr)
         return 2
     try:
-        items = triage(extract(path, args.context))
+        items = triage(extract(path, args.context), target=path)
+    except ConfigError as e:
+        print(f"docx_review: ошибка локального словаря {e}", file=sys.stderr)
+        return 3
     except (DocxError, OSError) as e:
         print(f"docx_review: {e}", file=sys.stderr)
         return 2

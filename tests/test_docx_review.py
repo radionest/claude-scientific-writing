@@ -1,8 +1,9 @@
+import subprocess
 import zipfile
 
 import pytest
 
-from lib.docx_review import DocxError, extract, triage
+from lib.docx_review import DocxError, extract, main, triage
 
 W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
 
@@ -122,3 +123,15 @@ def test_malformed_xml_reports_instead_of_crashing(tmp_path):
     traceback — the zip-level guards never see it."""
     with pytest.raises(DocxError, match="XML"):
         extract(_broken_docx(tmp_path, f"<w:document {W}><w:body></w:document>", "torn.docx"))
+
+
+def test_broken_local_dict_exits_3(tmp_path, capsys):
+    """Triage routes through the project overlay, so a broken dictionary must follow the
+    lint_prose config-error convention (exit 3 + stderr naming the file), not a traceback."""
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    d = tmp_path / ".claude" / "scientific-writing"
+    d.mkdir(parents=True)
+    (d / "dictionary.json").write_text("not json", encoding="utf-8")
+    p = _docx(tmp_path, [_para(_run("Метки очагов не изменены."))], [])
+    assert main([str(p)]) == 3
+    assert "dictionary.json" in capsys.readouterr().err
