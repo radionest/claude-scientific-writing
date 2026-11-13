@@ -238,6 +238,19 @@ def test_local_dict_path_worktree_falls_back_to_main(tmp_path):
         root / ".claude" / "scientific-writing" / "dictionary.json"
 
 
+def test_local_dict_path_main_checkout_named_dotgit(tmp_path):
+    """The motivating case: a main checkout whose dir ends in `.git` — the old
+    `--git-common-dir` + endswith("/.git") logic stripped it to the bogus sibling
+    `project`, hiding the real overlay from a linked worktree."""
+    root = _git_repo(tmp_path / "project.git")
+    (root / ".gitignore").write_text(".claude/\n", encoding="utf-8")
+    _write_local(root, [MAIN_ONLY])
+    _git_commit(root)
+    wt = _add_worktree(root, tmp_path / "wt")
+    assert local_dict_path(wt / "doc.qmd") == \
+        root / ".claude" / "scientific-writing" / "dictionary.json"
+
+
 def test_worktree_lint_sees_main_checkout_overlay(tmp_path, capsys):
     root = _git_repo(tmp_path / "main")
     (root / ".gitignore").write_text(".claude/\n", encoding="utf-8")

@@ -291,9 +291,9 @@ def _git_root(start: Path) -> Path | None:
 
 
 def _git_main_root(root: Path) -> Path | None:
-    # The first `worktree` line of `worktree list --porcelain` is the main working tree —
-    # unlike `--git-common-dir`, it ignores GIT_COMMON_DIR and never strips a bare
-    # `*.git` dir to a bogus sibling checkout.
+    # The first `worktree` line of `worktree list --porcelain` names the main working
+    # tree explicitly — no `.git`-suffix stripping, so a checkout dir ending in `.git`
+    # is not misread as a bare repo's bogus sibling.
     key = str(root)
     if key in _MAIN_ROOT_CACHE:
         return _MAIN_ROOT_CACHE[key]
