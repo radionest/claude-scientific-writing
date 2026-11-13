@@ -126,11 +126,9 @@ def test_merge_preserves_base_order_then_new():
 
 @pytest.fixture(autouse=True)
 def _clear_git_cache():
-    lint_prose._GIT_ROOT_CACHE.clear()
-    lint_prose._MAIN_ROOT_CACHE.clear()
+    lint_prose._clear_caches()
     yield
-    lint_prose._GIT_ROOT_CACHE.clear()
-    lint_prose._MAIN_ROOT_CACHE.clear()
+    lint_prose._clear_caches()
 
 
 def _git_repo(tmp_path: Path) -> Path:
@@ -235,6 +233,31 @@ def test_worktree_prefers_own_tracked_overlay(tmp_path, capsys):
     main([str(q), "--json"])
     ids = {f["id"] for f in json.loads(capsys.readouterr().out)}
     assert "local-wt" in ids and "local-main-only" not in ids
+
+
+def test_effective_entries_returns_cached_object_on_repeat(tmp_path):
+    root = _git_repo(tmp_path)
+    _write_local(root, [MASTER])
+    q = _qmd(root, "текст\n")
+    first = lint_prose.effective_entries(q)
+    second = lint_prose.effective_entries(q)
+    assert first is second
+
+
+def test_effective_entries_shared_within_repo_distinct_across_repos(tmp_path):
+    # Identical overlay content on purpose: only the path in the cache key keeps the two
+    # repos from colliding.
+    root_a = _git_repo(tmp_path / "a")
+    root_b = _git_repo(tmp_path / "b")
+    _write_local(root_a, [MASTER])
+    _write_local(root_b, [MASTER])
+    qa1 = _qmd(root_a, "текст\n")
+    qa2 = root_a / "other.qmd"
+    qa2.write_text("текст\n", encoding="utf-8")
+    qb = _qmd(root_b, "текст\n")
+    same = lint_prose.effective_entries(qa1)
+    assert lint_prose.effective_entries(qa2) is same
+    assert lint_prose.effective_entries(qb) is not same
 
 
 def test_local_rule_fires(tmp_path, capsys):

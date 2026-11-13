@@ -15,6 +15,7 @@ _ORTHO_DICT = _CANON / "orthography.json"
 _LOCAL_RELPATH = Path(".claude") / "scientific-writing" / "dictionary.json"
 _GIT_ROOT_CACHE: dict[str, "Path | None"] = {}
 _MAIN_ROOT_CACHE: dict[str, "Path | None"] = {}
+_EFFECTIVE_CACHE: dict[tuple, tuple[list[dict], list[dict]]] = {}
 _SEVERITIES = {"error", "warn", "info"}
 _KINDS = {"regex", "check"}
 # Same enum the base dictionaries are held to (tests/test_dictionary.py).
@@ -308,6 +309,11 @@ def _git_main_root(root: Path) -> Path | None:
     return main
 
 
+def _clear_caches() -> None:
+    """Test seam: rule-set and git-root caches must not leak between tmp repos."""
+    _GIT_ROOT_CACHE.clear(); _MAIN_ROOT_CACHE.clear(); _EFFECTIVE_CACHE.clear()
+
+
 def local_dict_path(target: str | Path) -> Path | None:
     root = _git_root(Path(target).resolve().parent)
     if root is None:
@@ -323,19 +329,17 @@ def local_dict_path(target: str | Path) -> Path | None:
     return own
 
 
-def _resolve_local(target: str | Path, forced: str | None, use_local: bool,
-                   base_ids: frozenset[str] = frozenset()) -> list[dict]:
+def _local_overlay_path(target: str | Path, forced: str | None,
+                        use_local: bool) -> Path | None:
     if not use_local:
-        return []
+        return None
     if forced:
         p: Path | None = Path(forced)
         if not p.exists():
             raise ConfigError(f"{forced}: файл локального словаря не найден")
-    else:
-        p = local_dict_path(target)
-        if p is None or not p.exists():
-            return []
-    return load_raw(p, base_ids)
+        return p
+    p = local_dict_path(target)
+    return p if p is not None and p.exists() else None
 
 
 def effective_entries(target: str | Path, dictionary: str | None = None,
@@ -347,15 +351,23 @@ def effective_entries(target: str | Path, dictionary: str | None = None,
     `use_local=False` skips it), merges it onto the base upsert-by-id and partitions by
     kind — exactly the rule set `main()` lints with. Triage tools (`lib.tune_diff`,
     `lib.docx_review`) go through this so rule mining sees what the gate enforces.
-    Raises ConfigError on a malformed overlay.
+    Raises ConfigError on a malformed overlay. Cached per (dictionary, overlay path,
+    use_local): the returned lists are shared between calls — consumers (`main`,
+    `lib.tune_diff`, `lib.docx_review`) must not mutate them.
     """
+    p = _local_overlay_path(target, local_dictionary, use_local)
+    key = (dictionary, str(p) if p else "", use_local)
+    if key in _EFFECTIVE_CACHE:
+        return _EFFECTIVE_CACHE[key]
     base = load_entries(dictionary)
     base_checks = load_check_entries(dictionary)
     base_ids = frozenset(e["id"] for e in base) | frozenset(e["id"] for e in base_checks)
-    local = _resolve_local(target, local_dictionary, use_local, base_ids)
+    local = load_raw(p, base_ids) if p else []
     local_rx, local_ck = partition_kinds(local)
-    return (merge_entries(base, local_rx) if local else base,
-            merge_entries(base_checks, local_ck) if local else base_checks)
+    result = (merge_entries(base, local_rx) if local else base,
+              merge_entries(base_checks, local_ck) if local else base_checks)
+    _EFFECTIVE_CACHE[key] = result
+    return result
 
 
 def _degraded_note(check_entries: list[dict]) -> str:
