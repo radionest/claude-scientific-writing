@@ -16,7 +16,8 @@ def _write(tmp_path: Path, entries) -> Path:
 
 
 def test_load_raw_valid_compiles_rx(tmp_path):
-    p = _write(tmp_path, [{"id": "x", "pattern": "abc", "severity": "warn", "message": "m"}])
+    p = _write(tmp_path, [{"id": "x", "layer": "doc", "pattern": "abc", "severity": "warn",
+                           "message": "m"}])
     entries = load_raw(p)
     assert entries[0]["_rx"].search("xabcx")
 
@@ -51,7 +52,8 @@ def test_load_raw_duplicate_id(tmp_path):
 
 
 def test_load_raw_bad_regex(tmp_path):
-    p = _write(tmp_path, [{"id": "x", "pattern": "(", "severity": "warn", "message": "m"}])
+    p = _write(tmp_path, [{"id": "x", "layer": "doc", "pattern": "(", "severity": "warn",
+                           "message": "m"}])
     with pytest.raises(ConfigError):
         load_raw(p)
 
@@ -70,7 +72,8 @@ def test_load_raw_non_dict_entry(tmp_path):
 
 
 def test_load_raw_non_string_pattern(tmp_path):
-    p = _write(tmp_path, [{"id": "x", "pattern": ["a", "b"], "severity": "warn", "message": "m"}])
+    p = _write(tmp_path, [{"id": "x", "layer": "doc", "pattern": ["a", "b"], "severity": "warn",
+                           "message": "m"}])
     with pytest.raises(ConfigError):
         load_raw(p)
 
@@ -269,32 +272,35 @@ def test_two_files_two_repos_each_gets_own_local(tmp_path, capsys):
 
 
 def test_load_raw_bad_severity(tmp_path):
-    p = _write(tmp_path, [{"id": "x", "pattern": "a", "severity": "Error", "message": "m"}])
+    p = _write(tmp_path, [{"id": "x", "layer": "doc", "pattern": "a", "severity": "Error",
+                           "message": "m"}])
     with pytest.raises(ConfigError):
         load_raw(p)
 
 
 def test_load_raw_non_string_except(tmp_path):
-    p = _write(tmp_path, [{"id": "x", "pattern": "a", "severity": "warn", "message": "m",
-                           "except": ["b", "c"]}])
+    p = _write(tmp_path, [{"id": "x", "layer": "doc", "pattern": "a", "severity": "warn",
+                           "message": "m", "except": ["b", "c"]}])
     with pytest.raises(ConfigError):
         load_raw(p)
 
 
 def test_load_raw_string_except_ok(tmp_path):
-    p = _write(tmp_path, [{"id": "x", "pattern": "a", "severity": "warn", "message": "m",
-                           "except": "b"}])
+    p = _write(tmp_path, [{"id": "x", "layer": "doc", "pattern": "a", "severity": "warn",
+                           "message": "m", "except": "b"}])
     assert load_raw(p)[0]["except"] == "b"
 
 
 def test_load_raw_unhashable_severity(tmp_path):
-    p = _write(tmp_path, [{"id": "x", "pattern": "a", "severity": ["error"], "message": "m"}])
+    p = _write(tmp_path, [{"id": "x", "layer": "doc", "pattern": "a", "severity": ["error"],
+                           "message": "m"}])
     with pytest.raises(ConfigError):
         load_raw(p)
 
 
 def test_load_raw_non_string_message(tmp_path):
-    p = _write(tmp_path, [{"id": "x", "pattern": "a", "severity": "warn", "message": ["m"]}])
+    p = _write(tmp_path, [{"id": "x", "layer": "doc", "pattern": "a", "severity": "warn",
+                           "message": ["m"]}])
     with pytest.raises(ConfigError):
         load_raw(p)
 
@@ -306,6 +312,32 @@ def test_load_raw_non_bool_disabled(tmp_path):
 
 
 def test_load_raw_disabled_false_still_validated(tmp_path):
-    p = _write(tmp_path, [{"id": "x", "pattern": "a", "severity": "warn", "message": "m",
-                           "disabled": False}])
+    p = _write(tmp_path, [{"id": "x", "layer": "doc", "pattern": "a", "severity": "warn",
+                           "message": "m", "disabled": False}])
     assert load_raw(p)[0]["_rx"].search("a")
+
+
+def test_load_raw_bad_layer(tmp_path):
+    p = _write(tmp_path, [{"id": "x", "layer": "wrong", "pattern": "a", "severity": "warn",
+                           "message": "m"}])
+    with pytest.raises(ConfigError):
+        load_raw(p)
+
+
+def test_load_raw_new_entry_requires_layer(tmp_path):
+    p = _write(tmp_path, [{"id": "x", "pattern": "a", "severity": "warn", "message": "m"}])
+    with pytest.raises(ConfigError):
+        load_raw(p)
+
+
+def test_load_raw_override_inherits_layer(tmp_path):
+    """An override-by-id keeps the base entry's layer — no need to restate it."""
+    p = _write(tmp_path, [{"id": "jargon-kogorta", "severity": "error"}])
+    assert "layer" not in load_raw(p, frozenset({"jargon-kogorta"}))[0]
+
+
+def test_load_raw_layer_universal_is_legal(tmp_path):
+    """The enum allows every value in an overlay; `doc` is not the only legal one."""
+    p = _write(tmp_path, [{"id": "x", "layer": "universal", "pattern": "a", "severity": "warn",
+                           "message": "m"}])
+    assert load_raw(p)[0]["layer"] == "universal"

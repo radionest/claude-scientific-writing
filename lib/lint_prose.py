@@ -16,6 +16,8 @@ _LOCAL_RELPATH = Path(".claude") / "scientific-writing" / "dictionary.json"
 _GIT_ROOT_CACHE: dict[str, "Path | None"] = {}
 _SEVERITIES = {"error", "warn", "info"}
 _KINDS = {"regex", "check"}
+# Same enum the base dictionaries are held to (tests/test_dictionary.py).
+_LAYERS = {"universal", "genre:report", "genre:article", "genre:educational", "doc"}
 
 
 class ConfigError(Exception):
@@ -96,7 +98,8 @@ def load_raw(path: Path, base_ids: frozenset[str] = frozenset()) -> list[dict]:
         if kind not in _KINDS:
             raise ConfigError(f"{path}: правило «{eid}» — недопустимый «kind» «{kind}»: "
                               f"ожидается {', '.join(sorted(_KINDS))}")
-        required = ("severity", "message") if kind == "check" else ("pattern", "severity", "message")
+        required = ("severity", "message", "layer") if kind == "check" \
+            else ("pattern", "severity", "message", "layer")
         if eid in base_ids:
             required = tuple(k for k in required if k in e)  # partial override inherits the rest
         missing = [k for k in required if not e.get(k)]
@@ -109,6 +112,10 @@ def load_raw(path: Path, base_ids: frozenset[str] = frozenset()) -> list[dict]:
             raise ConfigError(
                 f"{path}: правило «{eid}» — недопустимая severity «{e['severity']}»: "
                 f"ожидается {', '.join(sorted(_SEVERITIES))}")
+        if "layer" in e and e["layer"] not in _LAYERS:
+            raise ConfigError(
+                f"{path}: правило «{eid}» — недопустимый layer «{e['layer']}»: "
+                f"ожидается {', '.join(sorted(_LAYERS))}")
         exc = e.get("except")
         if exc is not None and not isinstance(exc, str):
             raise ConfigError(f"{path}: правило «{eid}» — «except» должно быть строкой")
