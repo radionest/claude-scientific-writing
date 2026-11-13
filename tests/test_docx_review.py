@@ -83,6 +83,21 @@ def test_tracked_changes_become_before_after(tmp_path):
     assert items[0].after == "предоперационной"
 
 
+def test_tracked_change_author_comes_from_ins_del_nodes(tmp_path):
+    """OOXML puts w:author on <w:ins>/<w:del>, not on <w:p> — reading the paragraph left
+    the field empty for every tracked change."""
+    del_only = ("<w:p>"
+                '<w:del w:id="9" w:author="Редактор">'
+                "<w:r><w:delText>дооперационной</w:delText></w:r></w:del>"
+                "</w:p>")
+    unmarked_del = ("<w:p>"
+                    '<w:del w:id="11"><w:r><w:delText>данные</w:delText></w:r></w:del>'
+                    f'<w:ins w:id="12" w:author="Второй">{_run("результаты")}</w:ins>'
+                    "</w:p>")
+    p = _docx(tmp_path, [del_only, unmarked_del], [])
+    assert [i.author for i in extract(p)] == ["Редактор", "Второй"]
+
+
 def test_missing_comments_part_is_not_fatal(tmp_path):
     doc = f'<?xml version="1.0"?><w:document {W}><w:body>{_para(_run("Текст без комментариев."))}</w:body></w:document>'
     p = tmp_path / "plain.docx"
@@ -135,3 +150,30 @@ def test_broken_local_dict_exits_3(tmp_path, capsys):
     p = _docx(tmp_path, [_para(_run("Метки очагов не изменены."))], [])
     assert main([str(p)]) == 3
     assert "dictionary.json" in capsys.readouterr().err
+
+
+def test_password_protected_docx_reports_instead_of_crashing(tmp_path, monkeypatch, capsys):
+    """zipfile raises a bare RuntimeError when an entry is encrypted; it must reach the
+    CLI's friendly message + exit 2, not a traceback."""
+    p = _docx(tmp_path, [_para(_run("Текст замечания."))], [("1", "Ред", "уточнить")])
+
+    def refuse(_self, _name):
+        raise RuntimeError("File word/document.xml is encrypted, "
+                           "password required for extraction")
+
+    monkeypatch.setattr(zipfile.ZipFile, "read", refuse)
+    assert main([str(p)]) == 2
+    assert "паролем" in capsys.readouterr().err
+
+
+def test_unsupported_compression_is_not_a_password(tmp_path, monkeypatch, capsys):
+    """NotImplementedError is a RuntimeError subclass: zipfile raises it for an entry with
+    an unsupported compress_type — that must not be diagnosed as password protection."""
+    p = _docx(tmp_path, [_para(_run("Текст замечания."))], [])
+
+    def refuse(_self, _name):
+        raise NotImplementedError("That compression method is not supported")
+
+    monkeypatch.setattr(zipfile.ZipFile, "read", refuse)
+    assert main([str(p)]) == 2
+    assert "сжатия" in capsys.readouterr().err

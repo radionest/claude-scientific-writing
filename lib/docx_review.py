@@ -87,6 +87,11 @@ def extract(path: Path, context: int = _CONTEXT) -> list[ReviewItem]:
         raise DocxError(f"{path}: в архиве нет части {e} — файл повреждён или это не .docx") from e
     except xml.parsers.expat.ExpatError as e:
         raise DocxError(f"{path}: повреждённый XML внутри .docx — {e}") from e
+    except NotImplementedError as e:
+        # подкласс RuntimeError: zipfile бросает его на неподдерживаемом сжатии, не на пароле
+        raise DocxError(f"{path}: неподдерживаемый метод сжатия внутри архива — {e}") from e
+    except RuntimeError as e:
+        raise DocxError(f"{path}: файл защищён паролем — расшифруйте его и повторите") from e
 
 
 def _extract(z: zipfile.ZipFile, context: int) -> list[ReviewItem]:
@@ -257,10 +262,13 @@ def _tracked_changes(text: str, z: zipfile.ZipFile) -> list[ReviewItem]:
                        for t in node.iter(_W + "delText"))
         if not ins and not dele:
             continue
+        # OOXML puts w:author on <w:ins>/<w:del>, never on the <w:p> that holds them.
+        author = next((a for node in (*p.iter(_W + "ins"), *p.iter(_W + "del"))
+                       for a in [node.get(_W + "author") or ""] if a), "")
         items.append(ReviewItem(line=para_no, before=" ".join(dele.split()),
                                 after=" ".join(ins.split()), triage="FN", rule_hit=None,
                                 comment="(tracked change)",
-                                author=p.get(_W + "author") or ""))
+                                author=author))
     return items
 
 
