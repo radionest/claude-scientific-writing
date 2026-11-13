@@ -78,6 +78,10 @@ def _parse_xml(data: bytes) -> ET.Element:
 
 
 def extract(path: Path, context: int = _CONTEXT) -> list[ReviewItem]:
+    with path.open("rb") as fh:
+        if fh.read(4) == b"\xd0\xcf\x11\xe0":
+            raise DocxError(f"{path}: устаревший .doc или зашифрованный DOCX (OLE-контейнер) — "
+                            "пересохраните как .docx без пароля")
     try:
         with zipfile.ZipFile(path) as z:
             return _extract(z, context)
