@@ -6,7 +6,8 @@ a dictionary pattern.
 from __future__ import annotations
 import re
 from collections import Counter, defaultdict
-from typing import Iterable
+from dataclasses import dataclass
+from typing import Callable, Iterable
 
 from lib.checks import Hit, register
 
@@ -27,44 +28,70 @@ _STOP_REPEAT = frozenset("""
 _BODY_HEADING = re.compile(r"^\s*#\s+\S")
 
 
-@register("doc-abbrev-variants")
-def abbrev_variants(doc, morph, entry: dict) -> Iterable[Hit]:
-    """The same abbreviation spelled two ways: ИОУЗИ vs ио-УЗИ.
+def _abbr_key(tok: str) -> str:
+    """Canonical spelling for comparison: case-folded, hyphens dropped («ио-УЗИ» == «ИОУЗИ»)."""
+    return tok.upper().replace("-", "")
 
-    Reports **every** occurrence of each non-dominant spelling, like `doc-token-case`: in
-    `--diff` mode (the hook path) a finding anchored on an untouched line is filtered out,
-    so a newly introduced spelling would slip through silently. The dominant spelling is
-    simply the most frequent one; on a tie every spelling is reported.
+
+def _variant_hits(doc, pattern: re.Pattern[str], key: Callable[[str], str],
+                  allow: set[str], detail: Callable[[str | None, str], str]) -> Iterable[Hit]:
+    """Hits at **every** occurrence of each non-dominant spelling of a token the document
+    writes in several ways.
+
+    In `--diff` mode (the hook path) a finding anchored on an untouched line is filtered
+    out, so a single anchor would let newly introduced deviations slip through. The
+    dominant spelling is the most frequent one; on a tie there is no evidence for a norm,
+    so every spelling is reported and the message names none of them canonical.
+
+    `key` folds a surface token to its canonical form, `allow` holds exempt keys, and
+    `detail(dominant, tally)` renders the message for a deviating occurrence.
     """
-    allow = {w.upper() for w in entry.get("allow", ())}
     counts: dict[str, Counter] = defaultdict(Counter)
     spots: dict[str, dict[str, list[tuple[int, int]]]] = defaultdict(lambda: defaultdict(list))
     order: dict[str, dict[str, int]] = defaultdict(dict)
     seq = 0
     for pl in doc.lines:
-        for m in _ABBR.finditer(pl.text):
+        for m in pattern.finditer(pl.text):
             tok = m.group(0)
-            if tok.upper() in allow:
+            k = key(tok)
+            if k in allow:
                 continue
-            key = tok.upper().replace("-", "")
-            counts[key][tok] += 1
-            spots[key][tok].append((pl.lineno, m.start() + 1))
-            order[key].setdefault(tok, seq)
+            counts[k][tok] += 1
+            spots[k][tok].append((pl.lineno, m.start() + 1))
+            order[k].setdefault(tok, seq)
             seq += 1
-    for key, variants in sorted(counts.items()):
+    for k in sorted(counts):
+        variants = counts[k]
         if len(variants) < 2:
             continue
         top = max(variants.values())
         leaders = [v for v in variants if variants[v] == top]
         dominant = leaders[0] if len(leaders) == 1 else None
         tally = ", ".join(f"«{v}» ×{variants[v]}"
-                          for v in sorted(variants, key=lambda v: (-variants[v], order[key][v])))
-        advice = f"— приведи к «{dominant}»" if dominant else "— выбери одно написание"
-        for variant in sorted(variants, key=lambda v: order[key][v]):
+                          for v in sorted(variants, key=lambda v: (-variants[v], order[k][v])))
+        text = detail(dominant, tally)
+        for variant in sorted(variants, key=lambda v: order[k][v]):
             if variant == dominant:
                 continue
-            for lineno, col in spots[key][variant]:
-                yield Hit(lineno=lineno, col=col, matched=variant, detail=f"{tally} {advice}")
+            for lineno, col in spots[k][variant]:
+                yield Hit(lineno=lineno, col=col, matched=variant, detail=text)
+
+
+@register("doc-abbrev-variants")
+def abbrev_variants(doc, morph, entry: dict) -> Iterable[Hit]:
+    """The same abbreviation spelled two ways: ИОУЗИ vs ио-УЗИ."""
+    yield from _variant_hits(
+        doc, _ABBR, key=_abbr_key,
+        allow={_abbr_key(w) for w in entry.get("allow", ())},
+        detail=lambda dominant, tally:
+            f"{tally} — приведи к «{dominant}»" if dominant else f"{tally} — выбери одно написание")
+
+
+@dataclass(frozen=True, slots=True)
+class _Use:
+    """One abbreviation occurrence: position and whether it is the «… (АББР)» expansion."""
+    pos: tuple[int, int]
+    expanded: bool
 
 
 @register("doc-abbrev-first-use")
@@ -81,29 +108,29 @@ def abbrev_first_use(doc, morph, entry: dict) -> Iterable[Hit]:
     """
     allow = {w.upper() for w in entry.get("allow", ())}
     body = _body_start(doc)
-    uses: dict[tuple[bool, str], list[tuple[tuple[int, int], bool]]] = defaultdict(list)
+    uses: dict[tuple[bool, str], list[_Use]] = defaultdict(list)
     for pl in doc.lines:
         for m in _ABBR.finditer(pl.text):
             tok = m.group(0).upper()
             if tok in allow:
                 continue
             key = (pl.lineno >= body, tok)
-            is_def = pl.text[:m.start()].rstrip().endswith("(")
-            uses[key].append(((pl.lineno, m.start() + 1), is_def))
+            expanded = pl.text[:m.start()].rstrip().endswith("(")
+            uses[key].append(_Use((pl.lineno, m.start() + 1), expanded))
     for key, spots in sorted(uses.items()):
         tok = key[1]
-        defs = [pos for pos, is_def in spots if is_def]
+        defs = [u.pos for u in spots if u.expanded]
         if not defs:
             continue
         dpos = min(defs)
-        bare = [pos for pos, is_def in spots if not is_def and pos < dpos]
+        bare = [u.pos for u in spots if not u.expanded and u.pos < dpos]
         if not bare:
             continue
         for lineno, col in bare:
             yield Hit(lineno=lineno, col=col, matched=tok,
-                      detail=f"раскрытие позже, на строке {dpos[0]}")
+                      detail=f"до раскрытия на строке {dpos[0]}")
         yield Hit(lineno=dpos[0], col=dpos[1], matched=tok,
-                  detail=f"раскрытие после первого употребления (строка {bare[0][0]})")
+                  detail=f"первое употребление на строке {bare[0][0]}")
 
 
 def _body_start(doc) -> int:
@@ -119,43 +146,16 @@ def _body_start(doc) -> int:
 def token_case(doc, morph, entry: dict) -> Iterable[Hit]:
     """The same alphanumeric token in two casings: «3d» and «3D», «icg» and «ICG».
 
-    Reports **every** occurrence of each non-dominant spelling, not just the first: in
-    `--diff` mode (the hook path) a finding anchored on an untouched line is filtered out,
-    so a newly introduced «3d» would otherwise slip through silently.
-
-    The dominant spelling is simply the most frequent one. On a tie there is no evidence for
-    a norm, so every spelling is reported and the message names none of them canonical —
-    picking one anyway pointed at the correct «3D» and called the typo «3d» the standard.
+    On a tie there is no evidence for a norm, so every spelling is reported and the
+    message names none of them canonical — picking one anyway pointed at the correct
+    «3D» and called the typo «3d» the standard.
     """
-    allow = {w.lower() for w in entry.get("allow", ())}
-    counts: dict[str, Counter] = defaultdict(Counter)
-    spots: dict[str, dict[str, list[tuple[int, int]]]] = defaultdict(lambda: defaultdict(list))
-    order: dict[str, dict[str, int]] = defaultdict(dict)
-    seq = 0
-    for pl in doc.lines:
-        for m in _MIXED_TOKEN.finditer(pl.text):
-            tok = m.group(0)
-            if tok.lower() in allow:
-                continue
-            counts[tok.lower()][tok] += 1
-            spots[tok.lower()][tok].append((pl.lineno, m.start() + 1))
-            order[tok.lower()].setdefault(tok, seq)
-            seq += 1
-    for key, variants in sorted(counts.items()):
-        if len(variants) < 2:
-            continue
-        top = max(variants.values())
-        leaders = [v for v in variants if variants[v] == top]
-        dominant = leaders[0] if len(leaders) == 1 else None
-        tally = ", ".join(f"«{v}» ×{variants[v]}"
-                          for v in sorted(variants, key=lambda v: (-variants[v], order[key][v])))
-        for variant in sorted(variants, key=lambda v: order[key][v]):
-            if variant == dominant:
-                continue
-            detail = (f"регистр непоследователен: {tally} — приведи к «{dominant}»"
-                      if dominant else f"регистр непоследователен: {tally} — выбери одно написание")
-            for lineno, col in spots[key][variant]:
-                yield Hit(lineno=lineno, col=col, matched=variant, detail=detail)
+    yield from _variant_hits(
+        doc, _MIXED_TOKEN, key=str.lower,
+        allow={w.lower() for w in entry.get("allow", ())},
+        detail=lambda dominant, tally:
+            f"регистр непоследователен: {tally} — приведи к «{dominant}»"
+            if dominant else f"регистр непоследователен: {tally} — выбери одно написание")
 
 
 _REPEAT_WINDOW = 12  # tokens; wider than this reads as normal scientific prose

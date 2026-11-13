@@ -257,9 +257,9 @@ def test_abbrev_findings_survive_the_diff_filter(tmp_path):
     f = tmp_path / "doc.qmd"
     f.write_text(src, encoding="utf-8")
     variants = lint_file(str(f), ENTRIES, changed={3}, check_entries=CHECKS, morph=MORPH)
-    assert any(x.id == "doc-abbrev-variants" and x.line == 3 for x in variants)
+    assert [x.line for x in variants if x.id == "doc-abbrev-variants"] == [3]
     first_use = lint_file(str(f), ENTRIES, changed={8}, check_entries=CHECKS, morph=MORPH)
-    assert any(x.id == "doc-abbrev-first-use" and x.line == 8 for x in first_use)
+    assert [x.line for x in first_use if x.id == "doc-abbrev-first-use"] == [8]
 
 
 def test_token_case_tie_claims_no_norm():
