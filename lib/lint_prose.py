@@ -361,7 +361,7 @@ def main(argv: list[str] | None = None) -> int:
             findings += lint_file(f, entries, changed, check_entries, morph)
     except ConfigError as e:
         print(f"lint_prose: ошибка локального словаря {e}", file=sys.stderr)
-        return 2
+        return 3
     if args.json:
         print(json.dumps([asdict(x) for x in findings], ensure_ascii=False, indent=2))
     else:

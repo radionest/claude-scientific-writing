@@ -23,5 +23,10 @@ allowed-tools: Bash, Read, Task
 5. Подсказка: правки вноси в стадии fix скилла `scientific-writing:writing-scientific-documents`
    (с суждением; не слепой replace).
 
-Если линтер завершился с ошибкой: проверь `PYTHONPATH=${CLAUDE_PLUGIN_ROOT}`, что путь к словарю
+Примечание: локальный словарь проекта `<git-root>/.claude/scientific-writing/dictionary.json`
+автоподхватывается, если существует (отключается `--no-local`); его правила видны в находках
+наряду с канонными.
+
+Если линтер завершился с ошибкой: exit 3 — словарь битый (stderr называет файл и ошибку —
+поправь его); иначе проверь `PYTHONPATH=${CLAUDE_PLUGIN_ROOT}`, что путь к словарю
 (`canon/dictionary.json`, `canon/orthography.json`) на месте и файл существует.

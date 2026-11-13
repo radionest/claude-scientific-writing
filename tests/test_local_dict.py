@@ -154,7 +154,7 @@ MASTER = {"id": "canon-master-model", "layer": "doc", "severity": "warn",
 def test_partial_override_of_a_check_inherits_severity_and_message(tmp_path, capsys):
     """The documented way to teach `ortho-spelling` a project's terms is an `allow` list and
     nothing else. Requiring severity/message there made the overlay raise ConfigError —
-    exit 2 — which blocks the very commit hook the overlay exists to satisfy."""
+    a config-error exit — which blocks the very commit hook the overlay exists to satisfy."""
     root = _git_repo(tmp_path)
     _write_local(root, [{"id": "ortho-spelling", "allow": ["ремнант", "волюмометрия"]}])
     q = _qmd(root, "Волюмометрия ремнанта печени показала достаточный объём.\n")
@@ -232,14 +232,14 @@ def test_no_repo_base_only_no_crash(tmp_path, capsys):
     assert "canon-master-model" not in out  # local ignored (no git root)
 
 
-def test_malformed_local_returns_2_and_message(tmp_path, capsys):
+def test_malformed_local_returns_3_and_message(tmp_path, capsys):
     root = _git_repo(tmp_path)
     d = root / ".claude" / "scientific-writing"
     d.mkdir(parents=True)
     (d / "dictionary.json").write_text("{broken", encoding="utf-8")
     q = _qmd(root, "любой текст\n")
     rc = main([str(q)])
-    assert rc == 2
+    assert rc == 3
     assert "ошибка локального словаря" in capsys.readouterr().err
 
 
@@ -247,8 +247,22 @@ def test_forced_missing_local_dictionary_errors(tmp_path, capsys):
     q = tmp_path / "doc.qmd"
     q.write_text("текст\n", encoding="utf-8")
     rc = main([str(q), "--local-dictionary", str(tmp_path / "nope.json")])
-    assert rc == 2
+    assert rc == 3
     assert "ошибка локального словаря" in capsys.readouterr().err
+
+
+def test_config_error_exit_3_distinct_from_argparse_exit_2(tmp_path):
+    """A CLI usage mistake (argparse exits 2) must stay distinguishable from a broken
+    local dictionary (exit 3): the hook maps only the latter to its dictionary message."""
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--bogus", "doc.qmd"])
+    assert excinfo.value.code == 2
+    root = _git_repo(tmp_path)
+    d = root / ".claude" / "scientific-writing"
+    d.mkdir(parents=True)
+    (d / "dictionary.json").write_text("{broken", encoding="utf-8")
+    q = _qmd(root, "любой текст\n")
+    assert main([str(q)]) == 3
 
 
 def test_two_files_two_repos_each_gets_own_local(tmp_path, capsys):
