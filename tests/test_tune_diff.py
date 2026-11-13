@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 import lib.lint_prose
+import lib.tune_diff
 from lib.lint_prose import load_check_entries, load_entries
 from lib.morph import Morph
 from lib.tune_diff import diff_prose, main
@@ -148,3 +149,24 @@ def test_broken_local_dict_exits_3(tmp_path, capsys):
     edited.write_text("Кальцинатные метки не изменены.\n", encoding="utf-8")
     assert main([str(pristine), str(edited)]) == 3
     assert "dictionary.json" in capsys.readouterr().err
+
+
+def test_missing_pristine_exits_2(tmp_path, capsys):
+    # Missing pristine — readable refusal instead of a traceback: rc 2 + message in stderr
+    # (mirror of docx_review.main).
+    edited = tmp_path / "edited.qmd"
+    edited.write_text("Метки очагов не изменены.\n", encoding="utf-8")
+    assert main([str(tmp_path / "missing.qmd"), str(edited)]) == 2
+    assert "missing.qmd" in capsys.readouterr().err
+
+
+def test_degraded_morph_note_on_stderr(tmp_path, monkeypatch, capsys):
+    # Without morphology triage silently loses punct-*/ortho-* accuracy: the note goes to
+    # stderr, stdout stays the contract (JSON/text).
+    monkeypatch.setattr(lib.tune_diff.Morph, "load", staticmethod(lambda: Morph(available=False)))
+    pristine = tmp_path / "pristine.qmd"
+    pristine.write_text("Метки очагов не изменены.\n", encoding="utf-8")
+    edited = tmp_path / "edited.qmd"
+    edited.write_text("Кальцинатные метки не изменены.\n", encoding="utf-8")
+    assert main([str(pristine), str(edited)]) == 0
+    assert "без морфологии" in capsys.readouterr().err
