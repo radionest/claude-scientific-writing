@@ -301,6 +301,20 @@ def test_abbrev_variant_anchor_survives_diff_when_edit_flips_dominance(tmp_path)
     assert all(x.matched == "ио-УЗИ" for x in variants)
 
 
+def test_token_case_anchor_survives_diff_when_edit_flips_dominance(tmp_path):
+    """Issue repro for the rule the issue names second: an edit that makes one
+    casing dominant must keep anchors on the changed lines."""
+    src = ("Объём считали по протоколу 3d.\n"
+           "Разметку вели в режиме 3D.\n"
+           "Контроль выполняли в 3D.\n")
+    f = tmp_path / "doc.qmd"
+    f.write_text(src, encoding="utf-8")
+    findings = lint_file(str(f), ENTRIES, changed={2, 3}, check_entries=CHECKS, morph=MORPH)
+    cases = [x for x in findings if x.id == "doc-token-case"]
+    assert [x.line for x in cases] == [2, 3]
+    assert all(x.matched == "3D" for x in cases)
+
+
 def test_token_case_tie_claims_no_norm():
     """With equal counts there is no evidence for a canonical spelling; the old tie-break
     sorted uppercase first and reported the correct «3D» as the deviation."""
