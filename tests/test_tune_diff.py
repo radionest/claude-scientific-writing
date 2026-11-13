@@ -17,10 +17,10 @@ MORPH = Morph(available=False)
 @pytest.fixture(autouse=True)
 def _clear_git_cache():
     # `main()` discovers the project-local dictionary at the git root of the edited file;
-    # `_git_root` caches per path, so drop stale entries between repo-based tests.
-    lib.lint_prose._GIT_ROOT_CACHE.clear()
+    # caches are keyed on paths, so drop stale entries between repo-based tests.
+    lib.lint_prose._clear_caches()
     yield
-    lib.lint_prose._GIT_ROOT_CACHE.clear()
+    lib.lint_prose._clear_caches()
 
 
 def test_no_change_yields_no_hunks():
