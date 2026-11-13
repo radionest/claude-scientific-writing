@@ -287,8 +287,7 @@ def local_dict_path(target: str | Path) -> Path | None:
     return root / _LOCAL_RELPATH if root else None
 
 
-def _resolve_local(target: str, forced: str | None, use_local: bool,
-                   cache: dict[str, list[dict]],
+def _resolve_local(target: str | Path, forced: str | None, use_local: bool,
                    base_ids: frozenset[str] = frozenset()) -> list[dict]:
     if not use_local:
         return []
@@ -300,10 +299,27 @@ def _resolve_local(target: str, forced: str | None, use_local: bool,
         p = local_dict_path(target)
         if p is None or not p.exists():
             return []
-    key = str(p.resolve())
-    if key not in cache:
-        cache[key] = load_raw(p, base_ids)
-    return cache[key]
+    return load_raw(p, base_ids)
+
+
+def effective_entries(target: str | Path, dictionary: str | None = None,
+                      local_dictionary: str | None = None,
+                      use_local: bool = True) -> tuple[list[dict], list[dict]]:
+    """Effective (regex, check) rule sets for `target`: canon ⊕ the project overlay.
+
+    Discovers the overlay at the git root of `target` (`local_dictionary` forces a file,
+    `use_local=False` skips it), merges it onto the base upsert-by-id and partitions by
+    kind — exactly the rule set `main()` lints with. Triage tools (`lib.tune_diff`,
+    `lib.docx_review`) go through this so rule mining sees what the gate enforces.
+    Raises ConfigError on a malformed overlay.
+    """
+    base = load_entries(dictionary)
+    base_checks = load_check_entries(dictionary)
+    base_ids = frozenset(e["id"] for e in base) | frozenset(e["id"] for e in base_checks)
+    local = _resolve_local(target, local_dictionary, use_local, base_ids)
+    local_rx, local_ck = partition_kinds(local)
+    return (merge_entries(base, local_rx) if local else base,
+            merge_entries(base_checks, local_ck) if local else base_checks)
 
 
 def _degraded_note(check_entries: list[dict]) -> str:
@@ -341,19 +357,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--no-morph", action="store_true",
                     help="ignore the optional morphology extra (checks skip or demote)")
     args = ap.parse_args(argv)
-    base = load_entries(args.dictionary)
-    base_checks = load_check_entries(args.dictionary)
     morph = Morph(available=False) if args.no_morph else Morph.load()
-    local_cache: dict[str, list[dict]] = {}
-    base_ids = frozenset(e["id"] for e in base) | frozenset(e["id"] for e in base_checks)
     findings: list[Finding] = []
     try:
         for f in args.files:
-            local = _resolve_local(f, args.local_dictionary, not args.no_local, local_cache,
-                                   base_ids)
-            local_rx, local_ck = partition_kinds(local)
-            entries = merge_entries(base, local_rx) if local else base
-            check_entries = merge_entries(base_checks, local_ck) if local else base_checks
+            entries, check_entries = effective_entries(f, args.dictionary,
+                                                       args.local_dictionary,
+                                                       not args.no_local)
             changed = None
             if args.diff is not None:
                 ref = None if args.diff == "__staged__" else args.diff
@@ -369,7 +379,7 @@ def main(argv: list[str] | None = None) -> int:
     if not morph.available:
         # stderr, so the stdout contract (a flat findings array) stays what
         # /text-review and /tune-draft already parse.
-        print(_degraded_note(base_checks), file=sys.stderr)
+        print(_degraded_note(load_check_entries(args.dictionary)), file=sys.stderr)
     return 1 if any(f.severity == "error" for f in findings) else 0
 
 
