@@ -1,7 +1,7 @@
 """Regressions for false blocks and mis-anchored findings found in pre-PR review."""
 import pytest
 
-from lib.lint_prose import lint_source, load_check_entries, load_entries
+from lib.lint_prose import lint_file, lint_source, load_check_entries, load_entries
 from lib.morph import Morph
 
 MORPH = Morph.load()
@@ -210,6 +210,56 @@ def test_abbrev_first_use_still_flags_a_late_expansion_in_the_body():
            "Резекцию выполняли под контролем ИОУЗИ.\n\n"
            "Интраоперационное ультразвуковое исследование (ИОУЗИ) проводил хирург.\n")
     assert "doc-abbrev-first-use" in {f.id for f in lint_source(src, ENTRIES, CHECKS, MORPH)}
+
+
+def test_abbrev_variants_flags_every_deviation_not_just_the_first():
+    """`--diff` mode keeps only findings on changed lines, so anchoring once on the
+    dominant variant's opposite would let a newly added spelling through untouched."""
+    src = ("Контроль на ИОУЗИ. Венозную фазу — на ИОУЗИ. Артерии — тоже на ИОУЗИ.\n"
+           "Разметку переносили под контролем ио-УЗИ.\n"
+           "Описание вели по протоколу ио-УЗИ.\n")
+    findings = [f for f in _find(src) if f.id == "doc-abbrev-variants"]
+    assert [f.line for f in findings] == [2, 3]
+    assert all(f.matched == "ио-УЗИ" for f in findings)
+    assert all("приведи к «ИОУЗИ»" in f.message for f in findings)
+
+
+def test_abbrev_variants_tie_claims_no_norm():
+    """With equal counts there is no evidence for a canonical spelling; the old rule
+    silently picked whichever variant happened to be rarest."""
+    findings = [f for f in _find("Контроль на ио-УЗИ. Описание вели по протоколу ИОУЗИ.")
+                if f.id == "doc-abbrev-variants"]
+    assert {f.matched for f in findings} == {"ио-УЗИ", "ИОУЗИ"}
+    assert all("выбери одно написание" in f.message for f in findings)
+
+
+def test_abbrev_first_use_flags_every_bare_use_and_the_expansion():
+    """`--diff` mode keeps only findings on changed lines: with a single anchor on the
+    expansion line, a newly added bare use slipped through untouched."""
+    src = ("# Введение\n\n"
+           "Резекцию выполняли под контролем ИОУЗИ.\n\n"
+           "Второй этап контролировали тоже на ИОУЗИ.\n\n"
+           "Интраоперационное ультразвуковое исследование (ИОУЗИ) проводил хирург.\n")
+    findings = [f for f in _find(src) if f.id == "doc-abbrev-first-use"]
+    assert [f.line for f in findings] == [3, 5, 7]
+
+
+def test_abbrev_findings_survive_the_diff_filter(tmp_path):
+    """End-to-end through `lint_file` — the hook's path: the finding must land on the
+    changed line, not only on the untouched line the old single anchor picked."""
+    src = ("Контроль на ИОУЗИ. Венозную фазу — на ИОУЗИ. Артерии — тоже на ИОУЗИ.\n"
+           "Разметку переносили под контролем ио-УЗИ.\n"
+           "Описание вели по протоколу ио-УЗИ.\n"
+           "# Введение\n\n"
+           "Резекцию выполняли под контролем ИОУЗИ.\n\n"
+           "Второй этап контролировали тоже на ИОУЗИ.\n\n"
+           "Интраоперационное ультразвуковое исследование (ИОУЗИ) проводил хирург.\n")
+    f = tmp_path / "doc.qmd"
+    f.write_text(src, encoding="utf-8")
+    variants = lint_file(str(f), ENTRIES, changed={3}, check_entries=CHECKS, morph=MORPH)
+    assert any(x.id == "doc-abbrev-variants" and x.line == 3 for x in variants)
+    first_use = lint_file(str(f), ENTRIES, changed={8}, check_entries=CHECKS, morph=MORPH)
+    assert any(x.id == "doc-abbrev-first-use" and x.line == 8 for x in first_use)
 
 
 def test_token_case_tie_claims_no_norm():
