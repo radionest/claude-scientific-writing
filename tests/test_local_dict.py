@@ -127,8 +127,10 @@ def test_merge_preserves_base_order_then_new():
 @pytest.fixture(autouse=True)
 def _clear_git_cache():
     lint_prose._GIT_ROOT_CACHE.clear()
+    lint_prose._MAIN_ROOT_CACHE.clear()
     yield
     lint_prose._GIT_ROOT_CACHE.clear()
+    lint_prose._MAIN_ROOT_CACHE.clear()
 
 
 def _git_repo(tmp_path: Path) -> Path:
@@ -183,6 +185,56 @@ def test_local_dict_path_in_repo(tmp_path):
 
 def test_local_dict_path_none_outside_repo(tmp_path):
     assert local_dict_path(tmp_path / "doc.qmd") is None
+
+
+MAIN_ONLY = {"id": "local-main-only", "layer": "doc", "pattern": "мейнметка",
+             "severity": "warn", "message": "main-checkout rule"}
+WT_OWN = {"id": "local-wt", "layer": "doc", "pattern": "веткаметка",
+          "severity": "warn", "message": "worktree rule"}
+
+
+def _git_commit(root: Path) -> None:
+    subprocess.run(["git", "-C", str(root), "add", "-A"], check=True)
+    subprocess.run(["git", "-C", str(root), "-c", "user.name=t", "-c",
+                    "user.email=t@example.com", "commit", "-q", "-m", "init"], check=True)
+
+
+def _add_worktree(root: Path, path: Path) -> Path:
+    subprocess.run(["git", "-C", str(root), "worktree", "add", str(path)], check=True)
+    return path
+
+
+def test_local_dict_path_worktree_falls_back_to_main(tmp_path):
+    root = _git_repo(tmp_path / "main")
+    (root / ".gitignore").write_text(".claude/\n", encoding="utf-8")
+    _write_local(root, [MAIN_ONLY])  # gitignored: a linked worktree never checks it out
+    _git_commit(root)
+    wt = _add_worktree(root, tmp_path / "wt")
+    assert local_dict_path(wt / "doc.qmd") == \
+        root / ".claude" / "scientific-writing" / "dictionary.json"
+
+
+def test_worktree_lint_sees_main_checkout_overlay(tmp_path, capsys):
+    root = _git_repo(tmp_path / "main")
+    (root / ".gitignore").write_text(".claude/\n", encoding="utf-8")
+    _write_local(root, [MAIN_ONLY])
+    _git_commit(root)
+    wt = _add_worktree(root, tmp_path / "wt")
+    q = _qmd(wt, "упомянута мейнметка в тексте\n")
+    main([str(q), "--json"])
+    assert "local-main-only" in capsys.readouterr().out
+
+
+def test_worktree_prefers_own_tracked_overlay(tmp_path, capsys):
+    root = _git_repo(tmp_path / "main")
+    _write_local(root, [WT_OWN])
+    _git_commit(root)  # tracked overlay -> checked out into the linked worktree
+    wt = _add_worktree(root, tmp_path / "wt")
+    _write_local(root, [MAIN_ONLY])  # main's copy diverges; the worktree keeps its own
+    q = _qmd(wt, "веткаметка и мейнметка в одном тексте\n")
+    main([str(q), "--json"])
+    ids = {f["id"] for f in json.loads(capsys.readouterr().out)}
+    assert "local-wt" in ids and "local-main-only" not in ids
 
 
 def test_local_rule_fires(tmp_path, capsys):
