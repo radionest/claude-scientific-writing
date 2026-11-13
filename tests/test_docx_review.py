@@ -166,6 +166,17 @@ def test_password_protected_docx_reports_instead_of_crashing(tmp_path, monkeypat
     assert "паролем" in capsys.readouterr().err
 
 
+def test_ole_container_gets_resave_hint_instead_of_not_a_zip(tmp_path, capsys):
+    """A legacy .doc and a password-encrypted DOCX both open with the OLE magic; the
+    "not a zip" message sends the user in the wrong direction — they must resave."""
+    p = tmp_path / "legacy.doc"
+    p.write_bytes(b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + b"payload")
+    with pytest.raises(DocxError, match="пересохраните"):
+        extract(p)
+    assert main([str(p)]) == 2
+    assert "пересохраните" in capsys.readouterr().err
+
+
 def test_unsupported_compression_is_not_a_password(tmp_path, monkeypatch, capsys):
     """NotImplementedError is a RuntimeError subclass: zipfile raises it for an entry with
     an unsupported compress_type — that must not be diagnosed as password protection."""

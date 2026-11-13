@@ -26,6 +26,7 @@ from lib.morph import Morph
 
 _W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 _CONTEXT = 140
+_OLE_MAGIC = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"  # legacy .doc / encrypted DOCX container
 
 
 @dataclass
@@ -78,6 +79,10 @@ def _parse_xml(data: bytes) -> ET.Element:
 
 
 def extract(path: Path, context: int = _CONTEXT) -> list[ReviewItem]:
+    with path.open("rb") as fh:
+        if fh.read(len(_OLE_MAGIC)) == _OLE_MAGIC:
+            raise DocxError(f"{path}: устаревший .doc или зашифрованный DOCX (OLE-контейнер) — "
+                            "пересохраните как .docx без пароля")
     try:
         with zipfile.ZipFile(path) as z:
             return _extract(z, context)
