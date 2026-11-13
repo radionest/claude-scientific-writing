@@ -5,7 +5,7 @@ from dataclasses import dataclass, asdict
 from difflib import SequenceMatcher
 from pathlib import Path
 
-from lib.lint_prose import ConfigError, Finding, effective_entries, lint_source
+from lib.lint_prose import ConfigError, Finding, _degraded_note, effective_entries, lint_source
 from lib.morph import Morph
 from lib.qmd_prose import extract_prose
 
@@ -97,9 +97,14 @@ def main(argv: list[str] | None = None) -> int:
     except ConfigError as e:
         print(f"tune_diff: ошибка локального словаря {e}", file=sys.stderr)
         return 3
-    pristine_src = Path(args.pristine).read_text(encoding="utf-8")
-    edited_src = Path(args.edited).read_text(encoding="utf-8")
-    hunks = diff_prose(pristine_src, edited_src, entries, checks)
+    try:
+        pristine_src = Path(args.pristine).read_text(encoding="utf-8")
+        edited_src = Path(args.edited).read_text(encoding="utf-8")
+    except OSError as e:
+        print(f"tune_diff: {e}", file=sys.stderr)
+        return 2
+    morph = Morph.load()
+    hunks = diff_prose(pristine_src, edited_src, entries, checks, morph)
     if args.json:
         print(json.dumps([asdict(h) for h in hunks], ensure_ascii=False, indent=2))
     else:
@@ -107,6 +112,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"[{h.triage}] L{h.line} rule={h.rule_hit} before_dirty={h.before_dirty}")
             print(f"  - {h.before}")
             print(f"  + {h.after}")
+    if not morph.available:
+        # stderr, so the stdout contract (hunks) stays parseable, as in lint_prose.main.
+        print(_degraded_note(checks), file=sys.stderr)
     return 0
 
 
