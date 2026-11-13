@@ -190,6 +190,10 @@ now point here) + memories `feedback_ru_report_phrasing`,
 | Morphology | optional (`pip install -e '.[morph]'`); `--no-morph` forces the degraded path that the hook's system `python3` normally takes |
 | Project-local overlay | `<git-root>/.claude/scientific-writing/dictionary.json` merged onto the base by `id` (add / **field-wise** override / `disabled`); an override restates only what it changes, so `{"id": "ortho-spelling", "allow": [...]}` is a complete entry. `--no-local` ignores it, `--local-dictionary <path>` forces a file |
 
+**A linked worktree does not check out a gitignored overlay.** With `.claude/` gitignored, the overlay
+exists only in the main checkout, so `local_dict_path` (`lib/lint_prose.py:311`) falls back to that copy;
+a tracked overlay in the worktree itself wins over the main checkout's (`tests/test_local_dict.py:207-237`).
+
 **The hook scans the diff, not the whole file.** Pre-existing calque debt must not block every PR; only
 **newly introduced** error-severity findings gate. `/text-review` may scan whole-file on demand.
 
