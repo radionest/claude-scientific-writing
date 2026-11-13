@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from lib.lint_prose import lint_source, load_check_entries, load_entries
+from lib.lint_prose import _LAYERS, lint_source, load_check_entries, load_entries
 from lib.morph import Morph
 from lib.qmd_prose import extract_prose
 
@@ -28,7 +28,7 @@ def test_entries_wellformed_and_unique():
     ids = [e["id"] for e in entries]
     assert len(ids) == len(set(ids)), "duplicate ids"
     for e in entries:
-        assert e["layer"] in {"universal", "genre:report", "genre:article", "genre:educational", "doc"}
+        assert e["layer"] in _LAYERS
         assert e["severity"] in {"error", "warn", "info"}
         assert e["message"].strip()
         if e.get("kind") == "check":
