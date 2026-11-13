@@ -14,8 +14,11 @@ _DEFAULT_DICT = _CANON / "dictionary.json"
 _ORTHO_DICT = _CANON / "orthography.json"
 _LOCAL_RELPATH = Path(".claude") / "scientific-writing" / "dictionary.json"
 _GIT_ROOT_CACHE: dict[str, "Path | None"] = {}
+_MAIN_ROOT_CACHE: dict[str, "Path | None"] = {}
 _SEVERITIES = {"error", "warn", "info"}
 _KINDS = {"regex", "check"}
+# Same enum the base dictionaries are held to (tests/test_dictionary.py).
+_LAYERS = {"universal", "genre:report", "genre:article", "genre:educational", "doc"}
 
 
 class ConfigError(Exception):
@@ -96,7 +99,8 @@ def load_raw(path: Path, base_ids: frozenset[str] = frozenset()) -> list[dict]:
         if kind not in _KINDS:
             raise ConfigError(f"{path}: правило «{eid}» — недопустимый «kind» «{kind}»: "
                               f"ожидается {', '.join(sorted(_KINDS))}")
-        required = ("severity", "message") if kind == "check" else ("pattern", "severity", "message")
+        required = ("severity", "message", "layer") if kind == "check" \
+            else ("pattern", "severity", "message", "layer")
         if eid in base_ids:
             required = tuple(k for k in required if k in e)  # partial override inherits the rest
         missing = [k for k in required if not e.get(k)]
@@ -109,6 +113,10 @@ def load_raw(path: Path, base_ids: frozenset[str] = frozenset()) -> list[dict]:
             raise ConfigError(
                 f"{path}: правило «{eid}» — недопустимая severity «{e['severity']}»: "
                 f"ожидается {', '.join(sorted(_SEVERITIES))}")
+        if "layer" in e and e["layer"] not in _LAYERS:
+            raise ConfigError(
+                f"{path}: правило «{eid}» — недопустимый layer «{e['layer']}»: "
+                f"ожидается {', '.join(sorted(_LAYERS))}")
         exc = e.get("except")
         if exc is not None and not isinstance(exc, str):
             raise ConfigError(f"{path}: правило «{eid}» — «except» должно быть строкой")
@@ -282,9 +290,37 @@ def _git_root(start: Path) -> Path | None:
     return root
 
 
+def _git_main_root(root: Path) -> Path | None:
+    # `--git-common-dir` is `<toplevel>/.git` for a plain repo and `<main>/.git` from a
+    # linked worktree; anything else (bare, submodule gitfile) yields None — no fallback.
+    key = str(root)
+    if key in _MAIN_ROOT_CACHE:
+        return _MAIN_ROOT_CACHE[key]
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--path-format=absolute", "--git-common-dir"],
+            capture_output=True, text=True, check=False)
+        s = out.stdout.strip()
+        main = Path(s[:-len("/.git")]) if out.returncode == 0 and s.endswith("/.git") else None
+    except OSError:
+        main = None
+    _MAIN_ROOT_CACHE[key] = main
+    return main
+
+
 def local_dict_path(target: str | Path) -> Path | None:
     root = _git_root(Path(target).resolve().parent)
-    return root / _LOCAL_RELPATH if root else None
+    if root is None:
+        return None
+    own = root / _LOCAL_RELPATH
+    if own.exists():
+        return own  # the worktree's own copy wins over the main checkout's
+    main_root = _git_main_root(root)
+    if main_root is not None and main_root != root:
+        main = main_root / _LOCAL_RELPATH
+        if main.exists():
+            return main
+    return own
 
 
 def _resolve_local(target: str, forced: str | None, use_local: bool,
