@@ -18,6 +18,8 @@ allowed-tools: Bash, Read, Task
    - Без `--deep` и для короткого документа можно вместо ансамбля применить оба прозо-скилла главным
      агентом последовательно (`scientific-writing:writing-russian-academic-prose`,
      `scientific-writing:say-it-once-academic-prose`) — но по умолчанию используй ансамбль.
+     Прозо-скиллы не видят табличные чанки: при наличии рендера прогони
+     `python3 -m lib.render_lint <render.docx> --qmd "$1"` или `/render-review`.
 4. Синтез: собери находки всех измерений + линтера, дедуплицируй по (файл, строка, проблема), отранжируй
    blocker → warning → nit. Выведи единый отчёт.
 5. Подсказка: правки вноси в стадии fix скилла `scientific-writing:writing-scientific-documents`

@@ -34,7 +34,7 @@ description: Use when writing or substantially revising a Russian scientific-med
      (без `--diff` — весь файл; `severity`: error/warn/info);
    - ансамбль (для сколько-нибудь длинного документа): 5 параллельных субагентов (delegate_task) — по одному на измерение
      `calques` / `repeats` / `terminology` / `structure` / `render`; каждому передай путь к файлу, `<doc>.spec.md`, жанровый профиль и находки линтера;
-     для короткого документа — примени оба прозо-скилла (`writing-russian-academic-prose`, `say-it-once-academic-prose`) последовательно сам;
+     для короткого документа — примени оба прозо-скилла (`writing-russian-academic-prose`, `say-it-once-academic-prose`) последовательно сам; прозо-скиллы не видят табличные чанки — при наличии рендера прогони `lib.render_lint` (python3 -m, с `--qmd`);
    - синтез: дедуп по (файл, строка, проблема), ранжир blocker → warning → nit.
 
 4. **Fix.** Правки с суждением: однозначные замены сразу; тире/«полностью» — по нюансу скилла; легитимные случаи помечай
