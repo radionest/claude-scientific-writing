@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse, json, sys, xml.parsers.expat, zipfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Iterable, Iterator
 from xml.etree import ElementTree as ET
 
 from lib.docx_review import DocxError, _OLE_MAGIC, _parse_xml
@@ -40,6 +41,16 @@ class TextUnit:
 
 def _para_text(p: ET.Element) -> str:
     return "".join(t.text or "" for t in p.iter(_W + "t"))
+
+
+def _iter_body_content(parent: Iterable[ET.Element]) -> Iterator[ET.Element]:
+    """Direct w:p/w:tbl children, descending into container elements —
+    Word-authored .docx wrap content in w:sdt content controls."""
+    for el in parent:
+        if el.tag in (_W + "p", _W + "tbl"):
+            yield el
+        else:
+            yield from _iter_body_content(el)
 
 
 def extract_units(path: Path) -> list[TextUnit]:
@@ -71,7 +82,7 @@ def extract_units(path: Path) -> list[TextUnit]:
     n = 0        # document-wide paragraph ordinal
     tbl_no = 0
     body = root.find(_W + "body")
-    for el in body if body is not None else ():
+    for el in _iter_body_content(body if body is not None else ()):
         if el.tag == _W + "p":
             n += 1
             units.append(TextUnit(n, "body", "", _para_text(el)))

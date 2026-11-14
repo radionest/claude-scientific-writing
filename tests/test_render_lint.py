@@ -52,6 +52,26 @@ def test_regex_rule_fires_inside_table_cell(tmp_path):
     assert hits[0]["severity"] == "error"
 
 
+def test_extracts_units_inside_sdt_container(tmp_path):
+    """Word-authored .docx wrap paragraphs/tables in w:sdt content controls (TOC
+    field results etc.) — the body walk must descend into containers or those
+    units are silently skipped."""
+    body = ("<w:sdt><w:sdtPr/><w:sdtContent>"
+            + _p("Абзац внутри контейнера.")
+            + _tbl(("Признак", "референсный стандарт"))
+            + "</w:sdtContent></w:sdt>")
+    p = _docx(tmp_path, body)
+    units = extract_units(p)
+    assert [(u.kind, u.text) for u in units] == [
+        ("body", "Абзац внутри контейнера."),
+        ("cell", "Признак"), ("cell", "референсный стандарт"),
+    ]
+    assert units[2].ref == "tbl1 r1 c2"
+    hits = lint_render(p, ENTRIES)
+    assert hits[0]["id"] == "calque-referens"
+    assert hits[0]["unit"] == "tbl1 r1 c2"
+
+
 def test_qmd_hint_points_into_the_generating_chunk(tmp_path):
     qmd = tmp_path / "doc.qmd"
     qmd.write_text("Проза чистая.\n```{python}\n"
