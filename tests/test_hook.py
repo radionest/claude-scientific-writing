@@ -5,12 +5,12 @@ ROOT = Path(__file__).resolve().parents[1]
 HOOK = ROOT / "hooks" / "text-lint.sh"
 
 
-def test_plugin_manifest_omits_pinning_fields():
-    # both must stay absent: "version" pins the plugin (breaks SHA-per-commit versioning),
-    # "hooks" duplicates the auto-read hooks/hooks.json and errors the plugin in /plugin
+def test_plugin_manifest_omits_hooks_field():
+    # "hooks" must stay absent: it duplicates the auto-read hooks/hooks.json and errors
+    # the plugin in /plugin. "version" is kept and bumped manually per release.
     manifest = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
-    assert "version" not in manifest
     assert "hooks" not in manifest
+    assert manifest.get("version")
 
 
 def _git(cwd, *args):

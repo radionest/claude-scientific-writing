@@ -1,5 +1,6 @@
 {
   "name": "scientific-writing",
+  "version": "0.2.0",
   "description": "Staged Russian scientific-medical writing (spec → write → review → fix) with a deterministic prose linter.",
   "author": {"name": "radionest"},
   "license": "MIT",

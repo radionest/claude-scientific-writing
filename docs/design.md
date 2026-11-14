@@ -44,7 +44,7 @@ repeats).
 ```
 scientific-writing/                      # own git repo (see "Where it lives")
   .claude-plugin/
-    plugin.json                          # manifest (no version/hooks fields — see CLAUDE.md)
+    plugin.json                          # manifest (no hooks field; version bumped manually — see AGENTS.md)
     marketplace.json                     # local marketplace entry (install via /plugin marketplace add)
   canon/
     canon.md                             # human-readable universal canon (prose discipline + term policy)
