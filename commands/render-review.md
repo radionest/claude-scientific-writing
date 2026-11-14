@@ -12,6 +12,16 @@ allowed-tools: Bash, Read, Task
    `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.render_lint "$1" --qmd "$2" --json`.
    Находки: `unit` — якорь в docx (`tbl2 r1 c3` / порядковый номер абзаца), `qmd` — строка
    исходника (генерирующий чанк). Прочитай `severity`: error/warn/info.
+
+Exit-коды линтера (`lib.render_lint`):
+
+| Exit | Значение |
+|---|---|
+| 0 | чисто или только warn-находки |
+| 1 | error-находки (совещательный сигнал) |
+| 2 | .docx не читается (не zip, повреждён, OLE-контейнер, пароль) |
+| 3 | конфиг: битый оверлей проекта или исходник `--qmd` не в UTF-8 |
+
 3. Параллельно (в ОДНОМ сообщении) субагент `prose-reviewer` с измерением `render`: передай
    путь к `source.qmd`, `<doc>.spec.md`, жанровый профиль (`canon/profiles/<жанр>.md`).
 4. Синтез: дедуп по (док-якорь, проблема), ранжир blocker → warning → nit, единый отчёт.
