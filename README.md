@@ -3,6 +3,14 @@
 Claude Code plugin: staged Russian scientific-medical writing (spec → write → review → fix)
 with a deterministic prose linter. See `docs/design.md`.
 
+## Render lint
+
+`lib/lint_prose.py` never sees table text or captions — they are generated inside fenced
+chunks and exist as prose only in the rendered .docx. `lib/render_lint.py` runs the canon's
+regex rules (plus the project overlay when `--qmd` is given) over that render (paragraphs +
+table cells) and points each finding back at the generating chunk (`--qmd`); the advisory
+`/render-review` command pairs it with a subagent review of the chunks themselves.
+
 ## Project-local dictionary
 
 The linter's universal rules live in `canon/dictionary.json` (lexical calques) and
