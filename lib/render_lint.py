@@ -100,8 +100,10 @@ def _qmd_lines(qmd: Path) -> list[tuple[str, bool]]:
 
 def _hint(lines: list[tuple[str, bool]], matched: str) -> str:
     """`L12` / `L12 (chunk)` / "". Exact substring first; else the literal prefix
-    before the first `{` (rendered values come from f-string placeholders), >= 4 chars."""
-    probes = [matched, matched.split("{", 1)[0].rstrip(" —–-:;,")]
+    before the first `{` with the rendered numeric value stripped (digits,
+    percent, brackets, dot, comma) — dash/colon separators stay as the anchor,
+    >= 4 chars."""
+    probes = [matched, matched.split("{", 1)[0].rstrip(" 0123456789%().,")]
     for probe in probes:
         if len(probe) < 4:
             continue

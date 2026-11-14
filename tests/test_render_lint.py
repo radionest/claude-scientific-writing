@@ -60,6 +60,21 @@ def test_qmd_hint_points_into_the_generating_chunk(tmp_path):
     assert f["qmd"] == "L3 (chunk)"  # prefix "референсный" before the {placeholder}
 
 
+def test_qmd_hint_fallback_survives_rendered_values(tmp_path):
+    """Rendered values never appear verbatim in the source: the fallback probe
+    strips the numeric tail but keeps the dash, so the comment distractor
+    (bare «не указан», no dash) cannot anchor the hint."""
+    qmd = tmp_path / "doc.qmd"
+    qmd.write_text("Проза чистая.\n```{python}\n"
+                   "# пропуски помечаются «не указан»\n"
+                   "add(\"\", f\"не указан — {n_pct(x)}\")\n"
+                   "```\n", encoding="utf-8")
+    p = _docx(tmp_path, _tbl(("Пол", "не указан — 0 (0%)")))
+    f = [h for h in lint_render(p, ENTRIES, qmd)
+         if h["id"] == "render-zero-missing-row"][0]
+    assert f["qmd"] == "L4 (chunk)"
+
+
 def test_clean_docx_yields_no_findings(tmp_path):
     p = _docx(tmp_path, _p("Эталонный стандарт применяли всем пациентам.")
               + _tbl(("Пол", "мужской — 6 (55 %)")))  # NB: space before % — punct-percent-spacing
