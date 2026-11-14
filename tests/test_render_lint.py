@@ -97,3 +97,12 @@ def test_password_protected_docx_reports_instead_of_crashing(tmp_path, monkeypat
     monkeypatch.setattr(zipfile.ZipFile, "read", refuse)
     assert main([str(p)]) == 2
     assert "паролем" in capsys.readouterr().err
+
+
+def test_zero_missing_row_flagged_outcome_zero_not(tmp_path):
+    p = _docx(tmp_path, _tbl(("Пол", "не указан — 0 (0%)"),
+                             ("Осложнения", "0 (0%)"),
+                             ("Статус печени", "не указан — 10 (91%)")))
+    hits = [f["id"] for f in lint_render(p, ENTRIES)]
+    assert hits.count("render-zero-missing-row") == 1
+    assert main([str(p), "--json"]) == 0  # warn-severity: advisory, not an error exit
