@@ -1,4 +1,5 @@
 import json
+import subprocess
 import zipfile
 
 import pytest
@@ -121,3 +122,22 @@ def test_zero_missing_row_flagged_outcome_zero_not(tmp_path):
     hits = [f["id"] for f in lint_render(p, ENTRIES)]
     assert hits.count("render-zero-missing-row") == 1
     assert main([str(p), "--json"]) == 0  # warn-severity: advisory, not an error exit
+
+
+def test_malformed_overlay_config_error_exit_3(tmp_path, capsys):
+    """With --qmd, entries come from the qmd project's overlay: a malformed one must map
+    to the documented config contract — exit 3 with `config: <file>: <reason>` on stderr
+    (the exit-3 row of text-review's lint table) — not to a traceback or a lint run.
+    The .docx is a real file but is never opened: ConfigError fires before extraction."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    overlay_dir = repo / ".claude" / "scientific-writing"
+    overlay_dir.mkdir(parents=True)
+    (overlay_dir / "dictionary.json").write_text("{", encoding="utf-8")
+    qmd = repo / "doc.qmd"
+    qmd.write_text("любой текст\n", encoding="utf-8")
+    docx = _docx(tmp_path, _p("Чистый текст."))
+    assert main([str(docx), "--qmd", str(qmd)]) == 3
+    err = capsys.readouterr().err
+    assert err.startswith("config:") and "dictionary.json" in err
