@@ -11,7 +11,7 @@ the only place that text exists as prose.
 Regex entries only (check-kind rules see sentences/documents — wrong shape for
 table fragments). `--qmd` attaches a `qmd` hint to each finding by searching the
 source for the matched text: rendered values come from f-string placeholders, so an
-exact miss falls back to the literal prefix before the first `{`. Advisory by
+exact miss falls back to the matched text with the rendered value stripped. Advisory by
 design: exit 1 on error-severity findings, but no hook gates on it.
 
 Regex application duplicates `lint_text`'s inner loop instead of reusing it:
@@ -27,6 +27,7 @@ from xml.etree import ElementTree as ET
 
 from lib.docx_review import DocxError, _OLE_MAGIC, _parse_xml
 from lib.lint_prose import ConfigError, Finding, effective_entries, load_entries
+from lib.qmd_prose import _FENCE_RE
 
 _W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 
@@ -103,17 +104,16 @@ def _qmd_lines(qmd: Path) -> list[tuple[str, bool]]:
     appended too, so line numbering matches the file exactly."""
     out, in_fence = [], False
     for line in qmd.read_text(encoding="utf-8").splitlines():
-        if line.lstrip().startswith("```"):
+        if _FENCE_RE.match(line):
             in_fence = not in_fence
         out.append((line, in_fence))
     return out
 
 
 def _hint(lines: list[tuple[str, bool]], matched: str) -> str:
-    """`L12` / `L12 (chunk)` / "". Exact substring first; else the literal prefix
-    before the first `{` with the rendered numeric value stripped (digits,
-    percent, brackets, dot, comma) — dash/colon separators stay as the anchor,
-    >= 4 chars."""
+    """`L12` / `L12 (chunk)` / "". Exact substring first; else the matched text
+    with the rendered value stripped (digits, percent, brackets, dot, comma,
+    spaces) — dash/colon separators stay as the anchor, >= 4 chars."""
     probes = [matched, matched.split("{", 1)[0].rstrip(" 0123456789%().,")]
     for probe in probes:
         if len(probe) < 4:

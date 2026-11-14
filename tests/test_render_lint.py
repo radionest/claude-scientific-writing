@@ -96,6 +96,19 @@ def test_qmd_hint_fallback_survives_rendered_values(tmp_path):
     assert f["qmd"] == "L4 (chunk)"
 
 
+def test_tilde_fences_are_chunk_boundaries(tmp_path):
+    """Quarto accepts ~~~ fences: `_qmd_lines` toggling only on ``` marks the whole
+    file as prose, so a finding from a ~~~-fenced chunk loses its (chunk) marker."""
+    qmd = tmp_path / "doc.qmd"
+    qmd.write_text("Проза чистая.\n~~~{python}\n"
+                   "add(\"\", f\"не указан — {n_pct(x)}\")\n"
+                   "~~~\n", encoding="utf-8")
+    p = _docx(tmp_path, _tbl(("Пол", "не указан — 0 (0%)")))
+    f = [h for h in lint_render(p, ENTRIES, qmd)
+         if h["id"] == "render-zero-missing-row"][0]
+    assert f["qmd"] == "L3 (chunk)"
+
+
 def test_missing_docx_exits_2_with_friendly_message(tmp_path, capsys):
     """main() guards lint_render with only DocxError/UnicodeDecodeError: a missing
     .docx leaks a FileNotFoundError traceback and exit 1 — the exit table says 2."""
