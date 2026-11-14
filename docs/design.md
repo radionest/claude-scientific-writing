@@ -75,6 +75,7 @@ scientific-writing/                      # own git repo (see "Where it lives")
     checks/                              # kind:"check" implementations: hyphenation, spelling, punctuation, consistency
     tune_diff.py                         # pristine→edited prose diff + FN/FP triage
     docx_review.py                       # editor .docx review → the same triage shape
+    render_lint.py                       # rendered .docx lint — table text + captions (regex-only, advisory)
   docs/
     design.md                            # this file, carried over
 ```
@@ -126,6 +127,17 @@ document", which halves precision — hence the demotion to `warn`.
 times on a review where the editor asked for a comma twice, because the two legitimate uses
 (перечень рубрик, однородные ряды с запятыми внутри) are a judgment call.
 `skills/writing-russian-academic-prose` § «Точка с запятой» owns it.
+
+## Render lint (added 2026-11-14)
+
+Some defects materialize only in the render: table text and captions live in fenced chunks
+(`#| tbl-cap:` / `#| fig-cap:` options, f-strings) that `qmd_prose` skips, so `lint_prose`
+never sees them. `lib/render_lint.py` runs the canon's regex-kind rules over every paragraph
+and table cell of the rendered .docx — regex-only (check-kind rules expect sentences and
+whole documents, the wrong shape for cell fragments) and advisory: no hook gates on it.
+`--qmd` attaches a `qmd:L12 (chunk)` hint by locating the matched text in the generating
+chunk; `/render-review` pairs this lint with the `render` ensemble dimension of
+`prose-reviewer` (chunk-level judgment: unconditional missing-data rows, denominators).
 
 ## The dictionary — universal source of truth (`canon/dictionary.json`)
 
