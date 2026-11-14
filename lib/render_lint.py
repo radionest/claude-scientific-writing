@@ -163,6 +163,10 @@ def main(argv: list[str] | None = None) -> int:
     except DocxError as e:
         print(e, file=sys.stderr)
         return 2
+    except UnicodeDecodeError:
+        print(f"config: {args.qmd}: исходник не в UTF-8 — пересохраните файл в UTF-8",
+              file=sys.stderr)
+        return 3
     if args.json:
         print(json.dumps(findings, ensure_ascii=False))
     else:

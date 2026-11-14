@@ -161,3 +161,17 @@ def test_malformed_overlay_config_error_exit_3(tmp_path, capsys):
     assert main([str(docx), "--qmd", str(qmd)]) == 3
     err = capsys.readouterr().err
     assert err.startswith("config:") and "dictionary.json" in err
+
+
+def test_non_utf8_qmd_is_config_error_exit_3(tmp_path, capsys):
+    """lint_render reads the qmd as UTF-8 (`_qmd_lines`): a cp1251 source raises
+    UnicodeDecodeError inside lint_render — main() must map it to the config
+    contract (exit 3, `config:` prefix), not leak a traceback that lies about
+    the contract (1 = error-severity findings)."""
+    qmd = tmp_path / "doc.qmd"
+    qmd.write_bytes("Исходник в cp1251: референсный стандарт\n".encode("cp1251"))
+    p = _docx(tmp_path, _p("Чистый текст."))
+    assert main([str(p), "--qmd", str(qmd)]) == 3
+    err = capsys.readouterr().err
+    assert err.startswith("config:")
+    assert str(qmd) in err  # the message names the exact offending path
