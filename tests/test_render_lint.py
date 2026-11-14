@@ -96,6 +96,19 @@ def test_qmd_hint_fallback_survives_rendered_values(tmp_path):
     assert f["qmd"] == "L4 (chunk)"
 
 
+def test_missing_docx_exits_2_with_friendly_message(tmp_path, capsys):
+    """main() guards lint_render with only DocxError/UnicodeDecodeError: a missing
+    .docx leaks a FileNotFoundError traceback and exit 1 — the exit table says 2."""
+    assert main([str(tmp_path / "nope.docx")]) == 2
+    assert "вход не читается" in capsys.readouterr().err
+
+
+def test_missing_qmd_exits_2(tmp_path, capsys):
+    p = _docx(tmp_path, _p("Чистый текст."))
+    assert main([str(p), "--qmd", str(tmp_path / "nope.qmd")]) == 2
+    assert "вход не читается" in capsys.readouterr().err
+
+
 def test_clean_docx_yields_no_findings(tmp_path):
     p = _docx(tmp_path, _p("Эталонный стандарт применяли всем пациентам.")
               + _tbl(("Пол", "мужской — 6 (55 %)")))  # NB: space before % — punct-percent-spacing
