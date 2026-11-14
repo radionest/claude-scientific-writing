@@ -1,6 +1,9 @@
 import json
 import zipfile
 
+import pytest
+
+from lib.docx_review import DocxError
 from lib.lint_prose import load_entries
 from lib.render_lint import extract_units, lint_render, main
 
@@ -70,3 +73,27 @@ def test_json_flat_array_and_exit_codes(tmp_path, capsys):
     assert isinstance(out, list) and out[0]["id"] == "calque-referens"
     clean = _docx(tmp_path, _p("Чистый текст."), name="clean.docx")
     assert main([str(clean), "--json"]) == 0
+
+
+def test_malformed_xml_reports_instead_of_crashing(tmp_path):
+    """A valid zip with torn word/document.xml must raise DocxError, not leak an
+    unhandled ExpatError — the zip-level guards never see parser errors."""
+    p = tmp_path / "torn.docx"
+    with zipfile.ZipFile(p, "w") as z:
+        z.writestr("word/document.xml", f"<w:document {W}><w:body>")
+    with pytest.raises(DocxError, match="XML"):
+        extract_units(p)
+
+
+def test_password_protected_docx_reports_instead_of_crashing(tmp_path, monkeypatch, capsys):
+    """zipfile raises a bare RuntimeError when an entry is encrypted; it must reach
+    the CLI's friendly message + exit 2, not a traceback."""
+    p = _docx(tmp_path, _p("Чистый текст."))
+
+    def refuse(_self, _name):
+        raise RuntimeError("File word/document.xml is encrypted, "
+                           "password required for extraction")
+
+    monkeypatch.setattr(zipfile.ZipFile, "read", refuse)
+    assert main([str(p)]) == 2
+    assert "паролем" in capsys.readouterr().err

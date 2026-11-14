@@ -19,7 +19,7 @@ Regex application duplicates `lint_text`'s inner loop instead of reusing it:
 fences) would drop the very lines this module exists to lint.
 """
 from __future__ import annotations
-import argparse, json, sys, zipfile
+import argparse, json, sys, xml.parsers.expat, zipfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -59,9 +59,13 @@ def extract_units(path: Path) -> list[TextUnit]:
         raise DocxError(f"{path}: не .docx (не zip-архив)") from e
     except KeyError as e:
         raise DocxError(f"{path}: в архиве нет части {e} — файл повреждён или это не .docx") from e
+    except xml.parsers.expat.ExpatError as e:
+        raise DocxError(f"{path}: повреждённый XML внутри .docx — {e}") from e
     except NotImplementedError as e:
         # zipfile raises it on unsupported compression, not on a password
         raise DocxError(f"{path}: неподдерживаемый метод сжатия внутри архива — {e}") from e
+    except RuntimeError as e:
+        raise DocxError(f"{path}: файл защищён паролем — расшифруйте его и повторите") from e
 
     units: list[TextUnit] = []
     n = 0        # document-wide paragraph ordinal
