@@ -13,7 +13,7 @@ allowed-tools: Bash, Read, Task
    - только изменённое (по умолчанию, без `--whole-file`): `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose "$1" --json --diff`
    Прочитай находки (поле `severity`: error/warn/info).
 3. Запусти параллельно (в ОДНОМ сообщении) субагентов `prose-reviewer`, по одному на измерение:
-   `calques`, `repeats`, `terminology`, `structure`. Передай каждому путь к файлу, спецификацию (`<doc>.spec.md`),
+   `calques`, `repeats`, `terminology`, `structure`, `render`. Передай каждому путь к файлу, спецификацию (`<doc>.spec.md`),
    жанровый профиль (`canon/profiles/<жанр>.md`) и (для фокуса) находки линтера.
    - Без `--deep` и для короткого документа можно вместо ансамбля применить оба прозо-скилла главным
      агентом последовательно (`scientific-writing:writing-russian-academic-prose`,

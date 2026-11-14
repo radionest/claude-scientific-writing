@@ -11,6 +11,7 @@ description: Use when writing or substantially revising a Russian scientific-med
 - `ROOT = /home/nest/Projects/claude-scientific-writing` (переопределяется env `SCIENTIFIC_WRITING_ROOT`)
 - Линтер: `PYTHONPATH=$ROOT $ROOT/.venv/bin/python -m lib.lint_prose <file.qmd> [--json] [--diff [REF]]`
   (venv содержит морфологию; системный python3 даёт ослабленный режим)
+- Рендер-линт: PYTHONPATH=$ROOT $ROOT/.venv/bin/python -m lib.render_lint <render.docx> --qmd <doc.qmd> [--json] (текст таблиц/подписей, существующий только в рендере)
 - Канон: `$ROOT/canon/dictionary.json`, `$ROOT/canon/orthography.json`, жанровые профили `$ROOT/canon/profiles/{report,article,educational}.md`
 - Сопутствующие скиллы (те же external_dirs): `writing-russian-academic-prose` (уровень фразы), `say-it-once-academic-prose` (структура/повторы), `tuning-rules` (вывод правил из правок).
 
@@ -31,8 +32,8 @@ description: Use when writing or substantially revising a Russian scientific-med
 3. **Review.** Прогони изменённую прозу:
    - линтер: `PYTHONPATH=$ROOT $ROOT/.venv/bin/python -m lib.lint_prose <file.qmd> --json --diff`
      (без `--diff` — весь файл; `severity`: error/warn/info);
-   - ансамбль (для сколько-нибудь длинного документа): 4 параллельных субагента (delegate_task) — по одному на измерение
-     `calques` / `repeats` / `terminology` / `structure`; каждому передай путь к файлу, `<doc>.spec.md`, жанровый профиль и находки линтера;
+   - ансамбль (для сколько-нибудь длинного документа): 5 параллельных субагентов (delegate_task) — по одному на измерение
+     `calques` / `repeats` / `terminology` / `structure` / `render`; каждому передай путь к файлу, `<doc>.spec.md`, жанровый профиль и находки линтера;
      для короткого документа — примени оба прозо-скилла (`writing-russian-academic-prose`, `say-it-once-academic-prose`) последовательно сам;
    - синтез: дедуп по (файл, строка, проблема), ранжир blocker → warning → nit.
 
