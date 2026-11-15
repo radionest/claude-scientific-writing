@@ -13,7 +13,7 @@ description: Use when writing or substantially revising a Russian scientific-med
   (venv содержит морфологию; системный python3 даёт ослабленный режим)
 - Рендер-линт: PYTHONPATH=$ROOT $ROOT/.venv/bin/python -m lib.render_lint <render.docx> --qmd <doc.qmd> [--json] (текст таблиц/подписей, существующий только в рендере)
 - Канон: `$ROOT/canon/dictionary.json`, `$ROOT/canon/orthography.json`, жанровые профили `$ROOT/canon/profiles/{report,article,educational}.md`
-- Сопутствующие скиллы (те же external_dirs): `writing-russian-academic-prose` (уровень фразы), `say-it-once-academic-prose` (структура/повторы), `tuning-rules` (вывод правил из правок).
+- Сопутствующие скиллы (те же external_dirs): `writing-russian-academic-prose` (уровень фразы), `say-it-once-academic-prose` (структура/повторы), `writing-discussion` (аргументация раздела «Обсуждение»), `tuning-rules` (вывод правил из правок).
 
 ## Стадии
 
@@ -28,13 +28,14 @@ description: Use when writing or substantially revising a Russian scientific-med
 
 2. **Write.** Пиши по спецификации и жанровому профилю; каждое количественное утверждение — с цитированием; не вводи кальку из словаря.
    Фразовый уровень — по скиллу `writing-russian-academic-prose`.
+   Раздел «Обсуждение» — по скиллу `writing-discussion` (пять ходов, цикл «находка → сопоставление → значение», антипаттерны).
 
 3. **Review.** Прогони изменённую прозу:
    - линтер: `PYTHONPATH=$ROOT $ROOT/.venv/bin/python -m lib.lint_prose <file.qmd> --json --diff`
      (без `--diff` — весь файл; `severity`: error/warn/info);
-   - ансамбль (для сколько-нибудь длинного документа): 5 параллельных субагентов (delegate_task) — по одному на измерение
-     `calques` / `repeats` / `terminology` / `structure` / `render`; каждому передай путь к файлу, `<doc>.spec.md`, жанровый профиль и находки линтера;
-     для короткого документа — примени оба прозо-скилла (`writing-russian-academic-prose`, `say-it-once-academic-prose`) последовательно сам; прозо-скиллы не видят табличные чанки — при наличии рендера прогони `lib.render_lint` (python3 -m, с `--qmd`);
+   - ансамбль (для сколько-нибудь длинного документа): 6 параллельных субагентов (delegate_task) — по одному на измерение
+     `calques` / `repeats` / `terminology` / `structure` / `render` / `discussion` (последний — только при наличии раздела «Обсуждение»); каждому передай путь к файлу, `<doc>.spec.md`, жанровый профиль и находки линтера;
+     для короткого документа — примени прозо-скиллы (`writing-russian-academic-prose`, `say-it-once-academic-prose`; при наличии «Обсуждения» — также `writing-discussion`) последовательно сам; прозо-скиллы не видят табличные чанки — при наличии рендера прогони `lib.render_lint` (python3 -m, с `--qmd`);
    - синтез: дедуп по (файл, строка, проблема), ранжир blocker → warning → nit.
 
 4. **Fix.** Правки с суждением: однозначные замены сразу; тире/«полностью» — по нюансу скилла; легитимные случаи помечай

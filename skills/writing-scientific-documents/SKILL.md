@@ -19,8 +19,10 @@ repeats are caught before a PR, not in a later cleanup commit.
    and create a spec there only if the book has none.
 2. **Write.** Dispatch the `scientific-writer` agent (or write per the spec yourself). Obey the genre
    profile's style; every quantitative claim cited; never introduce a dictionary calque.
+   - **REQUIRED SUB-SKILL:** For the «Обсуждение» section, use scientific-writing:writing-discussion
+     (moves × topics, the findings → comparison → meaning cycle, anti-patterns).
 3. **Review.** Run `/scientific-writing:text-review` on the changed prose: the deterministic linter + the
-   ensemble (calques / repeats / structure / terminology).
+   ensemble (calques / repeats / structure / terminology / render / discussion).
    - **REQUIRED SUB-SKILL:** Use scientific-writing:writing-russian-academic-prose for phrase-level findings.
    - **REQUIRED SUB-SKILL:** Use scientific-writing:say-it-once-academic-prose for cross-section repeats (multi-section docs).
 4. **Fix.** Apply findings *with judgment* — unambiguous swaps directly; тире/«полностью» per the skill's

@@ -233,6 +233,9 @@ make canon-clean → `<!-- TODO ред: … -->`. Supersedes the generic `quarto
    - **repeats-termdrift** — applies `say-it-once-academic-prose` (cross-section, whole-doc context).
    - **structure-genre** — checks doc vs genre profile template + spec outline (missing/extra/misordered
      sections; slide-size for educational).
+   - **discussion** — applies `writing-discussion` to the «Обсуждение» section (section-level
+     argumentation: five moves, the findings → comparison → meaning cycle, anti-patterns);
+     dispatched only when the document has an «Обсуждение» section.
    - **terminology** — term consistency vs the spec's canonical-term list + abbreviation policy.
 3. **Synthesis** pass dedups/merges + ranks → one report (blockers / warnings / nits), mirroring
    `pr-diff-reviewer`'s structure. Advisory — does not block.

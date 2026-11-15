@@ -34,7 +34,8 @@ allowed-tools: Bash, Read, Edit, Write, AskUserQuestion
    в отчёте шага 5; правила под документные классы (`doc-*`) в этом случае не предлагай — их покрытие
    доказывается именно NB-проверкой.
 3. **Примени скилл `scientific-writing:tuning-rules`.** По нему классифицируй каждый фрагмент, маршрутизируй
-   по слою и напиши правку. Контекст для классификации: `canon/dictionary.json` + `canon/orthography.json`, оба прозо-скилла,
+   по слою и напиши правку. Контекст для классификации: `canon/dictionary.json` + `canon/orthography.json`,
+   прозо-скиллы (`writing-russian-academic-prose`, `say-it-once-academic-prose`),
    `canon/profiles/<жанр>.md` (жанр — из файла-спутника или спрошенный на шаге 1; на пути `--from-docx`
    сайдкара не бывает → спроси жанр здесь, report/article/educational) и `<doc>.spec.md` если есть.
 4. Самопроверка словарных правил по скиллу `tuning-rules` (раздел «Самопроверка словаря»), для каждой записи ДО

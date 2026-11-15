@@ -1,5 +1,5 @@
 ---
-description: Совещательное ревью прозы .qmd — линтер + ансамбль субагентов (кальки/повторы/структура/термины/рендер)
+description: Совещательное ревью прозы .qmd — линтер + ансамбль субагентов (кальки/повторы/структура/термины/рендер/обсуждение)
 argument-hint: <file.qmd> [--whole-file] [--deep]
 allowed-tools: Bash, Read, Task
 ---
@@ -13,11 +13,13 @@ allowed-tools: Bash, Read, Task
    - только изменённое (по умолчанию, без `--whole-file`): `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose "$1" --json --diff`
    Прочитай находки (поле `severity`: error/warn/info).
 3. Запусти параллельно (в ОДНОМ сообщении) субагентов `prose-reviewer`, по одному на измерение:
-   `calques`, `repeats`, `terminology`, `structure`, `render`. Передай каждому путь к файлу, спецификацию (`<doc>.spec.md`),
+   `calques`, `repeats`, `terminology`, `structure`, `render` — всегда; `discussion` — только если
+   в документе есть раздел «Обсуждение». Передай каждому путь к файлу, спецификацию (`<doc>.spec.md`),
    жанровый профиль (`canon/profiles/<жанр>.md`) и (для фокуса) находки линтера.
-   - Без `--deep` и для короткого документа можно вместо ансамбля применить оба прозо-скилла главным
+   - Без `--deep` и для короткого документа можно вместо ансамбля применить прозо-скиллы главным
      агентом последовательно (`scientific-writing:writing-russian-academic-prose`,
-     `scientific-writing:say-it-once-academic-prose`) — но по умолчанию используй ансамбль.
+     `scientific-writing:say-it-once-academic-prose`; при наличии раздела «Обсуждение» —
+     также `scientific-writing:writing-discussion`) — но по умолчанию используй ансамбль.
      Прозо-скиллы не видят табличные чанки: при наличии рендера прогони
      `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.render_lint <render.docx> --qmd "$1"` или `/render-review`.
 4. Синтез: собери находки всех измерений + линтера, дедуплицируй по (файл, строка, проблема), отранжируй
