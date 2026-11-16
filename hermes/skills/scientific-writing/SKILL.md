@@ -1,9 +1,15 @@
 ---
 name: scientific-writing
-description: Use when writing or substantially revising a Russian scientific-medical document (research report, journal article, educational article, review/*.qmd, главы Quarto-книг (review/*/chapters/*.qmd), отчёт, методичка) in any clarinet downstream project — when starting a new document or section, drafting from a spec, or preparing prose for a PR/editor. Routes through spec → write → review → fix with the deterministic calque linter (canon: dictionary.json + orthography.json + genre profiles). Hermes-native bridge over the claude-scientific-writing plugin repo.
+description: Use for Russian scientific prose and plugin planning.
 ---
 
 # Scientific Writing (Hermes bridge)
+
+## When to Use
+
+- Пишешь или существенно правишь русский научно-медицинский документ в downstream-проекте.
+- Исследуешь внешние writing-скиллы или планируешь развитие самого плагина.
+- Не используй для нерусской прозы и задач без научно-редакционного компонента.
 
 Русская научная проза пишется как **spec → write → review → fix**, никогда не «с листа».
 Источник истины — репо плагина `claude-scientific-writing` (одно место, обновляется `git pull`):
@@ -46,6 +52,11 @@ description: Use when writing or substantially revising a Russian scientific-med
 - Проза без spec → сначала шаг 1.
 - «Почищу кальки потом» → именно этот churn система и убивает: фикс на стадии fix.
 - Правки редактора из docx применяются дословно → это тоже редактирование: прогони review/fix.
+
+## Развитие плагина по внешним скиллам
+При исследовании чужих writing-скиллов и планировании улучшений плагина используй
+`references/external-skill-research.md`: сначала карта текущих возможностей и открытых дефектов,
+затем первичные `SKILL.md`/references, затем адаптация механизмов и проверяемый план.
 
 ## Гейт коммитов
 Хук `text_lint_gate.py` (pre_tool_call, зарегистрирован в downstream-профилях) блокирует `git commit` / `gh pr create`,
