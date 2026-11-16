@@ -109,10 +109,11 @@ def test_good_stays_silent(rid):
 
 
 def test_lint_good_document_profile():
-    """Good corpus: zero errors; the warn/info inventory is frozen — a new warning on
-    good text is a false positive to account for, not noise."""
+    """Good corpus: zero errors (pinned by `max_errors`); the warn/info inventory is
+    frozen — a new warning on good text is a false positive to account for, not noise."""
     profile = _doc_profile("lint-good.qmd")
-    assert not [k for k in profile if k[1] == "error"], "хороший корпус не даёт error"
+    errors = sum(n for (_, sev), n in profile.items() if sev == "error")
+    assert errors == DOCS["lint-good.qmd"].get("max_errors", 0), "хороший corpus не даёт error"
     assert profile == _expected_profile("lint-good.qmd")
 
 

@@ -128,6 +128,34 @@ times on a review where the editor asked for a comma twice, because the two legi
 (перечень рубрик, однородные ряды с запятыми внутри) are a judgment call.
 `skills/writing-russian-academic-prose` § «Точка с запятой» owns it.
 
+## Eval manifest and corpora (added 2026-11-16)
+
+Above the fixture oracle (`tests/fixtures/*.qmd`: a finding must appear on each defective
+line) sits the eval layer, `tests/eval/`:
+
+- `lint-manifest.json` — every canon rule registered with its pinned severity and a
+  rationale; bad/good stay in canon (single source), the manifest pins id/severity and
+  freezes the finding profiles of the two corpus documents. A canon change that shifts a
+  severity or any profile fails `tests/test_lint_manifest.py` until the manifest is
+  consciously updated — baseline drift cannot pass silently. Without the morph extra the
+  profile comparison filters rules that go silent (`needs_morph`) or demote
+  (`severity_without_morph`).
+- `lint-good.qmd` — legitimate passive voice, dashes, semicolons, номинализация,
+  причастные/деепричастные обороты, содержательные антитезы и триады, term repetition,
+  hedges, a null result: zero errors, the only findings being `ortho-spelling` infos on
+  real medical vocabulary. A new warning on this text is a false positive to account
+  for, not noise.
+- `lint-bad.qmd` — all 58 rules fire; the commit hook skips it like `tests/fixtures/`
+  (intentional oracle), while `lint-good.qmd` stays gated.
+- `rewrite-cases.json` — meaning-damage minimal pairs (lost negation/quantifier/
+  comparator, modality shifts, denominator change, dropped citation key, altered inline
+  code, plus clean controls) that the linter provably does not see: catching them is the
+  semantic reviewer's job, not the regex layer's. Gold set for the future revision
+  fidelity work.
+- `/eval-prose` runs the deterministic baseline and the behavioral rewrite eval (hidden
+  rubric, fresh subagents, gitignored JSON reports, A/B against a previous report);
+  behavioral runs stay out of blocking CI.
+
 ## Render lint (added 2026-11-14)
 
 Some defects materialize only in the render: table text and captions live in fenced chunks
