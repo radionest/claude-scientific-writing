@@ -63,7 +63,9 @@ col, matched, detail)`; запись в `canon/orthography.json` с `kind: "chec
 - Финальный фильтр генеральности — подтверждение/отклонение пользователя. Сомнения трактуй как «показать, не применять».
 
 ## Как писать запись словаря
-Схема: `{id, layer, pattern, except?, severity, message, bad?, good?, note?, skill}`.
+Схема: `{id, layer, pattern, except?, severity, message, bad, good, note?, skill}`.
+Пара `bad`/`good` обязательна: `bad` ловится именно этим правилом, `good` его не триггерит
+(проверяет `test_good_examples_do_not_trip_their_own_rule`; записи без пары тест отклоняет).
 - `id` — kebab-case, осмысленный (`calque-…`, `parasite-…`, `vulgar-…`, `jargon-…`, `style-…`).
 - `pattern` — Python `re`, применяется к извлечённой прозе с флагами `IGNORECASE|UNICODE` (их ставит линтер —
   **не** дублируй inline-флаги). Границы `\b`; морфология через `\w*`. Узкий контекст, не жадные `.*`.
@@ -90,12 +92,18 @@ col, matched, detail)`; запись в `canon/orthography.json` с `kind: "chec
 
 **Ослабление правила (FP — правило переусердствовало):** фразу в `calques.qmd` **не** добавлять (это не калька —
 добавление сломает `test_every_fixture_phrase_is_flagged`).
-1. `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose <edited.qmd> --json` → у этого `id` на оставленном
+1. `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose <edited.qmd> --json` → у этого `id` на оставшемся
    тексте больше нет находки с `severity: error` (`except`/сужение убирают находку совсем; `severity↓ error→warn`
    оставляет её как `warn` — это и есть цель: блокирующая ошибка снята). NB: `--json` печатает находки **всех**
    severity — фильтруй по полю `severity`, а не по наличию `id`.
 2. `(cd "${CLAUDE_PLUGIN_ROOT}" && .venv/bin/pytest tests/test_dictionary.py tests/test_lint_prose.py)` → должно
    пройти (ослабление не сломало выявление истинных калек в `calques.qmd`; схема валидна).
+
+**Регистрация в eval-манифесте (любой класс правки канона):** запись попадает в
+`${CLAUDE_PLUGIN_ROOT}/tests/eval/lint-manifest.json` — `rules` (`id`, `severity`, обоснование) и, если
+сдвинулся профиль находок документов `tests/eval/lint-bad.qmd` / `lint-good.qmd`, — раздел `documents`.
+Затем `(cd "${CLAUDE_PLUGIN_ROOT}" && .venv/bin/pytest tests/test_lint_manifest.py -q)` → зелёный: манифест
+пиннингует severity и полные профили находок, дрейф без записи здесь невозможен.
 
 Любой шаг провалился → запись **не применять**: уточнить паттерн/`except` или перевести в предложение для скилла.
 

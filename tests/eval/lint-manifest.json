@@ -1,0 +1,601 @@
+{
+  "comment": "Eval-контур PR-1: каждая запись канона зарегистрирована с обоснованием; профили находок документов заморожены прогоном с морфологией (без неё тест фильтрует правила needs_morph / severity_without_morph). Новое правило = запись здесь + bad/good в каноне + зелёный tests/test_lint_manifest.py.",
+  "rules": [
+    {
+      "id": "calque-referens",
+      "severity": "error",
+      "rationale": "англицизм «референс» вместо терминологической нормы «эталон сравнения»"
+    },
+    {
+      "id": "calque-harakterizacia",
+      "severity": "error",
+      "rationale": "отглагольная калька characterization; по-русски — определение/распознавание природы"
+    },
+    {
+      "id": "calque-targetnyj",
+      "severity": "error",
+      "rationale": "калька targeted; норма — «прицельный», «таргетная терапия» — устоявшийся онкотермин (except)"
+    },
+    {
+      "id": "calque-po-postroeniyu",
+      "severity": "error",
+      "rationale": "калька by construction из математических текстов"
+    },
+    {
+      "id": "calque-polnostyu-detect",
+      "severity": "error",
+      "rationale": "полнота охвата выражается квантором («выявить все»), а не наречием «полностью»"
+    },
+    {
+      "id": "vulgar-gistologia-procedure",
+      "severity": "error",
+      "rationale": "усечение «гистологическое исследование» до «гистология» — разговорный жаргон"
+    },
+    {
+      "id": "vulgar-procedure-reversed",
+      "severity": "error",
+      "rationale": "то же усечение процедуры в обратном порядке слов"
+    },
+    {
+      "id": "calque-otnesti-k-kategorii",
+      "severity": "warn",
+      "rationale": "калька classify: «отнести к категории» вместо «расценить как»"
+    },
+    {
+      "id": "parasite-yavlyaetsya",
+      "severity": "warn",
+      "rationale": "связка «является» — канцелярит, почти всегда устранима без потери смысла"
+    },
+    {
+      "id": "calque-dannyj",
+      "severity": "warn",
+      "rationale": "«данный» в роли «этот» — канцелярская калька; существительное «данные» законно"
+    },
+    {
+      "id": "agent-instrument-detect",
+      "severity": "warn",
+      "rationale": "инструмент-деятель («КТ выявила») приписывает методу действие наблюдателя"
+    },
+    {
+      "id": "jargon-kogorta",
+      "severity": "warn",
+      "rationale": "«когорта» вне эпидемиологического контекста — жаргон; норма — «выборка»"
+    },
+    {
+      "id": "calque-vizualizacia",
+      "severity": "warn",
+      "rationale": "«визуализация» в значении «видно» — калька; норма — «на изображениях»"
+    },
+    {
+      "id": "calque-varjiruet",
+      "severity": "warn",
+      "rationale": "«варьирует в широких пределах» прячет величину разброса за неопределённостью"
+    },
+    {
+      "id": "parasite-osushchestvlyaetsya",
+      "severity": "warn",
+      "rationale": "расщеплённое сказуемое «осуществлять контроль» → «контролировать»"
+    },
+    {
+      "id": "parasite-nosit-harakter",
+      "severity": "warn",
+      "rationale": "расщеплённое сказуемое «носит … характер» → прямое определение"
+    },
+    {
+      "id": "parasite-pri-etom",
+      "severity": "warn",
+      "rationale": "слово-паразит канцелярита, чаще устранимо без потери смысла"
+    },
+    {
+      "id": "parasite-tem-samym",
+      "severity": "warn",
+      "rationale": "слово-паразит канцелярита, чаще устранимо без потери смысла"
+    },
+    {
+      "id": "parasite-v-znachitelnoj-mere",
+      "severity": "warn",
+      "rationale": "канцелярит неопределённой степени → «во многом», «сильно» или убрать"
+    },
+    {
+      "id": "parasite-v-celyah",
+      "severity": "warn",
+      "rationale": "канцелярская цель «в целях» → «для», «чтобы»"
+    },
+    {
+      "id": "parasite-v-chasti",
+      "severity": "warn",
+      "rationale": "канцелярит «в части» в значении «у части/в отношении»"
+    },
+    {
+      "id": "parasite-na-predmet",
+      "severity": "warn",
+      "rationale": "канцелярит «на предмет» → «чтобы», «для выявления»"
+    },
+    {
+      "id": "parasite-v-plane",
+      "severity": "warn",
+      "rationale": "канцелярит «в плане» → «в отношении», «по»"
+    },
+    {
+      "id": "vulgar-split-predicate",
+      "severity": "warn",
+      "rationale": "расщеплённое сказуемое (выполнять сегментацию → сегментировать)"
+    },
+    {
+      "id": "style-patient-surgery-subject",
+      "severity": "warn",
+      "rationale": "пациент-подлежащее при операции; норма медицинских протоколов — процедура в пассиве"
+    },
+    {
+      "id": "vulgar-obrabotali-na-python",
+      "severity": "warn",
+      "rationale": "разговорное описание обработки данных вместо точной формулировки средств"
+    },
+    {
+      "id": "vulgar-gistologia-noun",
+      "severity": "warn",
+      "rationale": "усечение процедуры в именной группе («вместо гистологии»)"
+    },
+    {
+      "id": "term-dooperacionnyj",
+      "severity": "warn",
+      "rationale": "терминологическая норма — «предоперационный»"
+    },
+    {
+      "id": "term-zlokachestvennoe-zabolevanie",
+      "severity": "warn",
+      "rationale": "злокачественной бывает опухоль; заболевание — онкологическое"
+    },
+    {
+      "id": "agent-zabolevanie-metastaziruet",
+      "severity": "warn",
+      "rationale": "метастазирует опухоль, а не заболевание — подлежащее должно быть носителем процесса"
+    },
+    {
+      "id": "term-kraevoe-usilenie",
+      "severity": "warn",
+      "rationale": "рентгенологическая норма — «контрастное усиление по краю очага»"
+    },
+    {
+      "id": "term-uvidennyj",
+      "severity": "warn",
+      "rationale": "разговорное «увиденный»; очаг «выявлен»/«обнаружен»"
+    },
+    {
+      "id": "term-sopostavit-s-literaturoj",
+      "severity": "warn",
+      "rationale": "сопоставляют с литературными данными, а не «с литературой»"
+    },
+    {
+      "id": "term-metody-issledovaniya",
+      "severity": "info",
+      "rationale": "размытое «методы исследования» без конкретизации (info — подсказка, не запрет)"
+    },
+    {
+      "id": "vulgar-predstavleny-dvoetochie",
+      "severity": "warn",
+      "rationale": "усечённая конструкция перечисления после «представлены:»"
+    },
+    {
+      "id": "term-kredibilny-interval",
+      "severity": "error",
+      "rationale": "транслитерация credible interval; норма — «байесовский доверительный интервал»"
+    },
+    {
+      "id": "term-koefficient-pravdopodobiya",
+      "severity": "error",
+      "rationale": "likelihood ratio — «отношение правдоподобия», не «коэффициент»"
+    },
+    {
+      "id": "term-bayes-factor",
+      "severity": "warn",
+      "rationale": "устоявшийся в русской медицинской литературе термин — «фактор Байеса»"
+    },
+    {
+      "id": "term-pechenochnye-metastazy",
+      "severity": "warn",
+      "rationale": "метастазы локализуются в органе — «метастазы в печени»"
+    },
+    {
+      "id": "render-zero-missing-row",
+      "severity": "warn",
+      "rationale": "строка «не указан — 0 (0%)» — шум нулевого счёта; пропуски сообщаются при n > 0"
+    },
+    {
+      "id": "ortho-hyphen-linebreak",
+      "severity": "error",
+      "rationale": "дефис от переноса строки — артефакт вставки из PDF/Word"
+    },
+    {
+      "id": "ortho-spelling",
+      "severity": "info",
+      "rationale": "слова нет в морфологическом словаре: опечатка или термин проекта (info; allow — в проектном словаре)"
+    },
+    {
+      "id": "punct-comma-deeprichastie",
+      "severity": "warn",
+      "rationale": "деепричастный оборот без запятой — частая ошибка набора"
+    },
+    {
+      "id": "punct-comma-prichastie",
+      "severity": "warn",
+      "rationale": "причастный оборот в постпозиции без запятой"
+    },
+    {
+      "id": "punct-comma-fronted-adverbial",
+      "severity": "warn",
+      "rationale": "лишняя запятая после обстоятельства в начале предложения — гиперкоррекция"
+    },
+    {
+      "id": "doc-abbrev-variants",
+      "severity": "warn",
+      "rationale": "единое написание аббревиатуры по всему документу"
+    },
+    {
+      "id": "doc-abbrev-first-use",
+      "severity": "warn",
+      "rationale": "аббревиатура раскрывается при первом употреблении (front matter — отдельный scope)"
+    },
+    {
+      "id": "doc-token-case",
+      "severity": "warn",
+      "rationale": "единый регистр смешанного токена (3D/3d, ИОУЗИ/ио-УЗИ)"
+    },
+    {
+      "id": "doc-repeat-window",
+      "severity": "warn",
+      "rationale": "повтор того же слова в окне 12 токенов — случайность, не термин"
+    },
+    {
+      "id": "term-na-modalnosti",
+      "severity": "warn",
+      "rationale": "предложная норма лучевой диагностики: «при КТ», «по данным КТ» — не «на КТ»"
+    },
+    {
+      "id": "punct-comma-kotoryj",
+      "severity": "warn",
+      "rationale": "запятая перед придаточным с «который»"
+    },
+    {
+      "id": "punct-comma-vvodnoe",
+      "severity": "warn",
+      "rationale": "вводное слово в начале предложения отделяется запятой (только бесспорно вводные)"
+    },
+    {
+      "id": "punct-comma-slozhnyj-soyuz",
+      "severity": "warn",
+      "rationale": "составной союз разделяется запятой: «в случае, если»"
+    },
+    {
+      "id": "style-takzhe-slitno",
+      "severity": "error",
+      "rationale": "союз «также» слитно; раздельное «так же» — только сравнение с «как»"
+    },
+    {
+      "id": "punct-dash-en-as-em",
+      "severity": "warn",
+      "rationale": "тире между словами — длинное; «–» — только диапазоны без пробелов"
+    },
+    {
+      "id": "punct-slash-enumeration",
+      "severity": "warn",
+      "rationale": "косая черта вместо союза/запятой в перечислении (кроме «сигнал/шум»)"
+    },
+    {
+      "id": "punct-percent-spacing",
+      "severity": "warn",
+      "rationale": "неразрывный пробел перед знаком % — типографская норма"
+    },
+    {
+      "id": "style-paired-conjunction",
+      "severity": "warn",
+      "rationale": "парный союз «как …, так и …» при однородных придаточных"
+    }
+  ],
+  "documents": {
+    "lint-good.qmd": {
+      "max_errors": 0,
+      "findings": [
+        {
+          "id": "ortho-spelling",
+          "severity": "info",
+          "count": 7
+        }
+      ]
+    },
+    "lint-bad.qmd": {
+      "findings": [
+        {
+          "id": "agent-instrument-detect",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "agent-zabolevanie-metastaziruet",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "calque-dannyj",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "calque-harakterizacia",
+          "severity": "error",
+          "count": 1
+        },
+        {
+          "id": "calque-otnesti-k-kategorii",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "calque-po-postroeniyu",
+          "severity": "error",
+          "count": 1
+        },
+        {
+          "id": "calque-polnostyu-detect",
+          "severity": "error",
+          "count": 2
+        },
+        {
+          "id": "calque-referens",
+          "severity": "error",
+          "count": 1
+        },
+        {
+          "id": "calque-targetnyj",
+          "severity": "error",
+          "count": 2
+        },
+        {
+          "id": "calque-varjiruet",
+          "severity": "warn",
+          "count": 2
+        },
+        {
+          "id": "calque-vizualizacia",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "doc-abbrev-first-use",
+          "severity": "warn",
+          "count": 2
+        },
+        {
+          "id": "doc-abbrev-variants",
+          "severity": "warn",
+          "count": 3
+        },
+        {
+          "id": "doc-repeat-window",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "doc-token-case",
+          "severity": "warn",
+          "count": 2
+        },
+        {
+          "id": "jargon-kogorta",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "ortho-hyphen-linebreak",
+          "severity": "error",
+          "count": 1
+        },
+        {
+          "id": "ortho-spelling",
+          "severity": "info",
+          "count": 11
+        },
+        {
+          "id": "parasite-na-predmet",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "parasite-nosit-harakter",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "parasite-osushchestvlyaetsya",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "parasite-pri-etom",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "parasite-tem-samym",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "parasite-v-celyah",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "parasite-v-chasti",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "parasite-v-plane",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "parasite-v-znachitelnoj-mere",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "parasite-yavlyaetsya",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "punct-comma-deeprichastie",
+          "severity": "warn",
+          "count": 2
+        },
+        {
+          "id": "punct-comma-fronted-adverbial",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "punct-comma-kotoryj",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "punct-comma-prichastie",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "punct-comma-slozhnyj-soyuz",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "punct-comma-vvodnoe",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "punct-dash-en-as-em",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "punct-percent-spacing",
+          "severity": "warn",
+          "count": 2
+        },
+        {
+          "id": "punct-slash-enumeration",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "render-zero-missing-row",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "style-paired-conjunction",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "style-patient-surgery-subject",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "style-takzhe-slitno",
+          "severity": "error",
+          "count": 1
+        },
+        {
+          "id": "term-bayes-factor",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "term-dooperacionnyj",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "term-koefficient-pravdopodobiya",
+          "severity": "error",
+          "count": 1
+        },
+        {
+          "id": "term-kraevoe-usilenie",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "term-kredibilny-interval",
+          "severity": "error",
+          "count": 1
+        },
+        {
+          "id": "term-metody-issledovaniya",
+          "severity": "info",
+          "count": 1
+        },
+        {
+          "id": "term-na-modalnosti",
+          "severity": "warn",
+          "count": 3
+        },
+        {
+          "id": "term-pechenochnye-metastazy",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "term-sopostavit-s-literaturoj",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "term-uvidennyj",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "term-zlokachestvennoe-zabolevanie",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "vulgar-gistologia-noun",
+          "severity": "warn",
+          "count": 2
+        },
+        {
+          "id": "vulgar-gistologia-procedure",
+          "severity": "error",
+          "count": 1
+        },
+        {
+          "id": "vulgar-obrabotali-na-python",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "vulgar-predstavleny-dvoetochie",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "vulgar-procedure-reversed",
+          "severity": "error",
+          "count": 1
+        },
+        {
+          "id": "vulgar-split-predicate",
+          "severity": "warn",
+          "count": 1
+        }
+      ]
+    }
+  }
+}
