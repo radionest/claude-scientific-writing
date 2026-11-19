@@ -40,7 +40,7 @@ description: Use for Russian scientific prose and plugin planning.
    - линтер: `PYTHONPATH=$ROOT $ROOT/.venv/bin/python -m lib.lint_prose <file.qmd> --json --diff`
      (без `--diff` — весь файл; `severity`: error/warn/info);
    - ансамбль (для сколько-нибудь длинного документа): 6 параллельных субагентов (delegate_task) — по одному на измерение
-     `calques` / `repeats` / `terminology` / `structure` / `render` / `discussion` (последний — только при наличии раздела «Обсуждение»); каждому передай путь к файлу, `<doc>.spec.md`, жанровый профиль и находки линтера;
+     `calques` / `repeats` / `terminology` / `structure` / `render` / `discussion` (последний — только при наличии раздела «Обсуждение») (evidence — при валидном claims-реестре полной статьи); каждому передай путь к файлу, `<doc>.spec.md`, жанровый профиль и находки линтера;
      для короткого документа — примени прозо-скиллы (`writing-russian-academic-prose`, `say-it-once-academic-prose`; при наличии «Обсуждения» — также `writing-discussion`) последовательно сам; прозо-скиллы не видят табличные чанки — при наличии рендера прогони `lib.render_lint` (python3 -m, с `--qmd`);
    - синтез: дедуп по (файл, строка, проблема), ранжир blocker → warning → nit.
 

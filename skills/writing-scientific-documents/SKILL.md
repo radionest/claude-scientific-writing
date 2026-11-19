@@ -22,7 +22,8 @@ repeats are caught before a PR, not in a later cleanup commit.
    - **REQUIRED SUB-SKILL:** For the «Обсуждение» section, use scientific-writing:writing-discussion
      (moves × topics, the findings → comparison → meaning cycle, anti-patterns).
 3. **Review.** Run `/scientific-writing:text-review` on the changed prose: the deterministic linter + the
-   ensemble (calques / repeats / structure / terminology / render / discussion).
+   ensemble (calques / repeats / structure / terminology / render / discussion)
+   (evidence — при валидном claims-реестре полной статьи).
    - **REQUIRED SUB-SKILL:** Use scientific-writing:writing-russian-academic-prose for phrase-level findings.
    - **REQUIRED SUB-SKILL:** Use scientific-writing:say-it-once-academic-prose for cross-section repeats (multi-section docs).
 4. **Fix.** Правь через `/scientific-writing:text-edit` (light/deep): protected
