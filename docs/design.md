@@ -82,6 +82,8 @@ scientific-writing/                      # own git repo (see "Where it lives")
     render_lint.py                       # rendered .docx lint — table text + captions (regex-only, advisory)
     protected_spans.py                   # raw-span extractor: the artifacts an edit must not damage
     revision_guard.py                    # before/after artifact diff for scoped edits (advisory CLI)
+    citation_audit.py                    # local citation audit
+    claim_registry.py                    # claims+numbers sidecar check
   docs/
     design.md                            # this file, carried over
 ```
