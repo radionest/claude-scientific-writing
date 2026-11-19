@@ -58,6 +58,22 @@ def test_load_raw_bad_regex(tmp_path):
         load_raw(p)
 
 
+def test_load_raw_bad_seed(tmp_path):
+    """`seed` is the marker the diff escalation and `--unseeded` key off; a typo must
+    raise, not silently drop the contract."""
+    p = _write(tmp_path, [{"id": "x", "layer": "doc", "pattern": "abc", "severity": "warn",
+                           "message": "m", "seed": "roam"}])
+    with pytest.raises(ConfigError):
+        load_raw(p)
+
+
+def test_load_raw_seed_allow_is_valid(tmp_path):
+    """A project may put the seeding contract on its own rule."""
+    p = _write(tmp_path, [{"id": "x", "layer": "doc", "pattern": "abc", "severity": "warn",
+                           "message": "m", "seed": "allow"}])
+    assert load_raw(p)[0]["seed"] == "allow"
+
+
 def test_load_raw_disabled_needs_only_id(tmp_path):
     p = _write(tmp_path, [{"id": "jargon-kogorta", "disabled": True}])
     entries = load_raw(p)

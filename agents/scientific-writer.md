@@ -25,6 +25,11 @@ color: green
   `canon/section-moves.md`; абзацы — по контракту «функция → claim → evidence → bridge» (скилл
   `scientific-writing:reader-first-academic-prose`).
 - **Никогда не вводи кальку из словаря.** Сверяйся со словарём перед сдачей.
+- **Засей термины документа перед сдачей** (не в режиме tuning-fixture — там нет проектного словаря):
+  `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose <doc>.qmd --unseeded` → по
+  `ortho-spelling` и `doc-abbrev-variants` должно остаться `{}`; непусто → заведи слова в `allow`
+  проектного словаря (`<git-root>/.claude/scientific-writing/dictionary.json`, см. `/init-doc-spec`,
+  шаг 6) или исправь опечатку.
 - Внешний материал, который нельзя привести в соответствие с каноном, помечай `<!-- TODO ред: … -->`.
 - НЕ удаляй комментарии; НЕ меняй структуру заголовков произвольно (по спецификации; в tuning-fixture — по профилю жанра).
 - **Префлайт полной статьи:** перед правкой стиля (language-only) прогони

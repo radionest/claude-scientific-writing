@@ -13,7 +13,10 @@ allowed-tools: Bash, Read, Task
 2. Линтер (файл идёт ПЕРВЫМ аргументом — у `--diff` опциональное значение, иначе путь будет принят за значение флага):
    - весь файл: `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose "$Q" --json`
    - только изменённое (по умолчанию, без `--whole-file`): `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose "$Q" --json --diff`
-   Прочитай находки (поле `severity`: error/warn/info).
+   Прочитай находки (поле `severity`: error/warn/info). В `--diff` находка правила засейки
+   (`seed: "allow"`: `ortho-spelling`, `doc-abbrev-variants`) на изменённой строке поднимается с info
+   до warn — её диспозиция не правка прозы, а засейка слова в `allow` проектного словаря
+   (`/init-doc-spec`, шаг 6) или исправление опечатки; счётчик по правилам: `... lib.lint_prose "$Q" --unseeded`.
 3. Запусти параллельно (в ОДНОМ сообщении) субагентов `prose-reviewer`, по одному на измерение:
    `calques`, `repeats`, `terminology`, `structure`, `render` — всегда; `genre` и `discussion` —
    только если в документе есть раздел «Обсуждение»; `argument` — для содержательных секций

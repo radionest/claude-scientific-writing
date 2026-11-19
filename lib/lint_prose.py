@@ -1,7 +1,8 @@
 """Deterministic calque linter for Quarto .qmd prose. Stdlib only."""
 from __future__ import annotations
 import argparse, json, re, subprocess, sys
-from dataclasses import dataclass, asdict
+from collections import Counter, defaultdict
+from dataclasses import dataclass, asdict, replace
 from pathlib import Path
 
 from lib import checks as check_registry
@@ -131,6 +132,10 @@ def load_raw(path: Path, base_ids: frozenset[str] = frozenset()) -> list[dict]:
             raise ConfigError(
                 f"{path}: правило «{eid}» — недопустимая severity_without_morph «{degraded}»: "
                 f"ожидается {', '.join(sorted(_SEVERITIES))}")
+        seed = e.get("seed")
+        if seed is not None and seed != "allow":
+            raise ConfigError(f"{path}: правило «{eid}» — недопустимый «seed» «{seed}»: "
+                              f"ожидается «allow»")
         freq = e.get("term_frequency")
         if freq is not None and (isinstance(freq, bool) or not isinstance(freq, int)):
             raise ConfigError(f"{path}: правило «{eid}» — «term_frequency» должно быть целым числом")
@@ -244,6 +249,12 @@ def lint_source(source: str, entries: list[dict], check_entries: list[dict],
     return lint_text(source, entries, file) + run_checks(doc, check_entries, morph)
 
 
+def _seeded_ids(entries: list[dict], check_entries: list[dict]) -> set[str]:
+    """Ids of rules carrying the seeding contract (`seed: "allow"`): a finding of such a
+    rule is an unseeded document term, and its disposition is an overlay `allow` edit."""
+    return {e["id"] for e in [*entries, *check_entries] if e.get("seed") == "allow"}
+
+
 def lint_file(path: str, entries: list[dict], changed: set[int] | None = None,
               check_entries: list[dict] | None = None,
               morph: Morph | None = None) -> list[Finding]:
@@ -251,6 +262,13 @@ def lint_file(path: str, entries: list[dict], changed: set[int] | None = None,
     fs = lint_source(src, entries, check_entries or [], morph or Morph(available=False), file=path)
     if changed is not None:
         fs = [f for f in fs if f.line in changed]
+        seeded = _seeded_ids(entries, check_entries or [])
+        # The diff gate: a term on a changed line was introduced by this edit, so an
+        # unseeded one stops being advisory — one step up to warn, where the self-lint
+        # loops and reviews must disposition it. Never error: seeding is a wordlist edit,
+        # not a prose defect.
+        fs = [f if f.id not in seeded or f.severity != "info"
+              else replace(f, severity="warn") for f in fs]
     return sorted(fs, key=lambda f: (f.line, f.col, f.id))
 
 
@@ -399,10 +417,22 @@ def _format_text(findings: list[Finding]) -> str:
     return "\n".join(rows)
 
 
+def _unseeded_counts(findings: list[Finding], seeded: set[str]) -> dict[str, dict[str, int]]:
+    """Per seeding rule: distinct unseeded words with occurrence counts — the report a
+    workflow must disposition (seed into the overlay's `allow`, or fix a typo)."""
+    counts: dict[str, Counter] = defaultdict(Counter)
+    for f in findings:
+        if f.id in seeded:
+            counts[f.id][f.matched.lower()] += 1
+    return {rid: dict(sorted(counts[rid].items())) for rid in sorted(counts)}
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Calque linter for .qmd prose")
     ap.add_argument("files", nargs="+")
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--unseeded", action="store_true",
+                    help="print unseeded-word counts per seeding rule (JSON) instead of findings")
     ap.add_argument("--diff", nargs="?", const="__staged__", default=None,
                     help="lint only changed lines; optional REF (default: staged)")
     ap.add_argument("--dictionary", default=None)
@@ -413,13 +443,17 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--no-morph", action="store_true",
                     help="ignore the optional morphology extra (checks skip or demote)")
     args = ap.parse_args(argv)
+    if args.json and args.unseeded:
+        ap.error("--json и --unseeded взаимоисключающи")
     morph = Morph(available=False) if args.no_morph else Morph.load()
     findings: list[Finding] = []
+    seeded: set[str] = set()
     try:
         for f in args.files:
             entries, check_entries = effective_entries(f, args.dictionary,
                                                        args.local_dictionary,
                                                        not args.no_local)
+            seeded |= _seeded_ids(entries, check_entries)
             changed = None
             if args.diff is not None:
                 ref = None if args.diff == "__staged__" else args.diff
@@ -428,7 +462,9 @@ def main(argv: list[str] | None = None) -> int:
     except ConfigError as e:
         print(f"lint_prose: ошибка локального словаря {e}", file=sys.stderr)
         return 3
-    if args.json:
+    if args.unseeded:
+        print(json.dumps(_unseeded_counts(findings, seeded), ensure_ascii=False, indent=2))
+    elif args.json:
         print(json.dumps([asdict(x) for x in findings], ensure_ascii=False, indent=2))
     else:
         print(_format_text(findings))
