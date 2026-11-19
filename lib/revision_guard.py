@@ -8,9 +8,10 @@ decision: restore, or allow with a stated reason.
 
 Numbers are compared as a multiset of normalized keys (sign included, ranges split
 into endpoints so «45–79» survives a rewrite as «от 45 до 79», Russian decimal comma,
-thousands separators dropped, a trailing «%» bound to its number): a rephrase must
-keep every value with its repetition count. Numbers inside protected spans (code,
-YAML, citations) are masked out first — the code/citation deltas own those.
+thousands separators dropped, a trailing «%» bound to the number — both endpoints of
+a range: «45–79 %» keys as «45%» and «79%»): a rephrase must keep every value with
+its repetition count. Numbers inside protected spans (code, YAML, citations) are
+masked out first — the code/citation deltas own those.
 """
 from __future__ import annotations
 import argparse
@@ -60,10 +61,12 @@ def _masked(source: str) -> str:
 def number_keys(source: str) -> Counter[str]:
     out: Counter[str] = Counter()
     for m in _NUM_RE.finditer(_masked(source)):
-        pct = bool(m.group("pct")) and m.group("right") is None
+        # «45–79 %»: % belongs to the whole range — attach it to both endpoints
+        # (conservative direction: no misses when one endpoint keeps its %)
+        pct = bool(m.group("pct"))
         out[_numkey(m.group("left"), pct)] += 1
         if m.group("right"):
-            out[_numkey(m.group("right"), bool(m.group("pct")))] += 1
+            out[_numkey(m.group("right"), pct)] += 1
     return out
 
 
