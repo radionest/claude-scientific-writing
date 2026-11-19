@@ -54,6 +54,7 @@ scientific-writing/                      # own git repo (see "Where it lives")
       report.md  article.md  educational.md   # per-genre section templates + style deltas
   skills/
     writing-scientific-documents/SKILL.md      # orchestrator-entry (spec→write→review→fix)
+      references/                              # rewrite-preservation
     writing-russian-academic-prose/SKILL.md    # phrase level: triggers/diagnosis/exceptions + routing
       references/                              # punctuation, nominalization, voice-and-agency, bayes-terminology, examples
     say-it-once-academic-prose/SKILL.md        # document level: repeats / information architecture
@@ -61,6 +62,7 @@ scientific-writing/                      # own git repo (see "Where it lives")
     tuning-rules/SKILL.md                      # rule-derivation discipline (see tune-draft/tune-learn)
   commands/
     init-doc-spec.md                     # scaffold a per-document spec from canon + genre (interactive)
+    text-edit.md                         # scoped .qmd edit: light/deep modes, protected inventory, revision_guard + fidelity check
     text-review.md                       # advisory ensemble orchestrator (linter + prose subagents)
     tune-draft.md  tune-learn.md         # rule-calibration loop (generate → hand-edit → derive rules)
   agents/
@@ -78,6 +80,8 @@ scientific-writing/                      # own git repo (see "Where it lives")
     tune_diff.py                         # pristine→edited prose diff + FN/FP triage
     docx_review.py                       # editor .docx review → the same triage shape
     render_lint.py                       # rendered .docx lint — table text + captions (regex-only, advisory)
+    protected_spans.py                   # raw-span extractor: the artifacts an edit must not damage
+    revision_guard.py                    # before/after artifact diff for scoped edits (advisory CLI)
   docs/
     design.md                            # this file, carried over
 ```

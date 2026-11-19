@@ -25,9 +25,13 @@ repeats are caught before a PR, not in a later cleanup commit.
    ensemble (calques / repeats / structure / terminology / render / discussion).
    - **REQUIRED SUB-SKILL:** Use scientific-writing:writing-russian-academic-prose for phrase-level findings.
    - **REQUIRED SUB-SKILL:** Use scientific-writing:say-it-once-academic-prose for cross-section repeats (multi-section docs).
-4. **Fix.** Apply findings *with judgment* — unambiguous swaps directly; тире/«полностью» per the skill's
-   nuance; legitimate cases get `<!-- lint-ok: id -->`. **Never bake a calque silently — fix or leave
-   `<!-- TODO ред: … -->`.** Re-run the linter until the diff is clean.
+4. **Fix.** Правь через `/scientific-writing:text-edit` (light/deep): protected
+   inventory до правки → минимальные правки → `lib.revision_guard` → fidelity-ревью
+   точного кандидата (контракт — `references/rewrite-preservation.md`). Находки
+   закрывай статусами (`fixed`, `declined-by-owner-decision` со ссылкой на spec,
+   `blocked`, `not-applicable`) — закрытое решением владельца повторно не поднимается.
+   **Never bake a calque silently — fix or leave `<!-- TODO ред: … -->`.** Re-run the
+   linter until the diff is clean.
 
 ## Red flags — STOP
 - Drafting prose with no spec → run `/scientific-writing:init-doc-spec` first.
