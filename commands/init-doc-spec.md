@@ -53,6 +53,9 @@ allowed-tools: Bash, Read, Write, AskUserQuestion
      `{"id": "doc-abbrev-variants", "allow": ["<аббревиатуры документа>"]}`.
    Линтер (хук `text-lint.sh` + `/text-review`) подхватит эти записи автоматически — правка плагинных `canon/dictionary.json` и `canon/orthography.json` не нужна.
    Правила без `pattern` (референт-дрейф, семантика) оставляй только в прозе спецификации — их применяет `prose-reviewer`.
+   - **проверь засейку:** `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose "<file>.qmd" --unseeded`
+     печатает счётчик незасеянных слов по правилам с контрактом засейки (`seed: "allow"`); по
+     `ortho-spelling` и `doc-abbrev-variants` должно остаться `{}`.
 6.5. **Защищённые формулировки → файл для guard.** Если раздел непуст — запиши его же
    построчно в `<doc>.frozen.txt` рядом со spec (одна формулировка = строка; передавай
    в `lib.revision_guard --frozen`). Машиночитаемых данных в нём нет — только строки.
