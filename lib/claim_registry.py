@@ -117,7 +117,7 @@ def load_numbers(path: Path) -> tuple[list[NumberRecord], list[RegistryFinding]]
                 f"record {i}: value/unit/source required, value numeric like '92'",
                 str(row.get("value", f"record:{i}"))))
             continue
-        used_in = row.get("used_in", ())
+        used_in = row.get("used_in", [])
         if not isinstance(used_in, list) or not all(isinstance(u, str) for u in used_in):
             findings.append(_schema(
                 f"record {i}: used_in must be a list of strings",

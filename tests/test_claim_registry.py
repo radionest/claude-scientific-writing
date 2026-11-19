@@ -108,3 +108,14 @@ def test_wrong_field_types_are_schema_findings(tmp_path):
     findings = check_document(doc, claims, numbers)
     assert len(findings) == 4
     assert {f.category for f in findings} == {"schema"}
+
+
+def test_minimal_record_without_used_in_loads(tmp_path):
+    """used_in is optional (NumberRecord defaults it): a minimal record must load
+    and cross-check, not trip the list-of-strings guard."""
+    doc = write(tmp_path, "doc.qmd", DOC_TEXT)
+    numbers = write(tmp_path, "doc.numbers.json", json.dumps({"records": [
+        {"value": "92", "unit": "%", "source": "tbl:survival"},
+        {"value": "78", "unit": "%", "source": "tbl:survival"}]}))
+    cats = {(f.category, f.ref) for f in check_document(doc, None, numbers)}
+    assert cats == {("unknown-number", "78%")}
