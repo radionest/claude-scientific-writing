@@ -53,9 +53,11 @@ scientific-writing/                      # own git repo (see "Where it lives")
     profiles/
       report.md  article.md  educational.md   # per-genre section templates + style deltas
   skills/
-    writing-scientific-documents/SKILL.md      # NEW orchestrator-entry (spec→write→review→fix)
-    writing-russian-academic-prose/SKILL.md    # MIGRATED from ~/.claude/skills (phrase level)
-    say-it-once-academic-prose/SKILL.md        # MIGRATED (document level)
+    writing-scientific-documents/SKILL.md      # orchestrator-entry (spec→write→review→fix)
+    writing-russian-academic-prose/SKILL.md    # phrase level: triggers/diagnosis/exceptions + routing
+      references/                              # punctuation, nominalization, voice-and-agency, bayes-terminology, examples
+    say-it-once-academic-prose/SKILL.md        # document level: repeats / information architecture
+      references/                              # repeat-types, information-placement, examples
     tuning-rules/SKILL.md                      # rule-derivation discipline (see tune-draft/tune-learn)
   commands/
     init-doc-spec.md                     # scaffold a per-document spec from canon + genre (interactive)
@@ -79,6 +81,12 @@ scientific-writing/                      # own git repo (see "Where it lives")
   docs/
     design.md                            # this file, carried over
 ```
+
+Progressive disclosure (2026-11-19): the two prose skills keep triggers, diagnosis,
+mandatory exceptions and the edit order in `SKILL.md`; tables with worked examples and
+special references live in `references/`, routed from the core, each piece of content
+in exactly one place. `tests/test_skill_layout.py` pins the shape. The canon stays the
+only machine-readable rule source — references carry judgment only.
 
 ## Check kinds and scopes (added 2026-08-03)
 
