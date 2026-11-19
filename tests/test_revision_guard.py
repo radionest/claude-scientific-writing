@@ -84,3 +84,28 @@ def test_cli_json_and_exit_codes(tmp_path):
     a.write_text("Было 87 %.\n", encoding="utf-8")
     assert main([str(b), str(a), "--json"]) == 1
     assert main([str(tmp_path / "missing.qmd"), str(a)]) == 2
+
+
+# --- gold pins (rewrite-cases.json, frozen by PR-1) ---
+
+CASES = json.loads(
+    (ROOT / "tests" / "eval" / "rewrite-cases.json").read_text(encoding="utf-8"))["cases"]
+ARTIFACT_DAMAGE = {"citation-key", "code-preserved"}
+
+
+def test_gold_set_sizes():
+    assert len(CASES) == 18
+
+
+def test_guard_on_rewrite_gold():
+    """The guard sees artifact damage, stays silent on clean rephrase AND on semantic
+    damage: a token diff neither certifies nor detects meaning. Semantic pairs are the
+    fidelity reviewer's job — pinning their silence here keeps that boundary honest."""
+    for case in CASES:
+        findings = compare(case["before"] + "\n", case["after"] + "\n")
+        if case["expect"] == "clean":
+            assert findings == [], (case["id"], findings)
+        elif case["dimension"] in ARTIFACT_DAMAGE:
+            assert findings, f"{case['id']}: artifact damage must be flagged"
+        else:
+            assert findings == [], (case["id"], findings)
