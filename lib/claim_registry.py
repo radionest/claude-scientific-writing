@@ -74,6 +74,18 @@ def load_claims(path: Path) -> tuple[list[Claim], list[RegistryFinding]]:
             findings.append(_schema(f"line {lineno}: missing {sorted(missing)}",
                                     str(row.get("claim_id", f"line:{lineno}"))))
             continue
+        if (not isinstance(row["claim_kind"], str)
+                or not isinstance(row["support_status"], str)):
+            findings.append(_schema(
+                f"line {lineno}: claim_kind/support_status must be strings",
+                str(row.get("claim_id", f"line:{lineno}"))))
+            continue
+        keys = row["citation_keys"]
+        if not isinstance(keys, list) or not all(isinstance(k, str) for k in keys):
+            findings.append(_schema(
+                f"line {lineno}: citation_keys must be a list of strings",
+                str(row.get("claim_id", f"line:{lineno}"))))
+            continue
         if row["claim_kind"] not in CLAIM_KINDS or row["support_status"] not in SUPPORT_STATUSES:
             findings.append(_schema(
                 f"line {lineno}: claim_kind/support_status out of enum", row["claim_id"]))
@@ -105,13 +117,19 @@ def load_numbers(path: Path) -> tuple[list[NumberRecord], list[RegistryFinding]]
                 f"record {i}: value/unit/source required, value numeric like '92'",
                 str(row.get("value", f"record:{i}"))))
             continue
+        used_in = row.get("used_in", ())
+        if not isinstance(used_in, list) or not all(isinstance(u, str) for u in used_in):
+            findings.append(_schema(
+                f"record {i}: used_in must be a list of strings",
+                str(row.get("value", f"record:{i}"))))
+            continue
         records.append(NumberRecord(
             value=str(row["value"]), unit=str(row.get("unit", "")),
             population=str(row.get("population", "")),
             analysis_set=str(row.get("analysis_set", "")),
             uncertainty=str(row.get("uncertainty", "")),
             source=str(row.get("source", "")),
-            used_in=tuple(row.get("used_in", ()))))
+            used_in=tuple(used_in)))
     return records, findings
 
 

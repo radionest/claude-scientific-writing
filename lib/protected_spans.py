@@ -38,9 +38,11 @@ _CITATION_RE = re.compile(r"\[-?@[^\]\n]+\]")
 _CROSSREF_RE = re.compile(r"@(?:tbl|fig|sec|eq)-[A-Za-z0-9_-]+")
 _INLINE_PYTHON_RE = re.compile(r"`\{[a-zA-Z0-9_]+\}[^`\n]*`")
 _INLINE_CODE_RE = re.compile(r"`[^`\n]+`")
-# \S+ kept sentence-final punctuation in url spans (a sentence dot, a closing paren
-# or autolink `>`) — a conservative false positive for the guard; the span now ends
-# at the last non-punctuation character.
+# \S+ kept sentence-final punctuation in url spans (sentence dot, closing paren,
+# autolink `>`) — a conservative false positive for the guard. The final-char class
+# ends the span at the last non-punctuation character; a parenthesized path segment
+# (…/Метод_(наука)) therefore loses only its closing paren from the span — symmetric
+# on both revision sides, so the guard comparison is unaffected.
 _URL_RE = re.compile(r"(?:https?://|doi\.org/)\S*[^\s.,;:!?)\]»\"'>]")
 _CITE_KEY_RE = re.compile(r"@([A-Za-z0-9_:+.-]+)")
 

@@ -64,20 +64,38 @@ def test_sibling_bib_fallback(tmp_path):
 def test_yaml_block_list_bibliography(tmp_path):
     qmd = tmp_path / "doc.qmd"
     bibs = [tmp_path / "a.bib", tmp_path / "b.bib"]
-    qmd.write_text("---\nbibliography:\n  - a.bib\n  - b.bib\n---\n\nТекст [@a] и [@b].\n",
-                   encoding="utf-8")
+    qmd.write_text(
+        "---\nbibliography:\n  # primary refs\n  - a.bib  # main\n  - b.bib\n"
+        "---\n\nТекст [@a] и [@b].\n", encoding="utf-8")
     for bib, key, title in zip(bibs, "ab", ("Первый", "Второй")):
         bib.write_text(f"@article{{{key},\n  title = {{{title}}}\n}}\n", encoding="utf-8")
     assert find_bibliography(qmd) == bibs
     assert audit(qmd) == []
 
 
+def test_missing_bib_does_not_abort_audit(tmp_path):
+    qmd = tmp_path / "doc.qmd"
+    qmd.write_text(
+        "---\nbibliography:\n  - gone.bib\n  - here.bib\n---\n\nТекст [@present] и [@x].\n",
+        encoding="utf-8")
+    (tmp_path / "here.bib").write_text(
+        "@article{present,\n  title = {Есть}\n}\n", encoding="utf-8")
+    findings = audit(qmd)
+    assert ("missing-bib-file", (str(tmp_path / "gone.bib"),)) in \
+        {(f.category, f.keys) for f in findings}
+    assert ("missing-key", ("x",)) in {(f.category, f.keys) for f in findings}
+    assert not any(f.category == "missing-key" and "present" in f.keys for f in findings)
+
+
 def test_missing_declared_bib_reports_missing_bib_file(tmp_path):
     qmd = tmp_path / "doc.qmd"
     qmd.write_text("---\nbibliography: gone.bib\n---\n\nТекст [@x].\n", encoding="utf-8")
     findings = audit(qmd)
-    assert [f.category for f in findings] == ["missing-bib-file"]
+    # the audit keeps going: missing-bib-file plus missing-key for the cited key
+    # (nothing parseable contradicts it)
+    assert [f.category for f in findings] == ["missing-bib-file", "missing-key"]
     assert findings[0].keys == (str(tmp_path / "gone.bib"),)
+    assert findings[1].keys == ("x",)
 
 
 def test_cli_exit_codes(tmp_path):

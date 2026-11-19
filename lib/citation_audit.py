@@ -68,11 +68,14 @@ def find_bibliography(qmd: Path) -> list[Path]:
         else:  # block list: `- name` lines until the first non-item line
             names = []
             for line in text[m.end():].splitlines():
+                stripped = line.strip()
+                if not stripped or stripped.startswith("#"):
+                    continue  # blank and comment lines don't end the block
                 item = _BLOCK_ITEM_RE.match(line)
                 if item:
-                    names.append(item.group(1).strip('"'))
-                elif line.strip():
-                    break  # a non-blank non-item line ends the block
+                    names.append(item.group(1).split(" #")[0].strip().strip('"'))
+                else:
+                    break  # a non-item line ends the block
         if names:
             return [qmd.parent / n for n in names if n]
     siblings = sorted(qmd.parent.glob("*.bib"))
@@ -86,12 +89,16 @@ def audit(qmd: Path, bibs: list[Path] | None = None) -> list[AuditFinding]:
         return [AuditFinding("no-bibliography", (),
                              "no YAML bibliography: and no single sibling .bib")]
     entries: list[BibEntry] = []
+    findings: list[AuditFinding] = []
     for p in bibs:
         if not p.is_file():
-            return [AuditFinding("missing-bib-file", (str(p),), f"missing file: {p}")]
+            # report and keep auditing the surviving files — an advisory tool
+            # reports what it can still state, it does not stop at the first gap
+            findings.append(AuditFinding("missing-bib-file", (str(p),), f"missing file: {p}"))
+            continue
         entries += parse_bib(p.read_text(encoding="utf-8"))
     known = {e.key for e in entries}
-    findings = [
+    findings += [
         AuditFinding("missing-key", (k,), "cited but absent in the bibliography")
         for k in sorted(set(cited) - known)]
     findings += [

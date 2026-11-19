@@ -92,3 +92,19 @@ def test_malformed_numbers_are_schema_findings(tmp_path):
         numbers = write(tmp_path, "doc.numbers.json", text)
         findings = check_document(doc, None, numbers)
         assert {f.category for f in findings} == {"schema"}, text
+
+
+def test_wrong_field_types_are_schema_findings(tmp_path):
+    doc = write(tmp_path, "doc.qmd", DOC_TEXT)
+    row = {"section": "R", "evidence": "x", "support_status": "supported"}
+    claims = write(tmp_path, "doc.claims.jsonl", "\n".join([
+        json.dumps(row | {"claim_id": "c1", "claim_kind": ["headline"], "citation_keys": []}),
+        json.dumps(row | {"claim_id": "c2", "claim_kind": "headline", "citation_keys": 5}),
+        json.dumps(row | {"claim_id": "c3", "claim_kind": "headline",
+                          "citation_keys": "ivanov2020"}),
+    ]) + "\n")
+    numbers = write(tmp_path, "doc.numbers.json", json.dumps({"records": [
+        {"value": "92", "unit": "%", "source": "s", "used_in": 5}]}))
+    findings = check_document(doc, claims, numbers)
+    assert len(findings) == 4
+    assert {f.category for f in findings} == {"schema"}
