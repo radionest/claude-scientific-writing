@@ -38,6 +38,21 @@ def test_warn_does_not_imply_error_exit(tmp_path):
     assert main([str(p)]) == 0
 
 
+def test_cohort_design_adjective_is_exempt():
+    # issue #23: «когортное исследование» — термин дизайна, не жаргон; (?!н) выводит
+    # прилагательное «когортн…» из-под правила
+    assert "jargon-kogorta" not in _ids("проведено проспективное когортное исследование\n")
+    assert "jargon-kogorta" not in _ids("в когортном анализе такие когортные эффекты редки\n")
+
+
+def test_cohort_noun_still_flagged():
+    # существительное «когорта/когорты» флагуется по-прежнему — но warn с контекстной оговоркой;
+    # «когорт» без суффикса (род.п. мн.) — тоже матч: lookahead при пустом хвосте проходит
+    assert "jargon-kogorta" in _ids("пациенты когорты прошли обследование\n")
+    assert "jargon-kogorta" in _ids("в когорте пациентов с ХОБЛ\n")
+    assert "jargon-kogorta" in _ids("сравнили три когорт по исходам\n")
+
+
 def test_error_finding_sets_exit_1(tmp_path):
     from lib.lint_prose import main
     p = tmp_path / "x.qmd"
