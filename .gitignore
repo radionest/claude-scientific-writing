@@ -14,3 +14,6 @@ docs/superpowers/
 
 # Python packaging metadata from `pip install -e .`
 *.egg-info/
+
+# Behavioral eval reports (/eval-prose) — local A/B history, not part of the oracle
+tests/eval/reports/

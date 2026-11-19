@@ -70,13 +70,14 @@ def test_every_fixture_phrase_is_flagged(fixture):
 
 
 def test_good_examples_do_not_trip_their_own_rule():
-    """Every entry carrying bad/good must flag the bad and leave the good alone —
-    the false-positive gate the tune-rules design mandates."""
+    """Every entry must carry bad/good, flag the bad and leave the good alone —
+    the false-positive gate the tune-rules design mandates. bad/good are mandatory:
+    a rule without a verifiable pair cannot be registered in the eval manifest
+    (tests/eval/lint-manifest.json) either."""
     from lib import checks as check_registry
     entries, checks_ = load_entries(None), load_check_entries()
     for e in _load():
-        if not (e.get("bad") and e.get("good")):
-            continue
+        assert e.get("bad") and e.get("good"), f"{e['id']}: нет пары bad/good"
         bad = {f.id for f in lint_source(e["bad"] + "\n", entries, checks_, MORPH)}
         good = {f.id for f in lint_source(e["good"] + "\n", entries, checks_, MORPH)}
         # Only a check that goes silent without the extra may skip the «bad» gate. The
