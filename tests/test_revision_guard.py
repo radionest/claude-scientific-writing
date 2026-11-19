@@ -37,6 +37,28 @@ def test_percent_is_bound_to_the_number():
     assert GuardFinding("number", "changed", "92%", "92%", "92") in f
 
 
+def test_four_digit_year_change_is_reported():
+    f = compare("Исследование проведено в 2020 году.\n",
+                "Исследование проведено в 2021 году.\n")
+    assert GuardFinding("number", "changed", "2020", "2020", "2021") in f
+
+
+def test_period_endpoints_both_reported():
+    f = compare("Наблюдение 2020–2024 гг.\n", "Наблюдение 2021–2025 гг.\n")
+    assert ("number", "changed", "2020") in flat(f)
+    assert ("number", "changed", "2024") in flat(f)
+
+
+def test_year_typography_equivalence_passes():
+    f = compare("Год публикации: 2020.\n", "Год публикации: 2 020.\n")
+    assert f == []
+
+
+def test_thousands_separator_equivalence_passes():
+    f = compare("Объём выборки 10 000 записей.\n", "Объём выборки 10000 записей.\n")
+    assert f == []
+
+
 def test_russian_decimal_comma_and_sign():
     assert number_keys("p = 0,031; сдвиг −5 мм.\n") == Counter({"0.031": 1, "-5": 1})
 

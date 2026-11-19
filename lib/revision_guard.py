@@ -28,8 +28,8 @@ _PAIR_SIMILARITY = 0.5  # below this, removed+added stay separate findings
 
 _NUM_RE = re.compile(
     r"(?<![\w.,])"
-    r"(?P<left>[-+\u2212]?\d{1,3}(?:[ \u00A0\u202F]\d{3})*(?:[.,]\d+)?)"
-    r"(?:\s*[\u2013\u2014\u2212-]\s*(?P<right>\d{1,3}(?:[ \u00A0\u202F]\d{3})*(?:[.,]\d+)?))?"
+    r"(?P<left>[-+\u2212]?\d{1,3}(?:[ \u00A0\u202F]\d{3})*\d*(?:[.,]\d+)?)"
+    r"(?:\s*[\u2013\u2014\u2212-]\s*(?P<right>\d{1,3}(?:[ \u00A0\u202F]\d{3})*\d*(?:[.,]\d+)?))?"
     r"(?P<pct>\s*%)?")
 
 
