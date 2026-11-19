@@ -38,7 +38,10 @@ _CITATION_RE = re.compile(r"\[-?@[^\]\n]+\]")
 _CROSSREF_RE = re.compile(r"@(?:tbl|fig|sec|eq)-[A-Za-z0-9_-]+")
 _INLINE_PYTHON_RE = re.compile(r"`\{[a-zA-Z0-9_]+\}[^`\n]*`")
 _INLINE_CODE_RE = re.compile(r"`[^`\n]+`")
-_URL_RE = re.compile(r"(?:https?://|doi\.org/)\S+")
+# \S+ kept sentence-final punctuation in url spans (a sentence dot, a closing paren
+# or autolink `>`) — a conservative false positive for the guard; the span now ends
+# at the last non-punctuation character.
+_URL_RE = re.compile(r"(?:https?://|doi\.org/)\S*[^\s.,;:!?)\]»\"'>]")
 _CITE_KEY_RE = re.compile(r"@([A-Za-z0-9_:+.-]+)")
 
 _PATTERNS: tuple[tuple[str, re.Pattern], ...] = tuple(

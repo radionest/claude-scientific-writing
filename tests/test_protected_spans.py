@@ -53,6 +53,13 @@ def test_crossrefs_and_urls_extracted():
     assert any(s.text.startswith("https://example.org/") for s in spans_of("url"))
 
 
+def test_url_span_stops_before_trailing_punctuation():
+    src = "См. https://example.org/x. Также <https://example.org/y> и (doi.org/10.1/z).\n"
+    urls = [s.text for s in extract_spans(src) if s.category == "url"]
+    assert urls == ["https://example.org/x", "https://example.org/y",
+                    "doi.org/10.1/z"]
+
+
 def test_offsets_point_into_the_source():
     s = spans_of("inline-python")[0]
     assert SRC[s.start:s.end] == s.text

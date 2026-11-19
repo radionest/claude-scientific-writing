@@ -37,6 +37,15 @@ def test_percent_is_bound_to_the_number():
     assert GuardFinding("number", "changed", "92%", "92%", "92") in f
 
 
+def test_percent_on_range_binds_to_both_endpoints():
+    assert compare("Давление варьировало 45–79 % от нормы.\n",
+                   "Давление варьировало от 45 % до 79 % от нормы.\n") == []
+    f = compare("Давление варьировало 45–79 % от нормы.\n",
+                "Давление варьировало 45–79 от нормы.\n")
+    assert ("number", "changed", "45%") in flat(f)
+    assert ("number", "changed", "79%") in flat(f)
+
+
 def test_four_digit_year_change_is_reported():
     f = compare("Исследование проведено в 2020 году.\n",
                 "Исследование проведено в 2021 году.\n")
@@ -106,6 +115,12 @@ def test_cli_json_and_exit_codes(tmp_path):
     a.write_text("Было 87 %.\n", encoding="utf-8")
     assert main([str(b), str(a), "--json"]) == 1
     assert main([str(tmp_path / "missing.qmd"), str(a)]) == 2
+
+
+def test_cli_clean_diff_exits_zero(tmp_path):
+    p = tmp_path / "same.qmd"
+    p.write_text("Значение 78 %.\n", encoding="utf-8")
+    assert main([str(p), str(p), "--json"]) == 0
 
 
 # --- gold pins (rewrite-cases.json, frozen by PR-1) ---

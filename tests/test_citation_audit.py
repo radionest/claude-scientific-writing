@@ -61,6 +61,25 @@ def test_sibling_bib_fallback(tmp_path):
     assert audit(qmd) == []
 
 
+def test_yaml_block_list_bibliography(tmp_path):
+    qmd = tmp_path / "doc.qmd"
+    bibs = [tmp_path / "a.bib", tmp_path / "b.bib"]
+    qmd.write_text("---\nbibliography:\n  - a.bib\n  - b.bib\n---\n\nТекст [@a] и [@b].\n",
+                   encoding="utf-8")
+    for bib, key, title in zip(bibs, "ab", ("Первый", "Второй")):
+        bib.write_text(f"@article{{{key},\n  title = {{{title}}}\n}}\n", encoding="utf-8")
+    assert find_bibliography(qmd) == bibs
+    assert audit(qmd) == []
+
+
+def test_missing_declared_bib_reports_missing_bib_file(tmp_path):
+    qmd = tmp_path / "doc.qmd"
+    qmd.write_text("---\nbibliography: gone.bib\n---\n\nТекст [@x].\n", encoding="utf-8")
+    findings = audit(qmd)
+    assert [f.category for f in findings] == ["missing-bib-file"]
+    assert findings[0].keys == (str(tmp_path / "gone.bib"),)
+
+
 def test_cli_exit_codes(tmp_path):
     qmd, bib = tmp_path / "doc.qmd", tmp_path / "refs.bib"
     qmd.write_text("---\nbibliography: refs.bib\n---\n\nВид [@missing].\n",

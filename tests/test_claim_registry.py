@@ -68,3 +68,27 @@ def test_cli_exit_codes(tmp_path):
         "support_status": "unsupported"}) + "\n")
     assert main([str(doc), "--claims", str(claims), "--json"]) == 1
     assert main([str(tmp_path / "nope.qmd")]) == 2
+
+
+def test_explicit_missing_registry_path_exits_2(tmp_path):
+    doc = write(tmp_path, "doc.qmd", DOC_TEXT)
+    assert main([str(doc), "--claims", str(tmp_path / "nope.jsonl"), "--json"]) == 2
+    assert main([str(doc), "--numbers", str(tmp_path / "nope.json"), "--json"]) == 2
+
+
+def test_non_object_claims_rows_are_schema_findings(tmp_path):
+    doc = write(tmp_path, "doc.qmd", DOC_TEXT)
+    claims = write(tmp_path, "doc.claims.jsonl", "[1, 2]\nnull\n")
+    findings = check_document(doc, claims, None)
+    assert len(findings) == 2
+    assert all(f.category == "schema" and f.ref.startswith("line:") for f in findings)
+
+
+def test_malformed_numbers_are_schema_findings(tmp_path):
+    doc = write(tmp_path, "doc.qmd", DOC_TEXT)
+    cases = ["[1, 2]", '{"records": 5}',
+             json.dumps({"records": ["92", {"value": "bad%", "unit": "", "source": ""}]})]
+    for text in cases:
+        numbers = write(tmp_path, "doc.numbers.json", text)
+        findings = check_document(doc, None, numbers)
+        assert {f.category for f in findings} == {"schema"}, text

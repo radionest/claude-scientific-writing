@@ -18,12 +18,13 @@ _ENTRY_START_RE = re.compile(r"@(\w+)\s*\{\s*([^,\s]+)\s*,")
 _FIELD_RE = re.compile(r"^\s*(doi|pmid|title)\s*=\s*[{\"](.+)[}\"]\s*,?\s*$",
                        re.IGNORECASE | re.MULTILINE)
 _PLACEHOLDER_RE = re.compile(r"todo|zzz|placeholder|fixme", re.IGNORECASE)
-_BIBLIOGRAPHY_RE = re.compile(r"^bibliography:\s*(.+)$", re.MULTILINE)
+_BIBLIOGRAPHY_RE = re.compile(r"^bibliography:[ \t]*(.*)$", re.MULTILINE)
+_BLOCK_ITEM_RE = re.compile(r"^[ \t]*-[ \t]+(.+?)[ \t]*$")
 
 
 @dataclass(frozen=True, slots=True)
 class AuditFinding:
-    category: str  # no-bibliography | missing-key | unused-key | duplicate-doi | duplicate-pmid | duplicate-title | placeholder-entry
+    category: str  # no-bibliography | missing-bib-file | missing-key | unused-key | duplicate-doi | duplicate-pmid | duplicate-title | placeholder-entry
     keys: tuple[str, ...]
     detail: str
 
@@ -55,13 +56,25 @@ def parse_bib(source: str) -> list[BibEntry]:
 
 
 def find_bibliography(qmd: Path) -> list[Path]:
-    """YAML `bibliography:` (file or list), else the single sibling *.bib, else []."""
-    m = _BIBLIOGRAPHY_RE.search(qmd.read_text(encoding="utf-8"))
+    """YAML `bibliography:` (scalar, inline or block list), else the single sibling
+    *.bib, else []."""
+    text = qmd.read_text(encoding="utf-8")
+    m = _BIBLIOGRAPHY_RE.search(text)
     if m:
         raw = m.group(1).strip()
-        names = ([n.strip().strip('"') for n in raw.strip("[]").split(",")]
-                 if raw.startswith("[") else [raw])
-        return [qmd.parent / n for n in names if n]
+        if raw:  # scalar or inline flow list
+            names = ([n.strip().strip('"') for n in raw.strip("[]").split(",")]
+                     if raw.startswith("[") else [raw])
+        else:  # block list: `- name` lines until the first non-item line
+            names = []
+            for line in text[m.end():].splitlines():
+                item = _BLOCK_ITEM_RE.match(line)
+                if item:
+                    names.append(item.group(1).strip('"'))
+                elif line.strip():
+                    break  # a non-blank non-item line ends the block
+        if names:
+            return [qmd.parent / n for n in names if n]
     siblings = sorted(qmd.parent.glob("*.bib"))
     return siblings if len(siblings) == 1 else []
 
@@ -75,7 +88,7 @@ def audit(qmd: Path, bibs: list[Path] | None = None) -> list[AuditFinding]:
     entries: list[BibEntry] = []
     for p in bibs:
         if not p.is_file():
-            return [AuditFinding("no-bibliography", (str(p),), f"missing file: {p}")]
+            return [AuditFinding("missing-bib-file", (str(p),), f"missing file: {p}")]
         entries += parse_bib(p.read_text(encoding="utf-8"))
     known = {e.key for e in entries}
     findings = [
