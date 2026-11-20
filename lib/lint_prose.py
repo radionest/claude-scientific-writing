@@ -422,8 +422,10 @@ def _format_text(findings: list[Finding]) -> str:
 
 
 def _unseeded_counts(findings: list[Finding], seeded: set[str]) -> dict[str, dict[str, int]]:
-    """Per seeding rule: distinct unseeded words with occurrence counts — the report a
-    workflow must disposition (seed into the overlay's `allow`, or fix a typo)."""
+    """Per seeding rule: findings per distinct word — the report a workflow must
+    disposition (seed into the overlay's `allow`, or fix a typo). `ortho-spelling`
+    dedups to one hit per distinct word (its counts read as a wordlist); a variant
+    rule counts every occurrence."""
     counts: dict[str, Counter] = defaultdict(Counter)
     for f in findings:
         if f.id in seeded:

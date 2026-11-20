@@ -168,9 +168,9 @@ def test_diff_escalates_unseeded_term_to_warn(tmp_path):
 
 
 def test_diff_escalates_only_seeded_rules(tmp_path):
-    """The escalation keys off the canon marker, not the severity level: the
-    morphology-demoted info rules (doc-repeat-window, punct-comma-fronted-adverbial)
-    must stay info in the hook's diff path, or the demotion would be undone."""
+    """The escalation keys off the canon marker, not the severity level: a plain info
+    rule without the marker must stay info in the diff path. (The demoted-check-kind
+    side of this is pinned by test_diff_does_not_escalate_in_degraded_mode.)"""
     entry = {"id": "style-info-x", "pattern": "преамбул", "severity": "info",
              "message": "m", "layer": "universal",
              "_rx": re.compile("преамбул", re.IGNORECASE | re.UNICODE)}
