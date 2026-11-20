@@ -19,16 +19,20 @@ repeats are caught before a PR, not in a later cleanup commit.
    and create a spec there only if the book has none.
 2. **Write.** Dispatch the `scientific-writer` agent (or write per the spec yourself). Obey the genre
    profile's style; every quantitative claim cited; never introduce a dictionary calque.
+   - **REQUIRED SUB-SKILL:** For substantive sections (Введение/Методы/Результаты/Реферат/Заключение),
+     lay out the section moves (`canon/section-moves.md`) and the paragraph contract first —
+     scientific-writing:reader-first-academic-prose; cold read of the final candidate after edits.
    - **REQUIRED SUB-SKILL:** For the «Обсуждение» section, use scientific-writing:writing-discussion
      (moves × topics, the findings → comparison → meaning cycle, anti-patterns).
 3. **Review.** Run `/scientific-writing:text-review` on the changed prose: the deterministic linter + the
-   ensemble (calques / repeats / structure / terminology / render / discussion)
+   ensemble (calques / repeats / structure / terminology / render / discussion / argument)
    (evidence — при валидном claims-реестре полной статьи).
    - **REQUIRED SUB-SKILL:** Use scientific-writing:writing-russian-academic-prose for phrase-level findings.
    - **REQUIRED SUB-SKILL:** Use scientific-writing:say-it-once-academic-prose for cross-section repeats (multi-section docs).
 4. **Fix.** Правь через `/scientific-writing:text-edit` (light/deep): protected
-   inventory до правки → минимальные правки → `lib.revision_guard` → fidelity-ревью
-   точного кандидата (контракт — `references/rewrite-preservation.md`). Находки
+   inventory до правки → минимальные правки → `lib.revision_guard` → для deep —
+   argument- и fidelity-ревью вместе, точного кандидата (контракт —
+   `references/rewrite-preservation.md`). Находки
    закрывай статусами (`fixed`, `declined-by-owner-decision` со ссылкой на spec,
    `blocked`, `not-applicable`) — закрытое решением владельца повторно не поднимается.
    **Never bake a calque silently — fix or leave `<!-- TODO ред: … -->`.** Re-run the

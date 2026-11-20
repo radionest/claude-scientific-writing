@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BUDGETS = {
     "writing-russian-academic-prose": 200,
     "say-it-once-academic-prose": 130,
+    "reader-first-academic-prose": 140,
 }
 REFERENCES = {
     "writing-russian-academic-prose": [
@@ -19,6 +20,9 @@ REFERENCES = {
     ],
     "say-it-once-academic-prose": [
         "repeat-types.md", "information-placement.md", "examples.md",
+    ],
+    "reader-first-academic-prose": [
+        "paragraphs.md", "claims-and-caveats.md", "cold-read.md",
     ],
 }
 
@@ -39,3 +43,16 @@ def test_reference_exists_nonempty_and_routed(skill, ref):
     assert len(ref_file.read_text(encoding="utf-8").splitlines()) >= 10, ref_file
     core = (skill_dir / "SKILL.md").read_text(encoding="utf-8")
     assert f"references/{ref}" in core, f"SKILL.md does not route to {ref}"
+
+
+def test_section_moves_routed_and_stays_a_pointer():
+    text = (ROOT / "canon" / "section-moves.md").read_text(encoding="utf-8")
+    for profile in ("article.md", "report.md"):
+        assert "section-moves.md" in (ROOT / "canon" / "profiles" / profile).read_text(
+            encoding="utf-8"
+        ), f"canon/profiles/{profile} does not route to section-moves.md"
+    # Discussion norms live in the writing-discussion skill — only a pointer here.
+    assert "writing-discussion" in text
+    assert len(text.splitlines()) <= 80, "section-moves.md grew — functions, not norms"
+    # educational is explicitly out of scope.
+    assert "educational" in text

@@ -1,6 +1,6 @@
 ---
 name: text-review
-description: Use when Russian scientific prose in a .qmd needs advisory review: the linter first, then a prose-reviewer ensemble (calques, repeats, structure, terminology, render, discussion; conditional evidence). Commits and blocks nothing.
+description: Use when Russian scientific prose in a .qmd needs advisory review: the linter first, then a prose-reviewer ensemble (calques, repeats, structure, terminology, render, discussion, argument; conditional evidence). Commits and blocks nothing.
 allowed-tools: Bash, Read, Task
 ---
 
@@ -16,7 +16,8 @@ allowed-tools: Bash, Read, Task
    Прочитай находки (поле `severity`: error/warn/info).
 3. Запусти параллельно (в ОДНОМ сообщении) субагентов `prose-reviewer`, по одному на измерение:
    `calques`, `repeats`, `terminology`, `structure`, `render` — всегда; `discussion` — только если
-   в документе есть раздел «Обсуждение».
+   в документе есть раздел «Обсуждение»; `argument` — для содержательных секций (Введение, Методы,
+   Результаты, Реферат/Аннотация, Заключение) — пропусти при однофразовой или пунктуационной правке.
    `evidence` — только при наличии валидного `<doc>.claims.jsonl` (полная статья).
    Передай каждому путь к файлу, спецификацию (`<doc>.spec.md`) вместе с её разделом
    «Зафиксированные решения» (процитируй раздел в задаче; раздела нет — передай spec
@@ -25,7 +26,8 @@ allowed-tools: Bash, Read, Task
    - Без `--deep` и для короткого документа можно вместо ансамбля применить прозо-скиллы главным
      агентом последовательно (`scientific-writing:writing-russian-academic-prose`,
      `scientific-writing:say-it-once-academic-prose`; при наличии раздела «Обсуждение» —
-     также `scientific-writing:writing-discussion`) — но по умолчанию используй ансамбль;
+     также `scientific-writing:writing-discussion`; для содержательных секций —
+     `scientific-writing:reader-first-academic-prose`) — но по умолчанию используй ансамбль;
      в этом пути тоже прочитай раздел spec «Зафиксированные решения» — шаг 4 сверяет
      находки с ним.
      Прозо-скиллы не видят табличные чанки: при наличии рендера прогони
