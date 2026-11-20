@@ -57,7 +57,12 @@ allowed-tools: Bash, Read, Edit, Write, AskUserQuestion
      пунктуация/орфография/документная согласованность → `${CLAUDE_PLUGIN_ROOT}/tests/fixtures/editor-review.qmd`
      (строки этого файла требуют экстра `morph`) — затем
      `(cd "${CLAUDE_PLUGIN_ROOT}" && .venv/bin/pytest tests/test_dictionary.py tests/test_lint_prose.py)` → зелёный,
-     и `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose "<edited.qmd>" --json` → id нового правила НЕ на хорошем тексте.
+     и контрольный прогон на хорошем тексте — `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose "<edited.qmd>" --json`
+     → у нового id нет находок: «хороший текст» — это правленый документ, правка убрала из него фразу.
+     Путь `--from-docx` — проверка в другом виде: хорошего текста нет (правка ещё не сделана), вместо него
+     прогон на исходном .qmd (путь не назван → прогон пропускается и помечается в отчёте шага 5 — режим
+     преамбулы этого шага), где у нового id допустимы только находки внутри `sentence` пунктов ревью, —
+     тот же FN-критерий, что выше, перепроверенный уже посаженной в канон записью.
    - **FP (ослабление):** `calques.qmd`/`editor-review.qmd` **не** трогай (фраза не дефект — сломает оракул).
      `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose "<edited.qmd>" --json` → у `id` больше нет находки с `severity: error`
      (`except`/сужение — находка исчезает; `severity↓` — остаётся как `warn`; `--json` печатает все severity, фильтруй по полю);
