@@ -371,11 +371,12 @@ def effective_entries(target: str | Path, dictionary: str | None = None,
     return result
 
 
-def degraded_note(check_entries: list[dict], tool: str = "lint_prose") -> str:
+def degraded_note(check_entries: list[dict], tool: str) -> str:
     """Derived from the entries, so a new morphology-dependent check cannot make it stale.
 
     `tool` names the caller on stderr (`lint_prose`, `tune_diff`, `docx_review`) — the
-    note is shared, the prefix must not misattribute it.
+    note is shared across entry points, and a required prefix argument fails loudly
+    instead of silently misattributing it.
     """
     demoted = [e["id"] for e in check_entries if e.get("severity_without_morph")]
     skipped = [e["id"] for e in check_entries
@@ -432,7 +433,8 @@ def main(argv: list[str] | None = None) -> int:
     if not morph.available:
         # stderr, so the stdout contract (a flat findings array) stays what
         # /text-review and /tune-draft already parse.
-        print(degraded_note(load_check_entries(args.dictionary)), file=sys.stderr)
+        print(degraded_note(load_check_entries(args.dictionary), tool="lint_prose"),
+              file=sys.stderr)
     return 1 if any(f.severity == "error" for f in findings) else 0
 
 

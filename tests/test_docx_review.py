@@ -205,3 +205,17 @@ def test_degraded_morph_note_on_stderr(tmp_path, monkeypatch, capsys):
     assert "docx_review:" in res.err
     assert "без морфологии" in res.err
     assert "без морфологии" not in res.out  # stderr only — JSON/text stays the contract
+
+
+def test_morph_available_prints_no_note(tmp_path, monkeypatch, capsys):
+    # The mirror of the degraded-path test: with the morph extra the guard must print the
+    # note on neither stream — pins the `if not morph.available` condition itself.
+    monkeypatch.setattr(lib.docx_review.Morph, "load",
+                        staticmethod(lambda: Morph(available=True)))
+    p = _docx(tmp_path,
+              [_para(_run("Врач отметил "), _anchor("1", "очаг"), _run(" на срезе."))],
+              [("1", "Редактор", "зпт")])
+    assert main([str(p)]) == 0
+    res = capsys.readouterr()
+    assert "без морфологии" not in res.out
+    assert "без морфологии" not in res.err
