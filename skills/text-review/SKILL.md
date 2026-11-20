@@ -1,16 +1,17 @@
 ---
+name: text-review
 description: Совещательное ревью прозы .qmd — линтер + ансамбль субагентов (кальки/повторы/структура/термины/рендер/обсуждение; условный evidence — при валидном claims-реестре полной статьи)
-argument-hint: <file.qmd> [--whole-file] [--deep]
-allowed-tools: Bash, Read, Task
 ---
 
-Ревью русской научной прозы для `$ARGUMENTS`. Совещательно — ничего не коммитит и не блокирует.
+Ревью русской научной прозы для целевого `.qmd` (аргументы вызова: `<file.qmd> [--whole-file] [--deep]`). Совещательно — ничего не коммитит и не блокирует. Пусть `$Q` — путь целевого файла.
+
+`CLAUDE_PLUGIN_ROOT` — корень установленного плагина. Если переменная не задана (zcode), используй корень репозитория плагина (`~/Projects/claude-scientific-writing`); `.venv` для pytest живёт там же.
 
 ## Шаги
-1. Определи целевой `.qmd` ($1). Без него — спроси.
+1. Определи целевой `.qmd` (`$Q`). Без него — спроси.
 2. Линтер (файл идёт ПЕРВЫМ аргументом — у `--diff` опциональное значение, иначе путь будет принят за значение флага):
-   - весь файл: `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose "$1" --json`
-   - только изменённое (по умолчанию, без `--whole-file`): `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose "$1" --json --diff`
+   - весь файл: `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose "$Q" --json`
+   - только изменённое (по умолчанию, без `--whole-file`): `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose "$Q" --json --diff`
    Прочитай находки (поле `severity`: error/warn/info).
 3. Запусти параллельно (в ОДНОМ сообщении) субагентов `prose-reviewer`, по одному на измерение:
    `calques`, `repeats`, `terminology`, `structure`, `render` — всегда; `discussion` — только если
@@ -23,7 +24,7 @@ allowed-tools: Bash, Read, Task
      `scientific-writing:say-it-once-academic-prose`; при наличии раздела «Обсуждение» —
      также `scientific-writing:writing-discussion`) — но по умолчанию используй ансамбль.
      Прозо-скиллы не видят табличные чанки: при наличии рендера прогони
-     `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.render_lint <render.docx> --qmd "$1"` или `/render-review`.
+     `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.render_lint <render.docx> --qmd "$Q"` или `/render-review`.
 4. Синтез: собери находки всех измерений + линтера, дедуплицируй по (файл, строка, проблема), отранжируй
    blocker → warning → nit. Выведи единый отчёт.
 5. Подсказка: правки вноси в стадии fix скилла `scientific-writing:writing-scientific-documents`

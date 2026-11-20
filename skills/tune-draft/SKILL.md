@@ -1,14 +1,15 @@
 ---
+name: tune-draft
 description: Сгенерировать черновик из источника с применением канона (writer + само-линт) для последующей калибровки правил
-argument-hint: <source: URL|тема|путь> [genre: report|article|educational]
-allowed-tools: Bash, Read, Write, WebFetch, Task
 ---
 
-Сгенерируй черновик из `$ARGUMENTS` с применением канона — «до» для петли калибровки правил.
+Сгенерируй черновик из источника (аргументы вызова: `<source: URL|тема|путь> [genre: report|article|educational]`) с применением канона — «до» для петли калибровки правил.
+
+`CLAUDE_PLUGIN_ROOT` — корень установленного плагина. Если переменная не задана (zcode), используй корень репозитория плагина (`~/Projects/claude-scientific-writing`); `.venv` для pytest живёт там же.
 
 ## Шаги
-1. Определи источник ($1): URL → WebFetch; путь к файлу → Read; иначе трактуй как тему-задание.
-   Жанр ($2) ∈ {report, article, educational}; не задан → спроси (default: article).
+1. Определи источник (первый аргумент): URL → WebFetch; путь к файлу → Read; иначе трактуй как тему-задание.
+   Жанр (второй аргумент) ∈ {report, article, educational}; не задан → спроси (default: article).
    Необязательная подсказка длины из запроса (напр. «~1000 слов»).
 2. Выбери стабильный каталог: `D=${TMPDIR:-/tmp}/sci-tune` и короткое имя из источника
    (`SLUG` — короткое имя темы/файла в kebab-case; при коллизии добавь суффикс). `mkdir -p "$D"`.

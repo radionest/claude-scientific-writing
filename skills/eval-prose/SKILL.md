@@ -1,11 +1,12 @@
 ---
+name: eval-prose
 description: Прогон eval-контура плагина — детерминированный baseline линтера (манифест) и поведенческое ревью rewrite-кейсов со скрытым rubric; отчёт в JSON, A/B против прежнего отчёта
-argument-hint: [--baseline <report.json>] [--only lint|rewrite]
-allowed-tools: Bash, Read, Write, Task
 ---
 
-Оценка качества правил и ревью-поведения плагина по `$ARGUMENTS`. Ничего не правит и не
+Оценка качества правил и ревью-поведения плагина (аргументы вызова: `[--baseline <report.json>] [--only lint|rewrite]`). Ничего не правит и не
 коммитит: замеряет и пишет отчёт.
+
+`CLAUDE_PLUGIN_ROOT` — корень установленного плагина. Если переменная не задана (zcode), используй корень репозитория плагина (`~/Projects/claude-scientific-writing`); `.venv` для pytest живёт там же.
 
 ## Шаги
 1. **Детерминированный контур** (всегда, если не `--only rewrite`):

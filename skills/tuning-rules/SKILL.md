@@ -1,6 +1,6 @@
 ---
 name: tuning-rules
-description: Use when turning a diff between a canon-clean draft and the user's hand-edit into proposed plugin-rule changes (dictionary entries, prose-skill rows, profile/spec edits, or linter-code changes). Invoked by the tune-learn command. Classifies each edit, routes it to the right rule layer, and proves dictionary rules on the test oracle before applying.
+description: Use when turning a diff between a canon-clean draft and the user's hand-edit into proposed plugin-rule changes (dictionary entries, prose-skill rows, profile/spec edits, or linter-code changes). Invoked by the tune-learn skill. Classifies each edit, routes it to the right rule layer, and proves dictionary rules on the test oracle before applying.
 ---
 
 # Tuning Rules (вывод правил из правок)

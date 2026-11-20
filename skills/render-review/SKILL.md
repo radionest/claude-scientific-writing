@@ -1,15 +1,16 @@
 ---
+name: render-review
 description: Совещательное ревью отрендеренного документа — линт рендера + ревью генерирующих чанков
-argument-hint: <render.docx> <source.qmd>
-allowed-tools: Bash, Read, Task
 ---
 
 Ревью дефектов, материализующихся только в рендере (текст таблиц, подписи). Совещательно.
 
+`CLAUDE_PLUGIN_ROOT` — корень установленного плагина. Если переменная не задана (zcode), используй корень репозитория плагина (`~/Projects/claude-scientific-writing`); `.venv` для pytest живёт там же.
+
 ## Шаги
-1. Определи `render.docx` ($1) и исходный `source.qmd` ($2). Без них — спроси.
+1. Определи `render.docx` (`$R`) и исходный `source.qmd` (`$Q`) из аргументов вызова. Без них — спроси.
 2. Линт рендера:
-   `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.render_lint "$1" --qmd "$2" --json`.
+   `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.render_lint "$R" --qmd "$Q" --json`.
    Находки: `unit` — якорь в docx (`tbl2 r1 c3` / порядковый номер абзаца), `qmd` — строка
    исходника (генерирующий чанк). Прочитай `severity`: error/warn/info.
 
