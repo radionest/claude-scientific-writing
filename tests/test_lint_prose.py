@@ -182,16 +182,16 @@ def test_diff_escalates_only_seeded_rules(tmp_path):
 
 def test_diff_does_not_escalate_in_degraded_mode(tmp_path):
     """Without morphology the hook path runs demoted — escalation must not undo a
-    `severity_without_morph` demotion on a seed-marked rule."""
-    entry = {"id": "ortho-x", "pattern": "преамбул", "severity": "warn",
-             "severity_without_morph": "info", "message": "m", "layer": "universal",
-             "seed": "allow",
-             "_rx": re.compile("преамбул", re.IGNORECASE | re.UNICODE)}
+    `severity_without_morph` demotion on a seed-marked rule. The demotion lives on
+    check-kind entries (`run_checks`), so the seed marker rides one here."""
+    entry = {"id": "doc-repeat-window", "kind": "check", "layer": "universal",
+             "severity": "warn", "severity_without_morph": "info",
+             "message": "повтор", "seed": "allow"}
     p = tmp_path / "doc.qmd"
-    p.write_text("В преамбуле методики уточним критерии.\n", encoding="utf-8")
-    fs = lint_file(str(p), [entry], changed={1}, check_entries=[],
+    p.write_text("С использованием планшета с использованием коагулятора.\n", encoding="utf-8")
+    fs = lint_file(str(p), [], changed={1}, check_entries=[entry],
                    morph=Morph(available=False))
-    assert [f.severity for f in fs if f.id == "ortho-x"] == ["info"]
+    assert [f.severity for f in fs if f.id == "doc-repeat-window"] == ["info"]
 
 
 def test_seeded_warn_rule_never_escalates_to_error(tmp_path):
