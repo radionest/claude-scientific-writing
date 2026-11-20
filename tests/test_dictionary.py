@@ -63,6 +63,17 @@ def test_jargon_kogorta_message_is_context_safe():
         "«выборка» предлагается без условия «вне когортного дизайна»"
 
 
+def test_latin_data_code_message_is_context_safe():
+    """Issue #54: сообщение не должно требовать замены кода везде — код законен в чанке
+    (код данных, tbl-cap/fig-cap при русской расшифровке) и в комментариях. Пин
+    семантический: места законности названы, русские замены предложены."""
+    message = next(e for e in _load() if e["id"] == "term-latin-data-code")["message"]
+    assert re.search(r"чанк\w*|tbl-cap|fig-cap|комментари\w+", message), \
+        "сообщение не называет места, где код законен"
+    assert re.search(r"русск\w+ словами|видим\w*|определяем\w*", message), \
+        "сообщение не предлагает русских терминов"
+
+
 @pytest.mark.parametrize("fixture", ["calques.qmd", "editor-review.qmd"])
 def test_every_fixture_phrase_is_flagged(fixture):
     """The oracle runs the *whole* rule set — regex entries and code checks alike, so a
