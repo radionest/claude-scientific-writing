@@ -53,6 +53,35 @@ def test_cohort_noun_still_flagged():
     assert "jargon-kogorta" in _ids("сравнили три когорт по исходам\n")
 
 
+def test_latin_data_code_flagged():
+    # issue #54: английские коды категорий данных в русской прозе — ошибка (правка
+    # рецензента: «это кодировка данных, нужно название русскими словами»)
+    assert "term-latin-data-code" in _ids("число и доля выявленных (visible или faint) очагов\n")
+    assert "term-latin-data-code" in _ids("очаги категории not_assessable исключили из анализа\n")
+    assert "term-latin-data-code" in _ids("строки not_visible и not visible дают разные исходы\n")
+
+
+def test_latin_data_code_snake_family_and_boundaries():
+    # lookbehind (?<![\w@-]) вместо \b: не матчит хвост crossref-метки (@fig-visible,
+    # @tbl-faint — «-»/«@» перед началом матча); «invisible» входит в список,
+    # но «invisibility» (иное слово) — нет; not_faint покрыт префиксом
+    assert "term-latin-data-code" in _ids("очаги partially_visible учтены отдельно\n")
+    assert "term-latin-data-code" in _ids("очаг invisible при контрольной МРТ\n")
+    assert "term-latin-data-code" in _ids("зоны not_faint оставлены отдельно\n")
+    assert "term-latin-data-code" not in _ids("зона invisibility контраста расширена\n")
+    assert "term-latin-data-code" not in _ids("схема на рисунке: @fig-visible и @tbl-faint\n")
+
+
+def test_latin_data_code_legal_paths():
+    # коды законны в чанках (подписи tbl-cap/fig-cap живут в опциях чанка), в
+    # inline-коде (вырезается до правил) и снимаются lint-ok по месту
+    src = "```{r}\n#| tbl-cap: \"Категории очагов: visible, faint\"\nx <- c('visible', 'faint')\n```\n"
+    assert _ids(src) == []
+    assert _ids("категория указана как `visible` в таблице 2\n") == []
+    assert "term-latin-data-code" not in _ids(
+        "видимые (visible) с русской расшифровкой <!-- lint-ok: term-latin-data-code -->\n")
+
+
 def test_error_finding_sets_exit_1(tmp_path):
     from lib.lint_prose import main
     p = tmp_path / "x.qmd"
