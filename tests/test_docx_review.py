@@ -201,6 +201,7 @@ def test_degraded_morph_note_on_stderr(tmp_path, monkeypatch, capsys):
               [_para(_run("Врач отметил "), _anchor("1", "очаг"), _run(" на срезе."))],
               [("1", "Редактор", "зпт")])
     assert main([str(p)]) == 0
-    err = capsys.readouterr().err
-    assert "docx_review:" in err
-    assert "без морфологии" in err
+    res = capsys.readouterr()
+    assert "docx_review:" in res.err
+    assert "без морфологии" in res.err
+    assert "без морфологии" not in res.out  # stderr only — JSON/text stays the contract
