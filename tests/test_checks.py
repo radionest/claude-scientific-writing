@@ -218,6 +218,24 @@ def test_repeat_window_overlay_allow_replaces_canon_list():
         f.id for f in lint_source("Метод выбран, метод описан.\n", ENTRIES, checks, MORPH)}
 
 
+def test_repeat_window_without_morph_folds_by_the_six_letter_prefix():
+    """Without morphology (the hook path) the fold key is the word's first six
+    characters: forms sharing them are one token, so a six-letter allow entry covers
+    the family, while forms differing within the six letters keep distinct keys."""
+    def hits(text: str, allow: list[str]) -> set[str]:
+        checks = merge_entries(CHECKS, [{"id": "doc-repeat-window", "allow": allow}])
+        return {f.id for f in lint_source(text + "\n", ENTRIES, checks, Morph(available=False))}
+
+    # «пациенты» and «пациентов» share the key «пациен» and fire as a repeat…
+    assert "doc-repeat-window" in hits("Пациенты осмотрены, пациентов выписали.", [])
+    # …while a single six-character entry exempts the whole family.
+    assert "doc-repeat-window" not in hits("Пациенты осмотрены, пациентов выписали.", ["пациен"])
+    # forms differing within the six characters keep distinct keys, short («очаг»/
+    # «очаги», whole-word keys) or exactly at the cut («печень»/«печени»).
+    assert "doc-repeat-window" not in hits("Очаг выявлен, очаги измерены.", [])
+    assert "doc-repeat-window" not in hits("Печень визуализирована, печени обработаны.", [])
+
+
 def test_abbrev_first_use_treats_front_matter_as_its_own_scope():
     """Title and abstract are a separate scope: the body re-expands on its own first use."""
     src = ("**Сравнительная эффективность КТ-АГ и КТ**\n\n"
