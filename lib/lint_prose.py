@@ -262,13 +262,17 @@ def lint_file(path: str, entries: list[dict], changed: set[int] | None = None,
     fs = lint_source(src, entries, check_entries or [], morph or Morph(available=False), file=path)
     if changed is not None:
         fs = [f for f in fs if f.line in changed]
-        seeded = _seeded_ids(entries, check_entries or [])
         # The diff gate: a term on a changed line was introduced by this edit, so an
         # unseeded one stops being advisory — one step up to warn, where the self-lint
         # loops and reviews must disposition it. Never error: seeding is a wordlist edit,
-        # not a prose defect.
-        fs = [f if f.id not in seeded or f.severity != "info"
-              else replace(f, severity="warn") for f in fs]
+        # not a prose defect. Escalate at full precision only: without morphology a
+        # seeding rule is silent or demoted (severity_without_morph) — exactly the mode
+        # the hook's system python3 runs in — and raising severity there would undo the
+        # demotion.
+        if morph.available:
+            seeded = _seeded_ids(entries, check_entries or [])
+            fs = [f if f.id not in seeded or f.severity != "info"
+                  else replace(f, severity="warn") for f in fs]
     return sorted(fs, key=lambda f: (f.line, f.col, f.id))
 
 

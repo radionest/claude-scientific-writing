@@ -180,6 +180,20 @@ def test_diff_escalates_only_seeded_rules(tmp_path):
     assert [f.severity for f in fs if f.id == "style-info-x"] == ["info"]
 
 
+def test_diff_does_not_escalate_in_degraded_mode(tmp_path):
+    """Without morphology the hook path runs demoted — escalation must not undo a
+    `severity_without_morph` demotion on a seed-marked rule."""
+    entry = {"id": "ortho-x", "pattern": "преамбул", "severity": "warn",
+             "severity_without_morph": "info", "message": "m", "layer": "universal",
+             "seed": "allow",
+             "_rx": re.compile("преамбул", re.IGNORECASE | re.UNICODE)}
+    p = tmp_path / "doc.qmd"
+    p.write_text("В преамбуле методики уточним критерии.\n", encoding="utf-8")
+    fs = lint_file(str(p), [entry], changed={1}, check_entries=[],
+                   morph=Morph(available=False))
+    assert [f.severity for f in fs if f.id == "ortho-x"] == ["info"]
+
+
 def test_seeded_warn_rule_never_escalates_to_error(tmp_path):
     """doc-abbrev-variants carries the contract too but starts at warn — the escalation
     is one step, never into gate territory."""
@@ -191,6 +205,8 @@ def test_seeded_warn_rule_never_escalates_to_error(tmp_path):
     assert {f.severity for f in fs if f.id == "doc-abbrev-variants"} == {"warn"}
 
 
+@pytest.mark.morph
+@pytest.mark.skipif(not MORPH.available, reason="ortho-spelling needs morphology")
 def test_unseeded_reports_counts_per_rule(tmp_path, capsys):
     """The issue's minimum: an unseeded-words count per seeding rule that a workflow
     must disposition. Counts are findings, so ortho-spelling's one-per-distinct-word
@@ -205,6 +221,8 @@ def test_unseeded_reports_counts_per_rule(tmp_path, capsys):
     assert out["ortho-spelling"] == {"аблированного": 1, "некротизированной": 1}
 
 
+@pytest.mark.morph
+@pytest.mark.skipif(not MORPH.available, reason="ortho-spelling needs morphology")
 def test_unseeded_empty_after_seeding(tmp_path, capsys):
     """Disposition closes the report: seeding the word into the overlay's `allow`
     empties it — the verification step /init-doc-spec step 6 relies on."""
