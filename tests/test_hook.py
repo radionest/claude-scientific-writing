@@ -40,11 +40,20 @@ def test_blocks_on_new_error_calque(tmp_path):
 
 
 def test_passes_when_only_warn(tmp_path):
+    # The warn must come from a synthetic overlay rule, not from live canon (#48): retuning
+    # jargon-kogorta (severity flip, regex change, removal) must not flip this test.
     repo = _repo(tmp_path)
-    (repo / "r.qmd").write_text("чистая проза\nпациенты когорты\n", encoding="utf-8")
+    d = repo / ".claude" / "scientific-writing"
+    d.mkdir(parents=True)
+    (d / "dictionary.json").write_text(json.dumps({"entries": [{
+        "id": "e2e-warn-only", "layer": "doc", "pattern": "\\bзондажн\\w*",
+        "severity": "warn", "message": "синтетическое warn-правило e2e-теста хука",
+    }]}, ensure_ascii=False), encoding="utf-8")
+    (repo / "r.qmd").write_text("чистая проза\nзондажная оценка\n", encoding="utf-8")
     _git(repo, "add", "r.qmd")
     r = _run_hook(repo, "git commit -m x")
     assert r.returncode == 0
+    assert "[warn] e2e-warn-only" in (r.stdout + r.stderr)  # the warn path was exercised
 
 
 def test_ignores_non_git_commands(tmp_path):
