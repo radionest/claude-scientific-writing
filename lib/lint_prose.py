@@ -15,7 +15,7 @@ _ORTHO_DICT = _CANON / "orthography.json"
 _LOCAL_RELPATH = Path(".claude") / "scientific-writing" / "dictionary.json"
 _GIT_ROOT_CACHE: dict[str, "Path | None"] = {}
 _MAIN_ROOT_CACHE: dict[str, "Path | None"] = {}
-_EFFECTIVE_CACHE: dict[tuple, tuple[list[dict], list[dict]]] = {}
+_EFFECTIVE_CACHE: dict[tuple[str | None, str, bool], tuple[list[dict], list[dict]]] = {}
 _SEVERITIES = {"error", "warn", "info"}
 _KINDS = {"regex", "check"}
 # Single source of the layer enum — the dictionary test imports it.
@@ -312,7 +312,9 @@ def _git_main_root(root: Path) -> Path | None:
 
 def _clear_caches() -> None:
     """Test seam: rule-set and git-root caches must not leak between tmp repos."""
-    _GIT_ROOT_CACHE.clear(); _MAIN_ROOT_CACHE.clear(); _EFFECTIVE_CACHE.clear()
+    _GIT_ROOT_CACHE.clear()
+    _MAIN_ROOT_CACHE.clear()
+    _EFFECTIVE_CACHE.clear()
 
 
 def local_dict_path(target: str | Path) -> Path | None:
