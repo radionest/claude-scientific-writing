@@ -244,6 +244,8 @@ def test_abbrev_variants_flags_every_deviation_not_just_the_first():
     findings = [f for f in _find(src) if f.id == "doc-abbrev-variants"]
     assert {f.matched for f in findings} == {"ИОУЗИ", "ио-УЗИ"}
     assert [f.line for f in findings if f.matched == "ио-УЗИ"] == [2, 3]
+    # each of the three dominant occurrences on line 1 gets its own anchor
+    assert [f.col for f in findings if f.matched == "ИОУЗИ"] == [13, 39, 64]
     assert all("преобладает" in f.message for f in findings if f.matched == "ИОУЗИ")
     assert all("приведи к «ИОУЗИ»" in f.message for f in findings if f.matched == "ио-УЗИ")
 
