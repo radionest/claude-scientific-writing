@@ -250,3 +250,20 @@ def test_vertical_checks_stay_silent_without_material(tmp_path):
             if f["id"] in {"render-table-sequence", "render-figure-sequence",
                            "render-ref-target", "render-heading-levels"}]
     assert hits == []
+
+
+def test_ref_target_range_mention_covers_the_chain(tmp_path):
+    body = (_p("Как показано в табл. 1–3, различия значимы.")
+            + _p("Таблица 1 — Критерии") + _p("Таблица 2 — Осложнения")
+            + _p("Таблица 3 — Сравнение групп"))
+    hits = [f for f in lint_render(_docx(tmp_path, body), ENTRIES)
+            if f["id"] == "render-ref-target"]
+    assert hits == []
+
+
+def test_english_captions_pair_with_english_mentions(tmp_path):
+    body = (_p("As shown in Table 2, the difference is significant.")
+            + _p("Table 1 — Criteria") + _p("Table 2 — Complications"))
+    hits = [f for f in lint_render(_docx(tmp_path, body), ENTRIES)
+            if f["id"] == "render-ref-target"]
+    assert {f["line"] for f in hits} == {2}  # Table 1 is never mentioned

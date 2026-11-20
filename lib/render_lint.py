@@ -141,9 +141,34 @@ def _hint(lines: list[tuple[str, bool]], matched: str) -> str:
 
 
 _CAPTION = re.compile(r"^\s*(таблиц[аы]|рисун\w*|рис\.|table|figure)\s*(\d+)", re.IGNORECASE)
-_TAB_MENTION = re.compile(r"\b(?:табл\.|таблиц\w*)\s*(\d+)", re.IGNORECASE)
-_FIG_MENTION = re.compile(r"\b(?:рис\.|рисун\w*)\s*(\d+)", re.IGNORECASE)
+_TAB_MENTION = re.compile(r"\b(?:табл\.|таблиц\w*|tables?)\s*(\d+)", re.IGNORECASE)
+_FIG_MENTION = re.compile(r"\b(?:рис\.|рисун\w*|fig\.|figures?)\s*(\d+)", re.IGNORECASE)
+# A range/enumeration continuation directly after a mention: «табл. 2–4», «рисунки 2 и 3».
+# A bare «и» cannot hijack «или» — the digit demanded right after the separator fails.
+_MENTION_CHAIN = re.compile(r"\s*(?:[и,]|–|—|-)\s*(\d+)", re.IGNORECASE)
 _HEADING_STYLE = re.compile(r"^Heading([1-6])$")
+
+
+def _mention_chain(text: str, m: re.Match) -> list[tuple[int, str]]:
+    """The matched number plus a short range/enumeration continuation after it.
+    A dash range («табл. 2–4») covers every number inside it; an enumeration
+    («рисунки 2 и 3») covers the named ones — each covered number carries the whole
+    covered fragment as its matched text. The chain stops at anything that is not
+    separator+number («2 по 5», «2 или 3»); a dash range wider than 20 contributes
+    its endpoints only."""
+    out = [(int(m.group(1)), m.group(0))]
+    tail = text[m.end():m.end() + 20]
+    pos = 0
+    while (cm := _MENTION_CHAIN.match(tail, pos)) is not None:
+        fragment = m.group(0) + tail[pos:cm.end()]
+        n = int(cm.group(1))
+        sep = tail[pos:cm.start(1)].strip()
+        prev = out[-1][0]
+        if sep in {"–", "—", "-"} and 0 < n - prev <= 20:
+            out.extend((k, fragment) for k in range(prev + 1, n))
+        out.append((n, fragment))
+        pos = cm.end()
+    return out
 
 
 def _vertical_checks(units: list[TextUnit], file: str,
@@ -173,9 +198,11 @@ def _vertical_checks(units: list[TextUnit], file: str,
             caps[kind].append((int(cap.group(2)), u, cap.group(0).strip()))
             continue
         for m in _TAB_MENTION.finditer(u.text):
-            mentions["table"].append((u, int(m.group(1)), m.group(0)))
+            for n, matched in _mention_chain(u.text, m):
+                mentions["table"].append((u, n, matched))
         for m in _FIG_MENTION.finditer(u.text):
-            mentions["figure"].append((u, int(m.group(1)), m.group(0)))
+            for n, matched in _mention_chain(u.text, m):
+                mentions["figure"].append((u, n, matched))
 
     for kind, seq_id in (("table", "render-table-sequence"),
                          ("figure", "render-figure-sequence")):

@@ -84,7 +84,7 @@ scientific-writing/                      # own git repo (see "Where it lives")
     checks/                              # kind:"check" implementations: hyphenation, spelling, punctuation, consistency
     tune_diff.py                         # pristine→edited prose diff + FN/FP triage
     docx_review.py                       # editor .docx review → the same triage shape
-    render_lint.py                       # rendered .docx lint — table text + captions (regex-only, advisory)
+    render_lint.py                       # rendered .docx lint — table text + captions, vertical checks (advisory)
     protected_spans.py                   # raw-span extractor: the artifacts an edit must not damage
     revision_guard.py                    # before/after artifact diff for scoped edits (advisory CLI)
     citation_audit.py                    # local citation audit
