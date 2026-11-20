@@ -334,3 +334,54 @@ def test_token_case_flags_every_deviation_not_just_the_first():
     assert [f.line for f in findings if f.matched == "3d"] == [1, 1]
     assert all("«3D» преобладает" in f.message for f in findings if f.matched == "3D")
     assert all("приведи к «3D»" in f.message for f in findings if f.matched == "3d")
+
+
+def _with_spelling_allow(allow: list[str]):
+    return merge_entries(CHECKS, [{"id": "ortho-spelling", "allow": allow}])
+
+
+@pytest.mark.morph
+@pytest.mark.skipif(not MORPH.available, reason="spelling needs morphology")
+def test_spelling_allow_one_entry_covers_oov_inflections():
+    """Issue repro: the single entry «аблирован» must cover «аблированного» and
+    «аблированному» — the guesser lemmatizes out-of-dictionary forms to per-form garbage,
+    so the family is unified by stem, not by lemma."""
+    checks = _with_spelling_allow(["аблирован"])
+    src = "Аблированного узла, аблированному участку и аблированные зоны описали отдельно.\n"
+    assert "ortho-spelling" not in {f.id for f in lint_source(src, ENTRIES, checks, MORPH)}
+
+
+@pytest.mark.morph
+@pytest.mark.skipif(not MORPH.available, reason="spelling needs morphology")
+def test_spelling_allow_stem_covers_the_derived_adjective():
+    """«абляция» (noun) also exempts «абляционную» — derived adjective, same window."""
+    checks = _with_spelling_allow(["абляция"])
+    assert "ortho-spelling" not in {f.id for f in lint_source(
+        "Абляционную зону контролировали на КТ.\n", ENTRIES, checks, MORPH)}
+
+
+@pytest.mark.morph
+@pytest.mark.skipif(not MORPH.available, reason="spelling needs morphology")
+def test_spelling_allow_hyphenated_entry_covers_the_bare_head():
+    """Allowing the compound «пост-абляционной» exempts the bare «абляционную»: the stem
+    is taken per hyphen part, so the project no longer re-lists «абляционной» (:522)."""
+    checks = _with_spelling_allow(["пост-абляционной"])
+    assert "ortho-spelling" not in {f.id for f in lint_source(
+        "Абляционную перестройку наблюдали у всех пациентов.\n", ENTRIES, checks, MORPH)}
+
+
+@pytest.mark.morph
+@pytest.mark.skipif(not MORPH.available, reason="spelling needs morphology")
+def test_spelling_allow_still_flags_an_unrelated_oov_word():
+    """The stem window must not turn the allow list into a blanket amnesty: an
+    out-of-dictionary word outside every allowed family is still reported."""
+    checks = _with_spelling_allow(["аблирован"])
+    assert "ortho-spelling" in {f.id for f in lint_source(
+        "Обнаружен вздрыгопыр.\n", ENTRIES, checks, MORPH)}
+
+
+def test_spelling_yields_nothing_without_morphology():
+    """Without the optional extra the check is silent — no finding can rest on a
+    degraded allow match."""
+    assert "ortho-spelling" not in {f.id for f in lint_source(
+        "Вздрыгопыр аблированного типа.\n", ENTRIES, CHECKS, Morph(available=False))}
