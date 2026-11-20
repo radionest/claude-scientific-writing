@@ -111,6 +111,18 @@ def test_kontrast_legal_terms_not_flagged():
         assert "vulgar-kontrastnaya-mrt-kt" not in ids, src
 
 
+def test_kontrast_contrastive_pair_and_wrap_notes():
+    # контрастивная пара «нативная и контрастная МРТ» законна, но regex её не отличает:
+    # правило warn с оговоркой в message, законный случай гасится lint-ok по месту (canon.md)
+    src = "динамику оценивали по нативной и контрастной МРТ\n"
+    assert "vulgar-kontrastnaya-mrt-kt" in _ids(src)
+    assert "vulgar-kontrastnaya-mrt-kt" not in _ids(
+        "динамику оценивали по нативной и контрастной МРТ <!-- lint-ok: vulgar-kontrastnaya-mrt-kt -->\n")
+    # канарейка линейной локальности: хард-врап между словами не ловится (как обещает note
+    # правила); упадёт, если движок станет абзацно-локальным — тогда обнови note
+    assert "vulgar-kontrastnyj-kontrol" not in _ids("последующий контрастный\nконтроль очага\n")
+
+
 def test_error_finding_sets_exit_1(tmp_path):
     from lib.lint_prose import main
     p = tmp_path / "x.qmd"
