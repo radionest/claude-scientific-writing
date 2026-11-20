@@ -64,11 +64,27 @@ def load_claims(path: Path) -> tuple[list[Claim], list[RegistryFinding]]:
         except json.JSONDecodeError as e:
             findings.append(_schema(f"line {lineno}: invalid JSON ({e})", f"line:{lineno}"))
             continue
+        if not isinstance(row, dict):
+            findings.append(_schema(f"line {lineno}: row must be a JSON object",
+                                    f"line:{lineno}"))
+            continue
         missing = ({"claim_id", "section", "claim_kind", "evidence",
                     "citation_keys", "support_status"} - set(row))
         if missing:
             findings.append(_schema(f"line {lineno}: missing {sorted(missing)}",
                                     str(row.get("claim_id", f"line:{lineno}"))))
+            continue
+        if (not isinstance(row["claim_kind"], str)
+                or not isinstance(row["support_status"], str)):
+            findings.append(_schema(
+                f"line {lineno}: claim_kind/support_status must be strings",
+                str(row.get("claim_id", f"line:{lineno}"))))
+            continue
+        keys = row["citation_keys"]
+        if not isinstance(keys, list) or not all(isinstance(k, str) for k in keys):
+            findings.append(_schema(
+                f"line {lineno}: citation_keys must be a list of strings",
+                str(row.get("claim_id", f"line:{lineno}"))))
             continue
         if row["claim_kind"] not in CLAIM_KINDS or row["support_status"] not in SUPPORT_STATUSES:
             findings.append(_schema(
@@ -85,14 +101,26 @@ def load_numbers(path: Path) -> tuple[list[NumberRecord], list[RegistryFinding]]
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
         rows = data["records"]
-    except (json.JSONDecodeError, KeyError) as e:
+    except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
         return [], [_schema(f"invalid numbers.json ({e})", path.name)]
+    if not isinstance(rows, list):
+        return [], [_schema("invalid numbers.json: records must be a list", path.name)]
     records: list[NumberRecord] = []
     for i, row in enumerate(rows):
+        if not isinstance(row, dict):
+            findings.append(_schema(f"record {i}: row must be a JSON object",
+                                    f"record:{i}"))
+            continue
         missing = ({"value", "unit", "source"} - set(row))
         if missing or not _VALUE_RE.match(str(row.get("value", ""))):
             findings.append(_schema(
                 f"record {i}: value/unit/source required, value numeric like '92'",
+                str(row.get("value", f"record:{i}"))))
+            continue
+        used_in = row.get("used_in", [])
+        if not isinstance(used_in, list) or not all(isinstance(u, str) for u in used_in):
+            findings.append(_schema(
+                f"record {i}: used_in must be a list of strings",
                 str(row.get("value", f"record:{i}"))))
             continue
         records.append(NumberRecord(
@@ -101,7 +129,7 @@ def load_numbers(path: Path) -> tuple[list[NumberRecord], list[RegistryFinding]]
             analysis_set=str(row.get("analysis_set", "")),
             uncertainty=str(row.get("uncertainty", "")),
             source=str(row.get("source", "")),
-            used_in=tuple(row.get("used_in", ()))))
+            used_in=tuple(used_in)))
     return records, findings
 
 
@@ -149,6 +177,14 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     claims_path = (Path(args.claims) if args.claims else doc.with_suffix(".claims.jsonl"))
     numbers_path = (Path(args.numbers) if args.numbers else doc.with_suffix(".numbers.json"))
+    # an explicitly passed registry path must exist (like --frozen in revision_guard);
+    # the default sibling is optional — silence is a valid state
+    explicit = ([claims_path] if args.claims else []) \
+        + ([numbers_path] if args.numbers else [])
+    for p in explicit:
+        if not p.is_file():
+            print(f"file not found: {p}", file=sys.stderr)
+            return 2
     if not claims_path.is_file() and not numbers_path.is_file():
         return 0  # registries are optional — silence is a valid state
     findings = check_document(

@@ -63,6 +63,17 @@ def test_patterns_avoid_cyrillic_range_without_yo():
         assert "[а-я]" not in e["pattern"], f"{e['id']}: [а-я] не матчит «ё» — используй \\w"
 
 
+def test_jargon_kogorta_message_is_context_safe():
+    """Issue #23: сообщение не должно предлагать «выборку» как безусловную замену —
+    в когортном дизайне «когорта» — термин, и такая замена меняет смысл. Пин
+    семантический, не на формулировку: контекст назван, замена обусловлена «вне»."""
+    message = next(e for e in _load() if e["id"] == "jargon-kogorta")["message"]
+    assert re.search(r"когортн\w*\s+(дизайн|исследован)\w*", message), \
+        "сообщение не называет когортный контекст"
+    assert "выборка" not in message or re.search(r"вне\s+когортн\w*", message), \
+        "«выборка» предлагается без условия «вне когортного дизайна»"
+
+
 @pytest.mark.parametrize("fixture", ["calques.qmd", "editor-review.qmd"])
 def test_every_fixture_phrase_is_flagged(fixture):
     """The oracle runs the *whole* rule set — regex entries and code checks alike, so a

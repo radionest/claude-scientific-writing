@@ -214,7 +214,7 @@ Entry schema:
   «отнести … к категории», parasites «является / осуществляется / носит … характер».
 - **warn** (advisory, agent decides) — heuristic / context-dependent, false-positive-prone:
   тире density (>1 «—» per sentence), «;» density, instrument-as-agent (`метод\w*.{0,30}(распозна|выявля|визуализир)`),
-  «когорт·», sentences > 40 words.
+  «когорт·» (только существительное: прилагательное «когортн…» — термин когортного дизайна, исключено паттерном), sentences > 40 words.
 - **judgment-only** (NOT in dictionary as error) — legitimate-тире (nulevaya svyazka, ellipsis, range «–»),
   graduable «полностью удалить/резецировать» — these live in the prose skill, never block.
 - **`severity_without_morph`** — a check whose precision depends on the morphology dictionary declares its
