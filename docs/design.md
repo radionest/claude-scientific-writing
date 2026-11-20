@@ -188,7 +188,7 @@ chunk; `/render-review` pairs this lint with the `render` ensemble dimension of
 
 Vertical checks (added 2026-11-20) ride the same pass: `_vertical_checks` reads paragraph
 styles and caption/mention numbers — table and figure sequence (jumps, duplicates),
-mention↔caption ref targets («табл. N»), heading-level skips by `Heading1…3` styles. All
+mention↔caption ref targets («табл. N»), heading-level skips by `Heading1…6` styles. All
 warn, skip when the material is absent (a non-Quarto .docx stays quiet), CLI and exit
 policy unchanged. Cross-reference existence is checked only at the render — `#| label:`
 lives in fenced chunks `Document` never sees; a source-side `@tbl-`↔label audit stays out

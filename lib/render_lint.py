@@ -16,7 +16,7 @@ design: exit 1 on error-severity findings, but no hook gates on it.
 
 Beyond the regex rules, `_vertical_checks` reads paragraph styles and caption/mention
 numbers: table and figure caption sequences (jumps, duplicates), mention↔caption ref
-targets («табл. N»), heading-level skips by `Heading1…3` styles. All findings are warn;
+targets («табл. N»), heading-level skips by `Heading1…6` styles. All findings are warn;
 the checks stay silent when the material is absent, so a non-Quarto .docx is not noise.
 Cross-reference existence is checked only at the render — `#| label:` lives in fenced
 chunks that `Document` never sees.
