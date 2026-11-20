@@ -82,6 +82,47 @@ def test_latin_data_code_legal_paths():
         "видимые (visible) с русской расшифровкой <!-- lint-ok: term-latin-data-code -->\n")
 
 
+def test_kontrast_truncations_flagged():
+    # issue #57: «контрастный контроль» и «контрастная МРТ/КТ» — разговорные усечения
+    # «МРТ/КТ с контрастным усилением» (клинический сленг, тот же класс, что «гистология»)
+    assert "vulgar-kontrastnyj-kontrol" in _ids("через полгода выполнен контрастный контроль\n")
+    assert "vulgar-kontrastnyj-kontrol" in _ids("динамическое наблюдение с контрастным контролем\n")
+    assert "vulgar-kontrastnaya-mrt-kt" in _ids("метастазы оценивали по контрастной КТ\n")
+    assert "vulgar-kontrastnaya-mrt-kt" in _ids("очаг визуализирован на контрастном МРТ\n")
+    # дефис — граница слова: «контрастная КТ-контроль» ловится по «контрастная КТ»
+    assert "vulgar-kontrastnaya-mrt-kt" in _ids("выполнена контрастная КТ-контроль брюшной полости\n")
+
+
+def test_kontrast_legal_terms_not_flagged():
+    # issue #57: законная радиологическая лексика пар усечений не образует; ведущий \b
+    # не пускает «неконтрастная/бесконтрастная» (нативная техника) — без него это FP
+    for src in (
+        "введение контрастного вещества усилило демаркацию очага\n",
+        "диагноз уточнили с помощью внутривенного контрастирования\n",
+        "тип накопления контраст-зависимый\n",
+        "гепатоспецифический контраст накапливается в гепатоцитах\n",
+        "неконтрастная МРТ паренхимы почек\n",
+        "бесконтрастная КТ брюшной полости\n",
+        "выполнена МРТ с контрастным усилением\n",
+        "контрольная МРТ с контрастным усилением через полгода\n",
+    ):
+        ids = _ids(src)
+        assert "vulgar-kontrastnyj-kontrol" not in ids, src
+        assert "vulgar-kontrastnaya-mrt-kt" not in ids, src
+
+
+def test_kontrast_contrastive_pair_and_wrap_notes():
+    # контрастивная пара «нативная и контрастная МРТ» законна, но regex её не отличает:
+    # правило warn с оговоркой в message, законный случай гасится lint-ok по месту (canon.md)
+    src = "динамику оценивали по нативной и контрастной МРТ\n"
+    assert "vulgar-kontrastnaya-mrt-kt" in _ids(src)
+    assert "vulgar-kontrastnaya-mrt-kt" not in _ids(
+        "динамику оценивали по нативной и контрастной МРТ <!-- lint-ok: vulgar-kontrastnaya-mrt-kt -->\n")
+    # канарейка линейной локальности: хард-врап между словами не ловится (как обещает note
+    # правила); упадёт, если движок станет абзацно-локальным — тогда обнови note
+    assert "vulgar-kontrastnyj-kontrol" not in _ids("последующий контрастный\nконтроль очага\n")
+
+
 def test_error_finding_sets_exit_1(tmp_path):
     from lib.lint_prose import main
     p = tmp_path / "x.qmd"
