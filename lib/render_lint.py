@@ -14,12 +14,19 @@ source for the matched text: rendered values come from f-string placeholders, so
 exact miss falls back to the matched text with the rendered value stripped. Advisory by
 design: exit 1 on error-severity findings, but no hook gates on it.
 
+Beyond the regex rules, `_vertical_checks` reads paragraph styles and caption/mention
+numbers: table and figure caption sequences (jumps, duplicates), mention↔caption ref
+targets («табл. N»), heading-level skips by `Heading1…3` styles. All findings are warn;
+the checks stay silent when the material is absent, so a non-Quarto .docx is not noise.
+Cross-reference existence is checked only at the render — `#| label:` lives in fenced
+chunks that `Document` never sees.
+
 Regex application duplicates `lint_text`'s inner loop instead of reusing it:
 `lint_text` routes through `extract_prose`, whose markdown filtering (tables,
 fences) would drop the very lines this module exists to lint.
 """
 from __future__ import annotations
-import argparse, json, sys, xml.parsers.expat, zipfile
+import argparse, json, re, sys, xml.parsers.expat, zipfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Iterable, Iterator
@@ -38,10 +45,19 @@ class TextUnit:
     kind: str    # "body" | "cell"
     ref: str     # "" for body, "tbl2 r1 c3" for a table cell
     text: str
+    style: str = ""  # w:pStyle/@w:val of the paragraph — "" when unstyled
 
 
 def _para_text(p: ET.Element) -> str:
     return "".join(t.text or "" for t in p.iter(_W + "t"))
+
+
+def _para_style(p: ET.Element) -> str:
+    ppr = p.find(_W + "pPr")
+    if ppr is None:
+        return ""
+    st = ppr.find(_W + "pStyle")
+    return st.get(_W + "val", "") if st is not None else ""
 
 
 def _iter_body_content(parent: Iterable[ET.Element]) -> Iterator[ET.Element]:
@@ -86,7 +102,7 @@ def extract_units(path: Path) -> list[TextUnit]:
     for el in _iter_body_content(body if body is not None else ()):
         if el.tag == _W + "p":
             n += 1
-            units.append(TextUnit(n, "body", "", _para_text(el)))
+            units.append(TextUnit(n, "body", "", _para_text(el), _para_style(el)))
         elif el.tag == _W + "tbl":
             tbl_no += 1
             for r, tr in enumerate(el.findall(_W + "tr"), 1):
@@ -124,11 +140,96 @@ def _hint(lines: list[tuple[str, bool]], matched: str) -> str:
     return ""
 
 
+_CAPTION = re.compile(r"^\s*(таблиц[аы]|рисун\w*|рис\.|table|figure)\s*(\d+)", re.IGNORECASE)
+_TAB_MENTION = re.compile(r"\b(?:табл\.|таблиц\w*)\s*(\d+)", re.IGNORECASE)
+_FIG_MENTION = re.compile(r"\b(?:рис\.|рисун\w*)\s*(\d+)", re.IGNORECASE)
+_HEADING_STYLE = re.compile(r"^Heading([1-6])$")
+_VERTICAL_IDS = ("render-table-sequence", "render-figure-sequence",
+                 "render-ref-target", "render-heading-levels")
+
+
+def _vertical_checks(units: list[TextUnit], file: str,
+                     lines: list[tuple[str, bool]]) -> list[dict]:
+    """Sequence/ref-target/heading findings — same shape as the regex ones, all warn.
+
+    Silent when the material is absent: a .docx without «Таблица N» captions,
+    «табл. N» mentions and Heading styles produces no findings. `ref` of a caption or
+    a mention is the unit it sits in ("" for body paragraphs); the qmd hint comes from
+    the same `_hint` the regex findings use — one anchor, no double counting.
+    """
+    out: list[dict] = []
+
+    def finding(u: TextUnit, id_: str, message: str, matched: str) -> None:
+        f = asdict(Finding(file, u.lineno, 1, id_, "warn", message, matched))
+        f["unit"] = u.ref
+        f["qmd"] = _hint(lines, matched) if lines else ""
+        out.append(f)
+
+    caps: dict[str, list[tuple[int, TextUnit, str]]] = {"table": [], "figure": []}
+    mentions: dict[str, list[tuple[TextUnit, int, str]]] = {"table": [], "figure": []}
+    label = {"table": "Таблица", "figure": "Рисунок"}
+    for u in units:
+        cap = _CAPTION.match(u.text)
+        if cap:
+            kind = "figure" if cap.group(1).lower().startswith(("рис", "figure")) else "table"
+            caps[kind].append((int(cap.group(2)), u, cap.group(0).strip()))
+            continue
+        for m in _TAB_MENTION.finditer(u.text):
+            mentions["table"].append((u, int(m.group(1)), m.group(0)))
+        for m in _FIG_MENTION.finditer(u.text):
+            mentions["figure"].append((u, int(m.group(1)), m.group(0)))
+
+    for kind, seq_id in (("table", "render-table-sequence"),
+                         ("figure", "render-figure-sequence")):
+        seen: set[int] = set()
+        top = 0
+        for n, u, matched in caps[kind]:
+            if n in seen:
+                finding(u, seq_id, f"дубликат номера: «{label[kind]} {n}» уже был", matched)
+            elif top == 0 and n != 1:
+                finding(u, seq_id,
+                        f"нумерация начинается не с 1: «{label[kind]} {n}»", matched)
+            elif n > top + 1:
+                finding(u, seq_id,
+                        f"пропуск номера: после «{label[kind]} {top}» идёт «{label[kind]} {n}»",
+                        matched)
+            seen.add(n)
+            top = max(top, n)
+
+    for kind in ("table", "figure"):
+        cap_nums = {n for n, _u, _m in caps[kind]}
+        mentioned = {n for _u, n, _t in mentions[kind]}
+        for u, n, text in mentions[kind]:
+            if n not in cap_nums:
+                finding(u, "render-ref-target",
+                        f"упоминание «{text.strip()}» — подписи «{label[kind]} {n}» в документе нет",
+                        text.strip())
+        for n, u, matched in caps[kind]:
+            if n not in mentioned:
+                finding(u, "render-ref-target",
+                        f"подпись «{matched}» не упоминается в тексте («табл./рис. {n}»)",
+                        matched)
+
+    prev = 0
+    for u in units:
+        st = _HEADING_STYLE.match(u.style)
+        if not st:
+            continue
+        level = int(st.group(1))
+        if prev and level > prev + 1:
+            finding(u, "render-heading-levels",
+                    f"пропущен уровень заголовка: после Heading{prev} идёт Heading{level}",
+                    u.text[:80])
+        prev = level
+    return out
+
+
 def lint_render(path: Path, entries: list[dict], qmd: Path | None = None) -> list[dict]:
-    """Regex entries over every unit; Finding fields + `unit` + `qmd` per finding."""
+    """Regex entries + vertical checks over every unit; Finding fields + `unit` + `qmd`."""
     lines = _qmd_lines(qmd) if qmd else []
     out: list[dict] = []
-    for u in extract_units(path):
+    units = extract_units(path)
+    for u in units:
         for e in entries:
             exc = e.get("except")
             if exc and exc.lower() in u.text.lower():
@@ -140,11 +241,12 @@ def lint_render(path: Path, entries: list[dict], qmd: Path | None = None) -> lis
                 d["unit"] = u.ref
                 d["qmd"] = _hint(lines, m.group(0)) if lines else ""
                 out.append(d)
+    out.extend(_vertical_checks(units, str(path), lines))
     return out
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description="Lint the rendered .docx (regex canon rules)")
+    ap = argparse.ArgumentParser(description="Lint the rendered .docx (canon regex + vertical checks)")
     ap.add_argument("docx", help="rendered .docx")
     ap.add_argument("--qmd", help="source .qmd — attaches qmd:LINE hints to findings")
     ap.add_argument("--json", action="store_true", help="flat findings array on stdout")

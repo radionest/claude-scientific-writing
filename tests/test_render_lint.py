@@ -20,7 +20,10 @@ def _docx(tmp_path, body, name="render.docx"):
     return p
 
 
-def _p(text):
+def _p(text, style=None):
+    if style:
+        return (f'<w:p><w:pPr><w:pStyle w:val="{style}"/></w:pPr>'
+                f"<w:r><w:t>{text}</w:t></w:r></w:p>")
     return f"<w:p><w:r><w:t>{text}</w:t></w:r></w:p>"
 
 
@@ -201,3 +204,49 @@ def test_non_utf8_qmd_is_config_error_exit_3(tmp_path, capsys):
     err = capsys.readouterr().err
     assert err.startswith("config:")
     assert str(qmd) in err  # the message names the exact offending path
+
+
+def test_extracts_paragraph_style(tmp_path):
+    p = _docx(tmp_path, _p("Заголовок раздела", "Heading1") + _p("Обычный абзац."))
+    units = extract_units(p)
+    assert [u.style for u in units] == ["Heading1", ""]
+
+
+def test_table_sequence_flags_jump_and_duplicate(tmp_path):
+    body = (_p("Таблица 1 — Критерии включения")
+            + _p("Таблица 3 — Осложнения")
+            + _p("Таблица 2 — Сравнение групп")
+            + _p("Таблица 2 — Повтор номера"))
+    hits = [f for f in lint_render(_docx(tmp_path, body), ENTRIES)
+            if f["id"] == "render-table-sequence"]
+    assert len(hits) == 2
+    assert all(f["severity"] == "warn" for f in hits)
+    assert "пропуск" in hits[0]["message"]
+    assert "дубликат" in hits[1]["message"]
+
+
+def test_ref_target_flags_mention_and_caption_orphans(tmp_path):
+    body = (_p("Как показано в табл. 2, различие значимо.")
+            + _p("Таблица 1 — Критерии включения"))
+    hits = [f for f in lint_render(_docx(tmp_path, body), ENTRIES)
+            if f["id"] == "render-ref-target"]
+    assert len(hits) == 2
+    assert all(f["severity"] == "warn" for f in hits)
+    assert {f["line"] for f in hits} == {1, 2}
+
+
+def test_heading_level_skip_flagged(tmp_path):
+    body = (_p("Отчёт", "Heading1") + _p("Раздел", "Heading2")
+            + _p("Подраздел", "Heading4") + _p("Ещё подраздел", "Heading2"))
+    hits = [f for f in lint_render(_docx(tmp_path, body), ENTRIES)
+            if f["id"] == "render-heading-levels"]
+    assert len(hits) == 1
+    assert "Heading4" in hits[0]["message"]
+
+
+def test_vertical_checks_stay_silent_without_material(tmp_path):
+    body = _p("Обычный абзац без подписей и стилей.") + _p("Ещё один абзац.")
+    hits = [f for f in lint_render(_docx(tmp_path, body), ENTRIES)
+            if f["id"] in {"render-table-sequence", "render-figure-sequence",
+                           "render-ref-target", "render-heading-levels"}]
+    assert hits == []

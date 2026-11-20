@@ -186,6 +186,14 @@ whole documents, the wrong shape for cell fragments) and advisory: no hook gates
 chunk; `/render-review` pairs this lint with the `render` ensemble dimension of
 `prose-reviewer` (chunk-level judgment: unconditional missing-data rows, denominators).
 
+Vertical checks (added 2026-11-20) ride the same pass: `_vertical_checks` reads paragraph
+styles and caption/mention numbers — table and figure sequence (jumps, duplicates),
+mention↔caption ref targets («табл. N»), heading-level skips by `Heading1…3` styles. All
+warn, skip when the material is absent (a non-Quarto .docx stays quiet), CLI and exit
+policy unchanged. Cross-reference existence is checked only at the render — `#| label:`
+lives in fenced chunks `Document` never sees; a source-side `@tbl-`↔label audit stays out
+of scope (cf. the citation-audit wiring, #63).
+
 ## The dictionary — universal source of truth (`canon/dictionary.json`)
 
 Consolidates what was scattered across two skill tables + 4 feedback-memory files. The linter consumes
@@ -273,6 +281,10 @@ Interactive: pick genre → load `profiles/<genre>.md` → propose section outli
 (canonical term per concept, abbreviations, any doc-local forbidden phrasings) → write `<doc>.spec.md`
 (sections + term list) and a doc-scoped dictionary overlay (`layer: doc`). The doc's forbidden terms thereby
 feed the same linter. Existing good report → can reverse-engineer the outline/terms, then edit.
+The spec carries an «Редакционный паспорт» section for any genre (numbers, dates, ranges,
+units/%, list markers, headings, the link system, house-style samples). A step-0 book guard
+mirrors the orchestrator: when a book spec exists (`_quarto.yml` + `<book>/specs/*.md`), no
+per-chapter spec is created.
 
 ### write — `agents/scientific-writer.md`
 Inputs: target `.qmd` + its `<doc>.spec.md` + selected genre profile + canon. Drafts/edits prose conforming
@@ -297,6 +309,10 @@ make canon-clean → `<!-- TODO ред: … -->`. Supersedes the generic `quarto
      `canon/section-moves.md`): paragraph contract, reverse outline, section functions;
      substantive sections only (Введение/Методы/Результаты/Реферат/Заключение — the
      «Обсуждение» stays with `discussion`), skipped for single-phrase or punctuation edits.
+   - **render** — chunk-level judgment over the generating chunks plus the vertical render
+     lint (`lib.render_lint`: caption numbering, ref targets, heading levels) — `/render-review`.
+   - **evidence** — claim–citation audit against a valid `<doc>.claims.jsonl` registry
+     (`lib.claim_registry`), full articles only.
    - **terminology** — term consistency vs the spec's canonical-term list + abbreviation policy.
 3. **Synthesis** pass dedups/merges + ranks → one report (blockers / warnings / nits), mirroring
    `pr-diff-reviewer`'s structure. Advisory — does not block.
