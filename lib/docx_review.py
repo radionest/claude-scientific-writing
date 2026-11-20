@@ -21,7 +21,7 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 
 from lib.document import _is_abbreviation
-from lib.lint_prose import ConfigError, effective_entries, lint_source, load_check_entries, load_entries
+from lib.lint_prose import ConfigError, degraded_note, effective_entries, lint_source, load_check_entries, load_entries
 from lib.morph import Morph
 
 _W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
@@ -126,8 +126,8 @@ def _extract(z: zipfile.ZipFile, context: int) -> list[ReviewItem]:
 _NEAR = 25  # chars either side of the anchor a finding may land and still count
 
 
-def triage(items: list[ReviewItem], morph: Morph | None = None,
-           target: str | Path | None = None) -> list[ReviewItem]:
+def triage(items: list[ReviewItem], rules: tuple[list[dict], list[dict]] | None = None,
+           morph: Morph | None = None) -> list[ReviewItem]:
     """Mark items the current rule set already catches, so tuning only sees real misses.
 
     A rule counts as covering a comment only when it fires *on the anchor* — the sentence
@@ -135,14 +135,11 @@ def triage(items: list[ReviewItem], morph: Morph | None = None,
     sentence, which is exactly how the old dictionary looked like it covered this review
     when it covered none of it.
 
-    `target` — the reviewed .docx, passed by `main`: the project-local dictionary at its
-    git root joins the rule set, exactly as for the files the hook lints. None keeps the
-    canon-only rule set.
+    `rules` — (entries, checks) from `effective_entries`, computed by the caller: `main`
+    needs the same check entries for the degraded-morphology note, so the rule set crosses
+    one boundary instead of being loaded twice. None keeps the canon-only rule set.
     """
-    if target is None:
-        entries, checks = load_entries(None), load_check_entries()
-    else:
-        entries, checks = effective_entries(target)
+    entries, checks = rules if rules is not None else (load_entries(None), load_check_entries())
     m = morph or Morph.load()
     out = []
     for it in items:
@@ -290,7 +287,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"docx_review: файл не найден: {path}", file=sys.stderr)
         return 2
     try:
-        items = triage(extract(path, args.context), target=path)
+        rules = effective_entries(path)
+        doc_items = extract(path, args.context)
+        # Morph after extract: refused files (OLE .doc, password, broken zip) never reach
+        # the degraded note, so they must not pay for the analyzer construction either.
+        morph = Morph.load()
+        items = triage(doc_items, rules=rules, morph=morph)
     except ConfigError as e:
         print(f"docx_review: ошибка локального словаря {e}", file=sys.stderr)
         return 3
@@ -308,6 +310,10 @@ def main(argv: list[str] | None = None) -> int:
         for i in items:
             if i.triage == "FN":
                 print(f"  ¶{i.line} «{i.comment[:48]}» ← {i.before[:90]}")
+    if not morph.available:
+        # stderr, so the stdout contract (JSON/text summary) stays parseable, as in
+        # tune_diff.main — under system python3 the FN/covered verdicts lose precision.
+        print(degraded_note(rules[1], tool="docx_review"), file=sys.stderr)
     return 0
 
 

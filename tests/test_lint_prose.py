@@ -58,3 +58,13 @@ def test_error_finding_sets_exit_1(tmp_path):
     p = tmp_path / "x.qmd"
     p.write_text("референсный стандарт\n", encoding="utf-8")
     assert main([str(p)]) == 1
+
+
+def test_degraded_note_prefix_per_tool():
+    # issue #44: the note is shared across entry points — the caller names itself, so
+    # tune_diff/docx_review do not misattribute it to lint_prose.
+    from lib.lint_prose import degraded_note, load_check_entries
+    checks = load_check_entries(None)
+    assert degraded_note(checks, tool="lint_prose").startswith("lint_prose: без морфологии")
+    assert degraded_note(checks, tool="tune_diff").startswith("tune_diff: без морфологии")
+    assert degraded_note(checks, tool="docx_review").startswith("docx_review: без морфологии")
