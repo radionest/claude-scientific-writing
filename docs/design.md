@@ -260,10 +260,13 @@ for the document's terms — canon marks `ortho-spelling` and `doc-abbrev-varian
 advisory hint. Two mechanisms, neither a gate (seeding is a wordlist edit, not a prose defect):
 in `--diff` mode a seeding-rule finding at `info` on a changed line is escalated to `warn` — the term
 was introduced by this edit and must be dispositioned (seeded into the overlay's `allow`, or fixed);
-and `--unseeded` prints a per-rule JSON report `{"<rule>": {"<word>": <count>}}` (aggregated over all
-files, mutually exclusive with `--json`, exit code unchanged) that the workflow must disposition.
-Without morphology `ortho-spelling` is silent, so both stay empty — the degraded note on stderr is
-the cue that the report proves nothing.
+and `--unseeded` prints a per-rule JSON report `{"<rule>": {"<word>": <count>}}` (findings per
+distinct word, aggregated over all files, mutually exclusive with `--json`, exit code unchanged)
+that the workflow must disposition. Escalation needs an available morphology: without it — the
+hook's system-`python3` mode — a rule's `severity_without_morph` demotion, or an explicit overlay
+retune of a seeding rule's severity, is not silently overridden. The `--unseeded` report works
+degraded too, but there `ortho-spelling` is silent while `doc-abbrev-variants` still counts — the
+stderr degraded note is the cue that the report proves less, not nothing.
 
 ## Stages
 
