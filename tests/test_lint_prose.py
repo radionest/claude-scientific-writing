@@ -62,10 +62,11 @@ def test_latin_data_code_flagged():
 
 
 def test_latin_data_code_snake_family_and_boundaries():
-    # \w+_ перед ядром покрывает семейство с подчёркиваниями (partially_visible);
-    # «invisible» входит в список, но «invisibility» (иное слово) — нет
+    # \w+_ перед ядром покрывает семейство с подчёркиваниями (partially_visible,
+    # not_faint); «invisible» входит в список, но «invisibility» (иное слово) — нет
     assert "term-latin-data-code" in _ids("очаги partially_visible учтены отдельно\n")
     assert "term-latin-data-code" in _ids("очаг invisible при контрольной МРТ\n")
+    assert "term-latin-data-code" in _ids("зоны not_faint оставлены отдельно\n")
     assert "term-latin-data-code" not in _ids("зона invisibility контраста расширена\n")
 
 
