@@ -243,7 +243,9 @@ def list_marker_consistency(doc, morph, entry: dict) -> Iterable[Hit]:
         top = max(variants.values())
         leaders = [v for v in variants if variants[v] == top]
         dominant = leaders[0] if len(leaders) == 1 else None
-        tally = ", ".join(f"«{v}» ×{variants[v]}" for v in variants)
+        tally = ", ".join(
+            f"«{v}» ×{variants[v]}"
+            for v in sorted(variants, key=lambda v: (-variants[v], spots[key][v][0])))
         for style, occurrences in spots[key].items():
             if style == dominant:
                 detail = f"{tally} — «{style}» преобладает, остальные приведи к нему"

@@ -140,12 +140,14 @@ def _hint(lines: list[tuple[str, bool]], matched: str) -> str:
     return ""
 
 
-_CAPTION = re.compile(r"^\s*(таблиц[аы]|рисун\w*|рис\.|table|figure)\s*(\d+)", re.IGNORECASE)
+# A caption is «Таблица N —/./: …» — the punctuation after the number keeps a prose
+# sentence starting with «Таблица 2 показывает…» from being taken for a caption.
+_CAPTION = re.compile(r"^\s*(таблиц[аы]|рисун\w*|рис\.|table|figure)\s*(\d+)\s*[-–—.:]", re.IGNORECASE)
 _TAB_MENTION = re.compile(r"\b(?:табл\.|таблиц\w*|tables?)\s*(\d+)", re.IGNORECASE)
 _FIG_MENTION = re.compile(r"\b(?:рис\.|рисун\w*|fig\.|figures?)\s*(\d+)", re.IGNORECASE)
 # A range/enumeration continuation directly after a mention: «табл. 2–4», «рисунки 2 и 3».
 # A bare «и» cannot hijack «или» — the digit demanded right after the separator fails.
-_MENTION_CHAIN = re.compile(r"\s*(?:[и,]|–|—|-)\s*(\d+)", re.IGNORECASE)
+_MENTION_CHAIN = re.compile(r"\s*(?:[и,]|and\b|–|—|-)\s*(\d+)", re.IGNORECASE)
 _HEADING_STYLE = re.compile(r"^Heading([1-6])$")
 
 
@@ -195,7 +197,8 @@ def _vertical_checks(units: list[TextUnit], file: str,
         cap = _CAPTION.match(u.text)
         if cap:
             kind = "figure" if cap.group(1).lower().startswith(("рис", "figure")) else "table"
-            caps[kind].append((int(cap.group(2)), u, cap.group(0).strip()))
+            if not re.search(r"\((?:продолжени\w*|continued)\)", u.text, re.IGNORECASE):
+                caps[kind].append((int(cap.group(2)), u, cap.group(0).strip()))
             continue
         for m in _TAB_MENTION.finditer(u.text):
             for n, matched in _mention_chain(u.text, m):

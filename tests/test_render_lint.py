@@ -267,3 +267,31 @@ def test_english_captions_pair_with_english_mentions(tmp_path):
     hits = [f for f in lint_render(_docx(tmp_path, body), ENTRIES)
             if f["id"] == "render-ref-target"]
     assert {f["line"] for f in hits} == {2}  # Table 1 is never mentioned
+
+
+def test_english_and_chain_covers_named_tables(tmp_path):
+    body = (_p("Tables 2 and 3 summarize the groups.")
+            + _p("Table 1 — Criteria") + _p("Table 2 — Groups")
+            + _p("Table 3 — Outcomes"))
+    hits = [f for f in lint_render(_docx(tmp_path, body), ENTRIES)
+            if f["id"] == "render-ref-target"]
+    assert {f["line"] for f in hits} == {2}  # Tables 2 and 3 are covered by the chain
+
+
+def test_prose_starting_with_table_word_is_not_a_caption(tmp_path):
+    body = (_p("Таблица 2 показывает динамику показателей.")
+            + _p("Таблица 1 — Динамика"))
+    seq = [f for f in lint_render(_docx(tmp_path, body), ENTRIES)
+           if f["id"] == "render-table-sequence"]
+    assert seq == []  # the prose line is not taken for a caption, no «not starting at 1»
+    hits = [f for f in lint_render(_docx(tmp_path, body), ENTRIES)
+            if f["id"] == "render-ref-target"]
+    assert {f["line"] for f in hits} == {1, 2}  # prose mentions 2; caption 1 unmentioned
+
+
+def test_continuation_table_is_not_a_duplicate(tmp_path):
+    body = (_p("Таблица 1 — Критерии") + _p("Таблица 1 (продолжение)")
+            + _p("Таблица 2 — Осложнения"))
+    hits = [f for f in lint_render(_docx(tmp_path, body), ENTRIES)
+            if f["id"] == "render-table-sequence"]
+    assert hits == []  # the (продолжение) block carries its own caption, not a dup

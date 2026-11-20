@@ -583,6 +583,11 @@ def test_sequential_numbers_are_one_marker_style():
     assert "doc-list-marker-consistency" not in ids
 
 
+def test_ordinal_range_with_preposition_is_not_flagged():
+    ids = _ids("С 2–3-го дня проводили контроль разметки.")
+    assert "ortho-range-preposition" not in ids
+
+
 def test_list_markers_differ_by_level_legitimately():
     text = "- хирургический доступ\n  * разметка под контролем ИОУЗИ\n"
     assert "doc-list-marker-consistency" not in _ids(text)
