@@ -136,9 +136,11 @@ def repeated_disclaimer(doc, morph, entry: dict) -> Iterable[Hit]:
 
     Both sentences must sit under different headings (a document without headings is one
     section, so fragment linting stays silent). The hit anchors on the restatement, the
-    detail names the original line.
+    detail names the original line; every restatement points at the same original — a
+    sentence said three times yields two hits, both referencing the first, not a pair
+    for every combination.
     """
-    seen: list[tuple[frozenset[str], Sentence, str | None]] = []
+    originals: list[tuple[frozenset[str], Sentence, str | None]] = []
     section: str | None = None
     for pl in doc.lines:
         h = _heading_of(pl)
@@ -149,7 +151,7 @@ def repeated_disclaimer(doc, morph, entry: dict) -> Iterable[Hit]:
             toks = frozenset(t.lower() for t in _WORD.findall(sent.text))
             if len(toks) < _MIN_TOKENS:
                 continue
-            for prev_toks, prev_sent, prev_section in seen:
+            for prev_toks, prev_sent, prev_section in originals:
                 union = len(toks | prev_toks)
                 if section == prev_section or not union:
                     continue
@@ -157,4 +159,6 @@ def repeated_disclaimer(doc, morph, entry: dict) -> Iterable[Hit]:
                     yield Hit(lineno=sent.lineno, col=sent.col, matched=sent.text[:60],
                               detail=f"почти дословно повторяет предложение на строке "
                                      f"{prev_sent.lineno} — оговорка живёт в одном месте")
-            seen.append((toks, sent, section))
+                    break  # one anchor per restatement — the first canonical occurrence
+            else:
+                originals.append((toks, sent, section))

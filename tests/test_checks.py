@@ -507,3 +507,17 @@ def test_repeated_disclaimer_needs_different_sections_and_a_real_overlap():
     assert not _genre_find(different_texts, "genre-repeated-disclaimer")
     assert not _genre_find(short, "genre-repeated-disclaimer")
     assert not _genre_find(headingless, "genre-repeated-disclaimer")
+
+
+def test_repeated_disclaimer_anchors_every_restatement_on_the_first():
+    """Three copies in three sections yield two hits, both pointing at the original —
+    not a pair per combination, which would put two findings on one line."""
+    text = ("## Ограничения\n\nМалый объём выборки не позволяет исключить влияние систематических "
+            "смещений на полученные оценки.\n\n"
+            "## Выводы\n\nМалый объём выборки не позволяет исключить влияние систематических "
+            "смещений на итоговые оценки.\n\n"
+            "## Реферат\n\nМалый объём выборки не позволяет исключить влияние систематических "
+            "смещений на итоговые оценки больной.\n")
+    hits = _genre_find(text, "genre-repeated-disclaimer")
+    assert [(h.line, ) for h in hits] == [(7,), (11,)]
+    assert all("строке 3" in h.message for h in hits)
