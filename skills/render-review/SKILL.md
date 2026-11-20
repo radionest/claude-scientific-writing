@@ -14,6 +14,8 @@ allowed-tools: Bash, Read, Task
    `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.render_lint "$R" --qmd "$Q" --json`.
    Находки: `unit` — якорь в docx (`tbl2 r1 c3` / порядковый номер абзаца), `qmd` — строка
    исходника (генерирующий чанк). Прочитай `severity`: error/warn/info.
+   Вертикальные находки (`render-table-sequence`, `render-figure-sequence`, `render-ref-target`,
+   `render-heading-levels`) входят в этот же прогон — все advisory warn.
 
 Exit-коды линтера (`lib.render_lint`):
 

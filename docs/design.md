@@ -84,7 +84,7 @@ scientific-writing/                      # own git repo (see "Where it lives")
     checks/                              # kind:"check" implementations: hyphenation, spelling, punctuation, consistency
     tune_diff.py                         # pristine→edited prose diff + FN/FP triage
     docx_review.py                       # editor .docx review → the same triage shape
-    render_lint.py                       # rendered .docx lint — table text + captions (regex-only, advisory)
+    render_lint.py                       # rendered .docx lint — table text + captions, vertical checks (advisory)
     protected_spans.py                   # raw-span extractor: the artifacts an edit must not damage
     revision_guard.py                    # before/after artifact diff for scoped edits (advisory CLI)
     citation_audit.py                    # local citation audit
@@ -110,7 +110,7 @@ So a rule is now one of two kinds, and checks see more than a line:
 | Kind | Declared in | Sees | Examples |
 |---|---|---|---|
 | `regex` (default) | `canon/dictionary.json` (lexical), `canon/orthography.json` (punctuation) | one prose line | `calque-referens`, `style-takzhe-slitno`, `punct-percent-spacing` |
-| `check` | `canon/orthography.json` with `kind: "check"`, implemented in `lib/checks/*.py` | a sentence or the whole document | `ortho-hyphen-linebreak`, `punct-comma-prichastie`, `doc-abbrev-variants` |
+| `check` | `canon/orthography.json` with `kind: "check"`, implemented in `lib/checks/*.py` | a sentence or the whole document | `ortho-hyphen-linebreak`, `punct-comma-prichastie`, `doc-abbrev-variants`, `doc-list-marker-consistency` |
 
 Both kinds share `severity`, `message`, `except`, the project-local overlay and
 `<!-- lint-ok: id -->` (`allow` is read by check functions only). `lib/document.py` supplies the
@@ -185,6 +185,14 @@ whole documents, the wrong shape for cell fragments) and advisory: no hook gates
 `--qmd` attaches a `qmd:L12 (chunk)` hint by locating the matched text in the generating
 chunk; `/render-review` pairs this lint with the `render` ensemble dimension of
 `prose-reviewer` (chunk-level judgment: unconditional missing-data rows, denominators).
+
+Vertical checks (added 2026-11-20) ride the same pass: `_vertical_checks` reads paragraph
+styles and caption/mention numbers — table and figure sequence (jumps, duplicates),
+mention↔caption ref targets («табл. N»), heading-level skips by `Heading1…6` styles. All
+warn, skip when the material is absent (a non-Quarto .docx stays quiet), CLI and exit
+policy unchanged. Cross-reference existence is checked only at the render — `#| label:`
+lives in fenced chunks `Document` never sees; a source-side `@tbl-`↔label audit stays out
+of scope (cf. the citation-audit wiring, #63).
 
 ## The dictionary — universal source of truth (`canon/dictionary.json`)
 
@@ -273,6 +281,10 @@ Interactive: pick genre → load `profiles/<genre>.md` → propose section outli
 (canonical term per concept, abbreviations, any doc-local forbidden phrasings) → write `<doc>.spec.md`
 (sections + term list) and a doc-scoped dictionary overlay (`layer: doc`). The doc's forbidden terms thereby
 feed the same linter. Existing good report → can reverse-engineer the outline/terms, then edit.
+The spec carries an «Редакционный паспорт» section for any genre (numbers, dates, ranges,
+units/%, list markers, headings, the link system, house-style samples). A step-0 book guard
+mirrors the orchestrator: when a book spec exists (`_quarto.yml` + `<book>/specs/*.md`), no
+per-chapter spec is created.
 
 ### write — `agents/scientific-writer.md`
 Inputs: target `.qmd` + its `<doc>.spec.md` + selected genre profile + canon. Drafts/edits prose conforming
@@ -297,6 +309,10 @@ make canon-clean → `<!-- TODO ред: … -->`. Supersedes the generic `quarto
      `canon/section-moves.md`): paragraph contract, reverse outline, section functions;
      substantive sections only (Введение/Методы/Результаты/Реферат/Заключение — the
      «Обсуждение» stays with `discussion`), skipped for single-phrase or punctuation edits.
+   - **render** — chunk-level judgment over the generating chunks plus the vertical render
+     lint (`lib.render_lint`: caption numbering, ref targets, heading levels) — `/render-review`.
+   - **evidence** — claim–citation audit against a valid `<doc>.claims.jsonl` registry
+     (`lib.claim_registry`), full articles only.
    - **terminology** — term consistency vs the spec's canonical-term list + abbreviation policy.
 3. **Synthesis** pass dedups/merges + ranks → one report (blockers / warnings / nits), mirroring
    `pr-diff-reviewer`'s structure. Advisory — does not block.

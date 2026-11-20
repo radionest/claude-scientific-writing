@@ -20,7 +20,10 @@ def _docx(tmp_path, body, name="render.docx"):
     return p
 
 
-def _p(text):
+def _p(text, style=None):
+    if style:
+        return (f'<w:p><w:pPr><w:pStyle w:val="{style}"/></w:pPr>'
+                f"<w:r><w:t>{text}</w:t></w:r></w:p>")
     return f"<w:p><w:r><w:t>{text}</w:t></w:r></w:p>"
 
 
@@ -201,3 +204,94 @@ def test_non_utf8_qmd_is_config_error_exit_3(tmp_path, capsys):
     err = capsys.readouterr().err
     assert err.startswith("config:")
     assert str(qmd) in err  # the message names the exact offending path
+
+
+def test_extracts_paragraph_style(tmp_path):
+    p = _docx(tmp_path, _p("Заголовок раздела", "Heading1") + _p("Обычный абзац."))
+    units = extract_units(p)
+    assert [u.style for u in units] == ["Heading1", ""]
+
+
+def test_table_sequence_flags_jump_and_duplicate(tmp_path):
+    body = (_p("Таблица 1 — Критерии включения")
+            + _p("Таблица 3 — Осложнения")
+            + _p("Таблица 2 — Сравнение групп")
+            + _p("Таблица 2 — Повтор номера"))
+    hits = [f for f in lint_render(_docx(tmp_path, body), ENTRIES)
+            if f["id"] == "render-table-sequence"]
+    assert len(hits) == 2
+    assert all(f["severity"] == "warn" for f in hits)
+    assert "пропуск" in hits[0]["message"]
+    assert "дубликат" in hits[1]["message"]
+
+
+def test_ref_target_flags_mention_and_caption_orphans(tmp_path):
+    body = (_p("Как показано в табл. 2, различие значимо.")
+            + _p("Таблица 1 — Критерии включения"))
+    hits = [f for f in lint_render(_docx(tmp_path, body), ENTRIES)
+            if f["id"] == "render-ref-target"]
+    assert len(hits) == 2
+    assert all(f["severity"] == "warn" for f in hits)
+    assert {f["line"] for f in hits} == {1, 2}
+
+
+def test_heading_level_skip_flagged(tmp_path):
+    body = (_p("Отчёт", "Heading1") + _p("Раздел", "Heading2")
+            + _p("Подраздел", "Heading4") + _p("Ещё подраздел", "Heading2"))
+    hits = [f for f in lint_render(_docx(tmp_path, body), ENTRIES)
+            if f["id"] == "render-heading-levels"]
+    assert len(hits) == 1
+    assert "Heading4" in hits[0]["message"]
+
+
+def test_vertical_checks_stay_silent_without_material(tmp_path):
+    body = _p("Обычный абзац без подписей и стилей.") + _p("Ещё один абзац.")
+    hits = [f for f in lint_render(_docx(tmp_path, body), ENTRIES)
+            if f["id"] in {"render-table-sequence", "render-figure-sequence",
+                           "render-ref-target", "render-heading-levels"}]
+    assert hits == []
+
+
+def test_ref_target_range_mention_covers_the_chain(tmp_path):
+    body = (_p("Как показано в табл. 1–3, различия значимы.")
+            + _p("Таблица 1 — Критерии") + _p("Таблица 2 — Осложнения")
+            + _p("Таблица 3 — Сравнение групп"))
+    hits = [f for f in lint_render(_docx(tmp_path, body), ENTRIES)
+            if f["id"] == "render-ref-target"]
+    assert hits == []
+
+
+def test_english_captions_pair_with_english_mentions(tmp_path):
+    body = (_p("As shown in Table 2, the difference is significant.")
+            + _p("Table 1 — Criteria") + _p("Table 2 — Complications"))
+    hits = [f for f in lint_render(_docx(tmp_path, body), ENTRIES)
+            if f["id"] == "render-ref-target"]
+    assert {f["line"] for f in hits} == {2}  # Table 1 is never mentioned
+
+
+def test_english_and_chain_covers_named_tables(tmp_path):
+    body = (_p("Tables 2 and 3 summarize the groups.")
+            + _p("Table 1 — Criteria") + _p("Table 2 — Groups")
+            + _p("Table 3 — Outcomes"))
+    hits = [f for f in lint_render(_docx(tmp_path, body), ENTRIES)
+            if f["id"] == "render-ref-target"]
+    assert {f["line"] for f in hits} == {2}  # Tables 2 and 3 are covered by the chain
+
+
+def test_prose_starting_with_table_word_is_not_a_caption(tmp_path):
+    body = (_p("Таблица 2 показывает динамику показателей.")
+            + _p("Таблица 1 — Динамика"))
+    seq = [f for f in lint_render(_docx(tmp_path, body), ENTRIES)
+           if f["id"] == "render-table-sequence"]
+    assert seq == []  # the prose line is not taken for a caption, no «not starting at 1»
+    hits = [f for f in lint_render(_docx(tmp_path, body), ENTRIES)
+            if f["id"] == "render-ref-target"]
+    assert {f["line"] for f in hits} == {1, 2}  # prose mentions 2; caption 1 unmentioned
+
+
+def test_continuation_table_is_not_a_duplicate(tmp_path):
+    body = (_p("Таблица 1 — Критерии") + _p("Таблица 1 (продолжение)")
+            + _p("Таблица 2 — Осложнения"))
+    hits = [f for f in lint_render(_docx(tmp_path, body), ENTRIES)
+            if f["id"] == "render-table-sequence"]
+    assert hits == []  # the (продолжение) block carries its own caption, not a dup

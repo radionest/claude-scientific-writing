@@ -340,6 +340,21 @@
       "id": "genre-repeated-disclaimer",
       "severity": "info",
       "rationale": "одна оговорка — одно место: дословный повтор формулировки в другом разделе (say-it-once на межразделном масштабе)"
+    },
+    {
+      "id": "ortho-range-preposition",
+      "severity": "warn",
+      "rationale": "диапазон не соединяется с предлогом: «от 15–20» — «от 15 до 20» или «15–20» без предлога"
+    },
+    {
+      "id": "ortho-sign-number-spacing",
+      "severity": "warn",
+      "rationale": "после №/§ ставится пробел; журнальная вёрстка «№5» ослабляется overlay из паспорта, не except в каноне"
+    },
+    {
+      "id": "doc-list-marker-consistency",
+      "severity": "warn",
+      "rationale": "единый маркер на уровень списка; разные уровни и разные семьи (маркер/номер) легитимно различаются"
     }
   ],
   "documents": {
@@ -426,6 +441,11 @@
           "count": 3
         },
         {
+          "id": "doc-list-marker-consistency",
+          "severity": "warn",
+          "count": 2
+        },
+        {
           "id": "doc-repeat-window",
           "severity": "warn",
           "count": 1
@@ -443,6 +463,16 @@
         {
           "id": "ortho-hyphen-linebreak",
           "severity": "error",
+          "count": 1
+        },
+        {
+          "id": "ortho-range-preposition",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "ortho-sign-number-spacing",
+          "severity": "warn",
           "count": 1
         },
         {
