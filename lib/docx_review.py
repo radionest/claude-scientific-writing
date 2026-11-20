@@ -21,7 +21,7 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 
 from lib.document import _is_abbreviation
-from lib.lint_prose import ConfigError, degraded_note, effective_entries, lint_source, load_check_entries, load_entries
+from lib.lint_prose import ConfigError, degraded_note, effective_entries, lint_source
 from lib.morph import Morph
 
 _W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
@@ -126,8 +126,8 @@ def _extract(z: zipfile.ZipFile, context: int) -> list[ReviewItem]:
 _NEAR = 25  # chars either side of the anchor a finding may land and still count
 
 
-def triage(items: list[ReviewItem], rules: tuple[list[dict], list[dict]] | None = None,
-           morph: Morph | None = None) -> list[ReviewItem]:
+def triage(items: list[ReviewItem], rules: tuple[list[dict], list[dict]],
+           morph: Morph) -> list[ReviewItem]:
     """Mark items the current rule set already catches, so tuning only sees real misses.
 
     A rule counts as covering a comment only when it fires *on the anchor* — the sentence
@@ -135,12 +135,14 @@ def triage(items: list[ReviewItem], rules: tuple[list[dict], list[dict]] | None 
     sentence, which is exactly how the old dictionary looked like it covered this review
     when it covered none of it.
 
-    `rules` — (entries, checks) from `effective_entries`, computed by the caller: `main`
-    needs the same check entries for the degraded-morphology note, so the rule set crosses
-    one boundary instead of being loaded twice. None keeps the canon-only rule set.
+    `rules` and `morph` are required, computed by the caller: triage must see exactly what
+    the gate enforces — a canon-only fallback would score anchors against disabled or
+    allow-listed rules and mask real editor findings as «covered» (#55). `main` needs the
+    same check entries and analyzer for the degraded-morphology note, so both cross one
+    boundary instead of being derived twice.
     """
-    entries, checks = rules if rules is not None else (load_entries(None), load_check_entries())
-    m = morph or Morph.load()
+    entries, checks = rules
+    m = morph
     out = []
     for it in items:
         probe = it.sentence or it.before or it.after

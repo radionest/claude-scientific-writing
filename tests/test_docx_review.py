@@ -1,3 +1,4 @@
+import json
 import subprocess
 import zipfile
 
@@ -5,6 +6,7 @@ import pytest
 
 import lib.docx_review
 from lib.docx_review import DocxError, extract, main, triage
+from lib.lint_prose import effective_entries
 from lib.morph import Morph
 
 W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
@@ -67,10 +69,66 @@ def test_triage_marks_covered_only_on_the_anchor(tmp_path):
               _run(" очаги сопоставляли с макропрепаратом.")),
         _para(_run("Использовали "), _anchor("2", "референсный"), _run(" стандарт сравнения здесь.")),
     ], [("1", "Ред", "зпт"), ("2", "Ред", "калька")])
-    by_comment = {i.anchor: i for i in triage(extract(p))}
+    by_comment = {i.anchor: i
+                  for i in triage(extract(p), effective_entries(p, use_local=False),
+                                  Morph.load())}
     assert by_comment["затем"].triage == "FN", "далёкая находка не должна засчитываться"
     assert by_comment["референсный"].triage == "covered"
     assert by_comment["референсный"].rule_hit == "calque-referens"
+
+
+def test_triage_signature_pins_the_invariant():
+    """#55 fixed by signature, so the signature is what the test pins: a call without the
+    effective rule set — or without the morph the gate runs with — must fail loudly instead
+    of silently scoring a canon-only world where disabled rules «cover» again."""
+    with pytest.raises(TypeError):
+        triage([])  # no rules
+    with pytest.raises(TypeError):
+        triage([], ([], []))  # no morph
+
+
+def test_disabled_canon_rule_stops_covering(tmp_path, capsys):
+    """Triage runs the *effective* rule set (#55): a canon rule the project overlay disables
+    must not cover an anchor any more — the canon-only loader would call it «covered» and
+    tune-learn would drop a real editor finding as already caught."""
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    d = tmp_path / ".claude" / "scientific-writing"
+    d.mkdir(parents=True)
+    (d / "dictionary.json").write_text(
+        json.dumps({"entries": [{"id": "calque-referens", "disabled": True}]},
+                   ensure_ascii=False), encoding="utf-8")
+    p = _docx(tmp_path, [
+        _para(_run("Использовали "), _anchor("1", "референсный"), _run(" стандарт сравнения здесь.")),
+    ], [("1", "Ред", "калька")])
+    assert main([str(p), "--json"]) == 0
+    items = json.loads(capsys.readouterr().out)
+    assert len(items) == 1
+    assert items[0]["triage"] == "FN"
+    assert items[0]["rule_hit"] is None
+
+
+def test_allowed_word_stops_covering(tmp_path, capsys):
+    """The allow half of the #55 invariant: an overlay `allow` list mutes a canon check on
+    the anchor exactly like `disabled` does — the canon-only loaders would call the anchor
+    «covered» by a rule the project no longer enforces. The covered baseline proves the FN
+    comes from the overlay, not from the check never firing."""
+    p = _docx(tmp_path, [
+        _para(_run("Применяли ио-УЗИ по показаниям, "), _anchor("1", "ИОУЗИ"), _run(" — реже.")),
+    ], [("1", "Ред", "написание")])
+    base = triage(extract(p), effective_entries(p, use_local=False), Morph.load())
+    assert base[0].triage == "covered"
+    assert base[0].rule_hit == "doc-abbrev-variants"
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    d = tmp_path / ".claude" / "scientific-writing"
+    d.mkdir(parents=True)
+    (d / "dictionary.json").write_text(
+        json.dumps({"entries": [{"id": "doc-abbrev-variants", "allow": ["ИОУЗИ"]}]},
+                   ensure_ascii=False), encoding="utf-8")
+    assert main([str(p), "--json"]) == 0
+    items = json.loads(capsys.readouterr().out)
+    assert len(items) == 1
+    assert items[0]["triage"] == "FN"
+    assert items[0]["rule_hit"] is None
 
 
 def test_tracked_changes_become_before_after(tmp_path):
