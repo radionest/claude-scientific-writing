@@ -44,6 +44,17 @@ def test_check_entries_are_registered():
             assert checks.get(e["id"]) is not None, f"{e['id']}: нет реализации в lib/checks"
 
 
+def test_seeding_contract_marks_exactly_the_write_stage_rules():
+    """Issue #25: `seed: "allow"` names the rules whose wordlist is the sink for a
+    document's terms — the diff escalation and `--unseeded` key off it, so the marker
+    must sit on both seeding rules and nowhere else."""
+    marked = {e["id"] for e in _load() if e.get("seed")}
+    assert marked == {"ortho-spelling", "doc-abbrev-variants"}
+    for e in _load():
+        if e.get("seed") is not None:
+            assert e["seed"] == "allow"
+
+
 def test_patterns_avoid_cyrillic_range_without_yo():
     """[а-я] исключает «ё» (U+0451): «отнес[а-я]+» не матчит «отнесённые». В хвостах — \\w."""
     for e in _load():

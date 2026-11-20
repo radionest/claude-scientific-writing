@@ -254,6 +254,20 @@ a tracked overlay in the worktree itself wins over the main checkout's (the work
 **The hook scans the diff, not the whole file.** Pre-existing calque debt must not block every PR; only
 **newly introduced** error-severity findings gate. `/text-review` may scan whole-file on demand.
 
+**Seeding contract (`seed: "allow"`, issue #25).** Rules whose `allow` wordlist is the designated sink
+for the document's terms — canon marks `ortho-spelling` and `doc-abbrev-variants` with `"seed": "allow"`
+(a project overlay may mark its own rules the same way) — carry an enforceable contract, not an
+advisory hint. Two mechanisms, neither a gate (seeding is a wordlist edit, not a prose defect):
+in `--diff` mode a seeding-rule finding at `info` on a changed line is escalated to `warn` — the term
+was introduced by this edit and must be dispositioned (seeded into the overlay's `allow`, or fixed);
+and `--unseeded` prints a per-rule JSON report `{"<rule>": {"<word>": <count>}}` (findings per
+distinct word, aggregated over all files, mutually exclusive with `--json`, exit code unchanged)
+that the workflow must disposition. Escalation needs an available morphology: without it — the
+hook's system-`python3` mode — a rule's `severity_without_morph` demotion, or an explicit overlay
+retune of a seeding rule's severity, is not silently overridden. The `--unseeded` report works
+degraded too, but there `ortho-spelling` is silent while `doc-abbrev-variants` still counts — the
+stderr degraded note is the cue that the report proves less, not nothing.
+
 ## Stages
 
 ### spec — `commands/init-doc-spec.md`
@@ -265,7 +279,8 @@ feed the same linter. Existing good report → can reverse-engineer the outline/
 ### write — `agents/scientific-writer.md`
 Inputs: target `.qmd` + its `<doc>.spec.md` + selected genre profile + canon. Drafts/edits prose conforming
 to the spec's sections and the genre's style; every quantitative claim cited (carried from the current
-writer); **self-checks against the dictionary — never introduces a banned calque**; external content it can't
+writer); **self-checks against the dictionary — never introduces a banned calque**; verifies the seeding
+contract before finishing (`--unseeded` → `{}` on the `seed: "allow"` rules, issue #25); external content it can't
 make canon-clean → `<!-- TODO ред: … -->`. Supersedes the generic `quarto-article-writer`.
 
 ### review — `commands/text-review.md` (ensemble of subagents)
