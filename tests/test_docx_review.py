@@ -3,7 +3,9 @@ import zipfile
 
 import pytest
 
+import lib.docx_review
 from lib.docx_review import DocxError, extract, main, triage
+from lib.morph import Morph
 
 W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
 
@@ -188,3 +190,32 @@ def test_unsupported_compression_is_not_a_password(tmp_path, monkeypatch, capsys
     monkeypatch.setattr(zipfile.ZipFile, "read", refuse)
     assert main([str(p)]) == 2
     assert "сжатия" in capsys.readouterr().err
+
+
+def test_degraded_morph_note_on_stderr(tmp_path, monkeypatch, capsys):
+    # Without the morph extra the FN/covered verdicts silently lose precision: the note
+    # goes to stderr, stdout stays the contract (JSON/text), as in tune_diff.main.
+    monkeypatch.setattr(lib.docx_review.Morph, "load",
+                        staticmethod(lambda: Morph(available=False)))
+    p = _docx(tmp_path,
+              [_para(_run("Врач отметил "), _anchor("1", "очаг"), _run(" на срезе."))],
+              [("1", "Редактор", "зпт")])
+    assert main([str(p)]) == 0
+    res = capsys.readouterr()
+    assert "docx_review:" in res.err
+    assert "без морфологии" in res.err
+    assert "без морфологии" not in res.out  # stderr only — JSON/text stays the contract
+
+
+def test_morph_available_prints_no_note(tmp_path, monkeypatch, capsys):
+    # The mirror of the degraded-path test: with the morph extra the guard must print the
+    # note on neither stream — pins the `if not morph.available` condition itself.
+    monkeypatch.setattr(lib.docx_review.Morph, "load",
+                        staticmethod(lambda: Morph(available=True)))
+    p = _docx(tmp_path,
+              [_para(_run("Врач отметил "), _anchor("1", "очаг"), _run(" на срезе."))],
+              [("1", "Редактор", "зпт")])
+    assert main([str(p)]) == 0
+    res = capsys.readouterr()
+    assert "без морфологии" not in res.out
+    assert "без морфологии" not in res.err
