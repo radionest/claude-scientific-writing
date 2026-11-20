@@ -1,6 +1,6 @@
 ---
 name: prose-reviewer
-description: "Одно измерение ансамблевого ревью прозы .qmd. Измерение передаётся в задаче: calques | repeats | structure | terminology | render | genre | discussion | argument | fidelity | evidence."
+description: "Одно из измерений ансамбля `/text-review` (ревью русской научной прозы в .qmd); в задаче указано, какое именно: calques | repeats | structure | terminology | render | genre | discussion | argument | fidelity | evidence."
 model: opus
 color: cyan
 ---
