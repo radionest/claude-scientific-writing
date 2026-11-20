@@ -164,7 +164,7 @@ line) sits the eval layer, `tests/eval/`:
   hedges, a null result: zero errors, the only findings being `ortho-spelling` infos on
   real medical vocabulary. A new warning on this text is a false positive to account
   for, not noise.
-- `lint-bad.qmd` — all 58 rules fire; the commit hook skips it like `tests/fixtures/`
+- `lint-bad.qmd` — 58 of the 59 canon rules fire; the commit hook skips it like `tests/fixtures/`
   (intentional oracle), while `lint-good.qmd` stays gated.
 - `rewrite-cases.json` — meaning-damage minimal pairs (lost negation/quantifier/
   comparator, modality shifts, denominator change, dropped citation key, altered inline
