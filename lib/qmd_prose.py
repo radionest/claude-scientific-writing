@@ -11,6 +11,12 @@ class ProseLine:
     suppress: set[str] = field(default_factory=set)
     cited: bool = False  # the raw line carries a `[@key]` citation (stripped from `text`)
 
+    @property
+    def heading(self) -> tuple[int, str] | None:
+        """(level, title) when this prose line is a heading — heading lines keep their «#»."""
+        m = _HEADING_RE.match(self.text)
+        return (len(m.group(1)), m.group(2).strip()) if m else None
+
 
 _FENCE_RE = re.compile(r"^\s*(?:```+|~~~+)")
 _YAML_DELIM_RE = re.compile(r"^---\s*$")

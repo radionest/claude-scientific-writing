@@ -283,6 +283,9 @@ make canon-clean → `<!-- TODO ред: … -->`. Supersedes the generic `quarto
    - **discussion** — applies `writing-discussion` to the «Обсуждение» section (section-level
      argumentation: five moves, the findings → comparison → meaning cycle, anti-patterns);
      dispatched only when the document has an «Обсуждение» section.
+   - **genre** — genre-norm counters vs the profile's Discussion section (refusal-ending
+     ratio over literature paragraphs, opening quantification, restated disclaimers);
+     dispatched with `discussion`, only when the document has an «Обсуждение» section.
    - **argument** — paragraph and section-move logic (`reader-first-academic-prose` +
      `canon/section-moves.md`): paragraph contract, reverse outline, section functions;
      substantive sections only (Введение/Методы/Результаты/Реферат/Заключение — the
