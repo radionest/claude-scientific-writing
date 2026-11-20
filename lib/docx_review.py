@@ -127,7 +127,7 @@ _NEAR = 25  # chars either side of the anchor a finding may land and still count
 
 
 def triage(items: list[ReviewItem], rules: tuple[list[dict], list[dict]],
-           morph: Morph | None = None) -> list[ReviewItem]:
+           morph: Morph) -> list[ReviewItem]:
     """Mark items the current rule set already catches, so tuning only sees real misses.
 
     A rule counts as covering a comment only when it fires *on the anchor* — the sentence
@@ -135,14 +135,14 @@ def triage(items: list[ReviewItem], rules: tuple[list[dict], list[dict]],
     sentence, which is exactly how the old dictionary looked like it covered this review
     when it covered none of it.
 
-    `rules` — (entries, checks) from `effective_entries`, computed by the caller: triage
-    must see exactly what the gate enforces, overlay included — a canon-only fallback would
-    score anchors against disabled or allow-listed rules and mask real editor findings as
-    «covered» (#55). `main` needs the same check entries for the degraded-morphology note,
-    so the rule set crosses one boundary instead of being loaded twice.
+    `rules` and `morph` are required, computed by the caller: triage must see exactly what
+    the gate enforces — a canon-only fallback would score anchors against disabled or
+    allow-listed rules and mask real editor findings as «covered» (#55). `main` needs the
+    same check entries and analyzer for the degraded-morphology note, so both cross one
+    boundary instead of being derived twice.
     """
     entries, checks = rules
-    m = morph or Morph.load()
+    m = morph
     out = []
     for it in items:
         probe = it.sentence or it.before or it.after
