@@ -578,6 +578,11 @@ def test_ordered_marker_period_and_paren_is_flagged():
     assert "doc-list-marker-consistency" in ids
 
 
+def test_sequential_numbers_are_one_marker_style():
+    ids = _ids("1. волюмометрия до резекции\n2. волюмометрия после резекции\n")
+    assert "doc-list-marker-consistency" not in ids
+
+
 def test_list_markers_differ_by_level_legitimately():
     text = "- хирургический доступ\n  * разметка под контролем ИОУЗИ\n"
     assert "doc-list-marker-consistency" not in _ids(text)

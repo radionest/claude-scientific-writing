@@ -213,14 +213,15 @@ def _lemma_freq(doc, morph) -> dict[str, int]:
 
 @register("doc-list-marker-consistency")
 def list_marker_consistency(doc, morph, entry: dict) -> Iterable[Hit]:
-    """One marker style per list nesting level: «-» vs «*» vs «+», «1.» vs «1)».
+    """One marker style per list nesting level: «-» vs «*» vs «+», «N.» vs «N)».
 
     Different levels legitimately differ — the educational genre nests its lists in
     its own style — and a bullet beside an ordered item is two lists, not a mix, so
-    the key folds a marker to (indent width, family). Same anchoring as
-    `_variant_hits`: in `--diff` mode (the hook path) a finding on an untouched line
-    is filtered out, so every occurrence of the minority marker and of the dominant
-    one is reported.
+    the key folds a marker to (indent width, family). Within a family the style, not
+    the surface marker, is compared: "1.", "2.", "3." are one style (displayed
+    «N.»), "1)" and "2)" are the other («N)»). Same anchoring as `_variant_hits`:
+    in `--diff` mode (the hook path) a finding on an untouched line is filtered out,
+    so every occurrence of the minority style and of the dominant one is reported.
     """
     counts: dict[str, Counter] = defaultdict(Counter)
     spots: dict[str, dict[str, list[tuple[int, int]]]] = defaultdict(lambda: defaultdict(list))
@@ -230,9 +231,11 @@ def list_marker_consistency(doc, morph, entry: dict) -> Iterable[Hit]:
             continue
         indent, marker = m.group(1) or "", m.group(2)
         family = "ordered" if marker[0].isdigit() else "bullet"
+        style = marker[-1] if family == "ordered" else marker
+        display = f"N{style}" if family == "ordered" else style
         key = f"{len(indent)}|{family}"
-        counts[key][marker] += 1
-        spots[key][marker].append((pl.lineno, m.start(2) + 1))
+        counts[key][display] += 1
+        spots[key][display].append((pl.lineno, m.start(2) + 1))
     for key in sorted(counts):
         variants = counts[key]
         if len(variants) < 2:
@@ -241,12 +244,12 @@ def list_marker_consistency(doc, morph, entry: dict) -> Iterable[Hit]:
         leaders = [v for v in variants if variants[v] == top]
         dominant = leaders[0] if len(leaders) == 1 else None
         tally = ", ".join(f"«{v}» ×{variants[v]}" for v in variants)
-        for marker, occurrences in spots[key].items():
-            if marker == dominant:
-                detail = f"{tally} — «{marker}» преобладает, остальные приведи к нему"
+        for style, occurrences in spots[key].items():
+            if style == dominant:
+                detail = f"{tally} — «{style}» преобладает, остальные приведи к нему"
             elif dominant is None:
                 detail = f"{tally} — выбери один маркер на уровень"
             else:
                 detail = f"{tally} — приведи к «{dominant}»"
             for lineno, col in occurrences:
-                yield Hit(lineno=lineno, col=col, matched=marker, detail=detail)
+                yield Hit(lineno=lineno, col=col, matched=style, detail=detail)

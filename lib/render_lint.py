@@ -144,8 +144,6 @@ _CAPTION = re.compile(r"^\s*(таблиц[аы]|рисун\w*|рис\.|table|fig
 _TAB_MENTION = re.compile(r"\b(?:табл\.|таблиц\w*)\s*(\d+)", re.IGNORECASE)
 _FIG_MENTION = re.compile(r"\b(?:рис\.|рисун\w*)\s*(\d+)", re.IGNORECASE)
 _HEADING_STYLE = re.compile(r"^Heading([1-6])$")
-_VERTICAL_IDS = ("render-table-sequence", "render-figure-sequence",
-                 "render-ref-target", "render-heading-levels")
 
 
 def _vertical_checks(units: list[TextUnit], file: str,
