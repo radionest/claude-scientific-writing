@@ -207,6 +207,26 @@
       "rationale": "латинский код категории данных в русской прозе — категорию называют русскими словами; сам код законен в чанке/комментарии и в tbl-cap/fig-cap при русской расшифровке (линтеру недоступны)"
     },
     {
+      "id": "rhetoric-empty-significance",
+      "severity": "warn",
+      "rationale": "оценка без следствия: значимость заявлена, содержание не названо"
+    },
+    {
+      "id": "rhetoric-template-opening",
+      "severity": "info",
+      "rationale": "время без данных: шаблонный зачин вместо периода или факта (info — подсказка)"
+    },
+    {
+      "id": "rhetoric-vague-authority",
+      "severity": "info",
+      "rationale": "ссылка без адреса: «многие исследования» не названы (info — подсказка)"
+    },
+    {
+      "id": "rhetoric-empty-amplifier",
+      "severity": "warn",
+      "rationale": "количество без перечня: усилитель прячет отсутствие содержания"
+    },
+    {
       "id": "ortho-hyphen-linebreak",
       "severity": "error",
       "rationale": "дефис от переноса строки — артефакт вставки из PDF/Word"
@@ -518,6 +538,26 @@
         {
           "id": "render-zero-missing-row",
           "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "rhetoric-empty-amplifier",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "rhetoric-empty-significance",
+          "severity": "warn",
+          "count": 1
+        },
+        {
+          "id": "rhetoric-template-opening",
+          "severity": "info",
+          "count": 1
+        },
+        {
+          "id": "rhetoric-vague-authority",
+          "severity": "info",
           "count": 1
         },
         {

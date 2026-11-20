@@ -9,14 +9,14 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 
 BUDGETS = {
-    "writing-russian-academic-prose": 200,
+    "writing-russian-academic-prose": 210,
     "say-it-once-academic-prose": 130,
     "reader-first-academic-prose": 140,
 }
 REFERENCES = {
     "writing-russian-academic-prose": [
         "punctuation.md", "nominalization.md", "voice-and-agency.md",
-        "bayes-terminology.md", "examples.md",
+        "bayes-terminology.md", "examples.md", "rhetoric.md",
     ],
     "say-it-once-academic-prose": [
         "repeat-types.md", "information-placement.md", "examples.md",

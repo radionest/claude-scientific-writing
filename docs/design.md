@@ -237,6 +237,13 @@ Sourcing for initial entries: the tables in both prose skills (since #17 consoli
 now point here) + memories `feedback_ru_report_phrasing`,
 `feedback_russian_prose_skill`, `feedback_no_bold_in_docx_reports`, `project_docx_apply_bypasses_prose_pass`.
 
+The `rhetoric-*` family (added 2026-11-20) catches shell phrases — template openings, empty
+significance, vague authority, empty amplifiers — as info/warn regex rules whose message names
+the consequence to supply instead of banning the pattern. The function judgment (the classes,
+the specificity rule — the number is never invented — and anti-overcompensation) lives in
+`skills/writing-russian-academic-prose/references/rhetoric.md`; novelty claims pay their
+nearest precedent via `skills/reader-first-academic-prose/references/claims-and-caveats.md`.
+
 ## The linter (`lib/lint_prose.py`)
 
 | Aspect | Contract |
