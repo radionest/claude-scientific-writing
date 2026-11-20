@@ -50,6 +50,7 @@ scientific-writing/                      # own git repo (see "Where it lives")
     canon.md                             # human-readable universal canon (prose discipline + term policy)
     dictionary.json                      # MACHINE universal source: regex + bad/good + message + severity + layer
     orthography.json                     # punctuation/orthography rules + kind:"check" declarations
+    section-moves.md                     # rhetorical functions of sections (argument layer; judgment, not machine rules)
     profiles/
       report.md  article.md  educational.md   # per-genre section templates + style deltas
   skills/
@@ -59,6 +60,8 @@ scientific-writing/                      # own git repo (see "Where it lives")
       references/                              # punctuation, nominalization, voice-and-agency, bayes-terminology, examples
     say-it-once-academic-prose/SKILL.md        # document level: repeats / information architecture
       references/                              # repeat-types, information-placement, examples
+    reader-first-academic-prose/SKILL.md       # argument level: paragraph contract, claims/caveats, cold read
+      references/                              # paragraphs, claims-and-caveats, cold-read
     tuning-rules/SKILL.md                      # rule-derivation discipline (see tune-draft/tune-learn)
     init-doc-spec/SKILL.md                     # scaffold a per-document spec from canon + genre (interactive)
     text-edit/SKILL.md                         # scoped .qmd edit: light/deep modes, protected inventory, revision_guard + fidelity check
@@ -90,7 +93,7 @@ scientific-writing/                      # own git repo (see "Where it lives")
     design.md                            # this file, carried over
 ```
 
-Progressive disclosure (2026-11-19): the two prose skills keep triggers, diagnosis,
+Progressive disclosure (2026-11-19): the prose skills keep triggers, diagnosis,
 mandatory exceptions and the edit order in `SKILL.md`; tables with worked examples and
 special references live in `references/`, routed from the core, each piece of content
 in exactly one place. `tests/test_skill_layout.py` pins the shape. The canon stays the
@@ -280,6 +283,10 @@ make canon-clean → `<!-- TODO ред: … -->`. Supersedes the generic `quarto
    - **discussion** — applies `writing-discussion` to the «Обсуждение» section (section-level
      argumentation: five moves, the findings → comparison → meaning cycle, anti-patterns);
      dispatched only when the document has an «Обсуждение» section.
+   - **argument** — paragraph and section-move logic (`reader-first-academic-prose` +
+     `canon/section-moves.md`): paragraph contract, reverse outline, section functions;
+     substantive sections only (Введение/Методы/Результаты/Реферат/Заключение — the
+     «Обсуждение» stays with `discussion`), skipped for single-phrase or punctuation edits.
    - **terminology** — term consistency vs the spec's canonical-term list + abbreviation policy.
 3. **Synthesis** pass dedups/merges + ranks → one report (blockers / warnings / nits), mirroring
    `pr-diff-reviewer`'s structure. Advisory — does not block.
