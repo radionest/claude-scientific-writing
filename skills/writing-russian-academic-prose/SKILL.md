@@ -154,6 +154,7 @@ description: Use when writing or revising Russian-language academic/scientific p
 конкретики (число не выдумывается), анти-перекомпенсация — `references/rhetoric.md`;
 novelty padding («впервые» платит ближайшим прецедентом) — `references/claims-and-caveats.md`
 скилла `reader-first-academic-prose`.
+
 ## Порядок правки
 
 1. Прочитай абзац «вслух» про себя. Где мысленно задохнулся — там фраза слишком длинная.
