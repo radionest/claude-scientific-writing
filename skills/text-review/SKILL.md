@@ -1,11 +1,12 @@
 ---
 name: text-review
-description: Совещательное ревью прозы .qmd — линтер + ансамбль субагентов (кальки/повторы/структура/термины/рендер/обсуждение; условный evidence — при валидном claims-реестре полной статьи)
+description: Use when Russian scientific prose in a .qmd needs advisory review: the linter first, then a prose-reviewer ensemble (calques, repeats, structure, terminology, render, discussion; conditional evidence). Commits and blocks nothing.
+allowed-tools: Bash, Read, Task
 ---
 
 Ревью русской научной прозы для целевого `.qmd` (аргументы вызова: `<file.qmd> [--whole-file] [--deep]`). Совещательно — ничего не коммитит и не блокирует. Пусть `$Q` — путь целевого файла.
 
-`CLAUDE_PLUGIN_ROOT` — корень установленного плагина. Если переменная не задана (zcode), используй корень репозитория плагина (`~/Projects/claude-scientific-writing`); `.venv` для pytest живёт там же.
+`CLAUDE_PLUGIN_ROOT` — корень установленного плагина. Если переменная не задана (zcode), возьми корень из пути этого SKILL.md: он лежит на два уровня ниже корня плагина (`<корень>/skills/<имя>/SKILL.md`). Для pytest используй `.venv` в корне плагина; если её нет — скажи явно, что прогон pytest недоступен.
 
 ## Шаги
 1. Определи целевой `.qmd` (`$Q`). Без него — спроси.
@@ -35,7 +36,7 @@ description: Совещательное ревью прозы .qmd — линт�
 наряду с канонными.
 
 Измерение `fidelity` (before/after правки — вызывается из `/text-edit`) в диспетчеризацию
-этой команды не входит.
+этого скилла не входит.
 
 Exit-коды линтера (`lib.lint_prose`):
 

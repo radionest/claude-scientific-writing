@@ -1,12 +1,13 @@
 ---
 name: text-edit
-description: Ограниченная правка прозы .qmd — режимы light/deep, protected inventory, revision_guard и fidelity-проверка точного кандидата
+description: Use when existing Russian scientific prose in a .qmd needs a bounded edit: light minimal spans or deep paragraph-function moves inside a declared scope, with protected inventory, revision_guard and a fidelity check of the exact final candidate. The only skill that edits prose.
+allowed-tools: Bash, Read, Edit, Write, Task
 ---
 
 Правка русской научной прозы для целевого `.qmd` (аргументы вызова: `<file.qmd> [--mode light|deep] [--only <класс>] [--scope <разделы>]`) с сохранением научного содержания. Пусть `$Q` — путь целевого файла.
 `/text-review` остаётся audit-скиллом; правит только этот скилл.
 
-`CLAUDE_PLUGIN_ROOT` — корень установленного плагина. Если переменная не задана (zcode), используй корень репозитория плагина (`~/Projects/claude-scientific-writing`); `.venv` для pytest живёт там же.
+`CLAUDE_PLUGIN_ROOT` — корень установленного плагина. Если переменная не задана (zcode), возьми корень из пути этого SKILL.md: он лежит на два уровня ниже корня плагина (`<корень>/skills/<имя>/SKILL.md`). Для pytest используй `.venv` в корне плагина; если её нет — скажи явно, что прогон pytest недоступен.
 
 ## Шаги
 1. Определи целевой `.qmd` (`$Q`), режим (`--mode light` по умолчанию | `deep`), фокус

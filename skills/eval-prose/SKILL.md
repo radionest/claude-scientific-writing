@@ -1,12 +1,13 @@
 ---
 name: eval-prose
-description: Прогон eval-контура плагина — детерминированный baseline линтера (манифест) и поведенческое ревью rewrite-кейсов со скрытым rubric; отчёт в JSON, A/B против прежнего отчёта
+description: Use when plugin rule or prompt changes need measuring: the deterministic lint-manifest baseline and a behavioral rewrite eval with a hidden rubric, JSON report and A/B against a previous run.
+allowed-tools: Bash, Read, Write, Task
 ---
 
 Оценка качества правил и ревью-поведения плагина (аргументы вызова: `[--baseline <report.json>] [--only lint|rewrite]`). Ничего не правит и не
 коммитит: замеряет и пишет отчёт.
 
-`CLAUDE_PLUGIN_ROOT` — корень установленного плагина. Если переменная не задана (zcode), используй корень репозитория плагина (`~/Projects/claude-scientific-writing`); `.venv` для pytest живёт там же.
+`CLAUDE_PLUGIN_ROOT` — корень установленного плагина. Если переменная не задана (zcode), возьми корень из пути этого SKILL.md: он лежит на два уровня ниже корня плагина (`<корень>/skills/<имя>/SKILL.md`). Для pytest используй `.venv` в корне плагина; если её нет — скажи явно, что прогон pytest недоступен.
 
 ## Шаги
 1. **Детерминированный контур** (всегда, если не `--only rewrite`):

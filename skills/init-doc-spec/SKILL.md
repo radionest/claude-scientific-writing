@@ -1,6 +1,7 @@
 ---
 name: init-doc-spec
-description: Заготовка спецификации документа (разделы + термины + локальные запреты) из канона и жанрового профиля
+description: Use when a document has no <doc>.spec.md: scaffold sections, canonical terms, abbreviations and machine-checkable local bans from the canon and the genre profile, and seed the project-local dictionary.
+allowed-tools: Bash, Read, Write, AskUserQuestion
 ---
 
 Создай `<doc>.spec.md` для целевого `.qmd` (аргументы вызова: `<file.qmd> [genre]`).

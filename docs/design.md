@@ -360,8 +360,8 @@ originals) needs a `~/.claude`-capable session — sequence in the plan.
 2. `hooks/text-lint.sh` + diff router + marker coordination with the existing code hook.
 3. `canon/canon.md` + `canon/profiles/{report,article,educational}.md`.
 4. Migrate the two prose skills into the plugin; rewrite `russian-qmd-prose.md` references.
-5. `skills/writing-scientific-documents` (orchestrator) + `commands/text-review.md` (ensemble) + `agents/prose-reviewer.md`.
-6. `commands/init-doc-spec.md` + `agents/scientific-writer.md`.
+5. `skills/writing-scientific-documents` (orchestrator) + `skills/text-review/SKILL.md` (ensemble) + `agents/prose-reviewer.md`.
+6. `skills/init-doc-spec/SKILL.md` + `agents/scientific-writer.md`.
 7. `.claude-plugin/{plugin.json,marketplace.json}`; install; rewire `init-article`.
 8. Validate on nir_liver `lesion_nature_report.qmd` (lint diff, /text-review, hook block, fix loop).
 

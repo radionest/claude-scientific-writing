@@ -1,11 +1,12 @@
 ---
 name: tune-learn
-description: Вывести изменения правил плагина из различий (черновик, чистый по канону → твоя правка, либо ревью редактора в .docx); словарные правила доказываются тестом до применения
+description: Use when an edit — a hand-edit of a canon-clean draft or an editor's .docx review — should become plugin-rule changes; dictionary rules are proven on the test oracle before applying.
+allowed-tools: Bash, Read, Edit, Write, AskUserQuestion
 ---
 
 Выведи предложения по правилам плагина из правок (аргументы вызова: `<edited.qmd> [--pristine <path>] | --from-docx <review.docx>`). Совещательно: применяю только после подтверждения, не делаю коммит.
 
-`CLAUDE_PLUGIN_ROOT` — корень установленного плагина. Если переменная не задана (zcode), используй корень репозитория плагина (`~/Projects/claude-scientific-writing`); `.venv` для pytest живёт там же.
+`CLAUDE_PLUGIN_ROOT` — корень установленного плагина. Если переменная не задана (zcode), возьми корень из пути этого SKILL.md: он лежит на два уровня ниже корня плагина (`<корень>/skills/<имя>/SKILL.md`). Для pytest используй `.venv` в корне плагина; если её нет — скажи явно, что прогон pytest недоступен.
 
 ## Шаги
 1. Определи источник.
