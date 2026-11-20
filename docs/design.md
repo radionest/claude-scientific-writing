@@ -110,7 +110,7 @@ So a rule is now one of two kinds, and checks see more than a line:
 | Kind | Declared in | Sees | Examples |
 |---|---|---|---|
 | `regex` (default) | `canon/dictionary.json` (lexical), `canon/orthography.json` (punctuation) | one prose line | `calque-referens`, `style-takzhe-slitno`, `punct-percent-spacing` |
-| `check` | `canon/orthography.json` with `kind: "check"`, implemented in `lib/checks/*.py` | a sentence or the whole document | `ortho-hyphen-linebreak`, `punct-comma-prichastie`, `doc-abbrev-variants` |
+| `check` | `canon/orthography.json` with `kind: "check"`, implemented in `lib/checks/*.py` | a sentence or the whole document | `ortho-hyphen-linebreak`, `punct-comma-prichastie`, `doc-abbrev-variants`, `doc-list-marker-consistency` |
 
 Both kinds share `severity`, `message`, `except`, the project-local overlay and
 `<!-- lint-ok: id -->` (`allow` is read by check functions only). `lib/document.py` supplies the

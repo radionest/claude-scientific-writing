@@ -21,6 +21,10 @@ _WORD = re.compile(r"[^\W\d_]{5,}", re.UNICODE)
 # re-expands abbreviations at their first use in the body. Everything before the first
 # level-1 heading is that front matter.
 _BODY_HEADING = re.compile(r"^\s*#\s+\S")
+# A markdown list marker: leading indent, then a bullet (-, *, +) or an ordered number
+# with a period or a closing paren. ^ anchors at the line start — `doc.lines` carries
+# one line per ProseLine, so the marker is matched once per line.
+_LIST_MARKER = re.compile(r"^( +)?([-*+]|\d{1,3}[.)])(?=\s)")
 
 
 def _abbr_key(tok: str) -> str:
@@ -205,3 +209,44 @@ def _lemma_freq(doc, morph) -> dict[str, int]:
         for m in _WORD.finditer(pl.text):
             freq[_key(m.group(0).lower(), morph)] += 1
     return freq
+
+
+@register("doc-list-marker-consistency")
+def list_marker_consistency(doc, morph, entry: dict) -> Iterable[Hit]:
+    """One marker style per list nesting level: «-» vs «*» vs «+», «1.» vs «1)».
+
+    Different levels legitimately differ — the educational genre nests its lists in
+    its own style — and a bullet beside an ordered item is two lists, not a mix, so
+    the key folds a marker to (indent width, family). Same anchoring as
+    `_variant_hits`: in `--diff` mode (the hook path) a finding on an untouched line
+    is filtered out, so every occurrence of the minority marker and of the dominant
+    one is reported.
+    """
+    counts: dict[str, Counter] = defaultdict(Counter)
+    spots: dict[str, dict[str, list[tuple[int, int]]]] = defaultdict(lambda: defaultdict(list))
+    for pl in doc.lines:
+        m = _LIST_MARKER.match(pl.text)
+        if m is None:
+            continue
+        indent, marker = m.group(1) or "", m.group(2)
+        family = "ordered" if marker[0].isdigit() else "bullet"
+        key = f"{len(indent)}|{family}"
+        counts[key][marker] += 1
+        spots[key][marker].append((pl.lineno, m.start(2) + 1))
+    for key in sorted(counts):
+        variants = counts[key]
+        if len(variants) < 2:
+            continue
+        top = max(variants.values())
+        leaders = [v for v in variants if variants[v] == top]
+        dominant = leaders[0] if len(leaders) == 1 else None
+        tally = ", ".join(f"«{v}» ×{variants[v]}" for v in variants)
+        for marker, occurrences in spots[key].items():
+            if marker == dominant:
+                detail = f"{tally} — «{marker}» преобладает, остальные приведи к нему"
+            elif dominant is None:
+                detail = f"{tally} — выбери один маркер на уровень"
+            else:
+                detail = f"{tally} — приведи к «{dominant}»"
+            for lineno, col in occurrences:
+                yield Hit(lineno=lineno, col=col, matched=marker, detail=detail)

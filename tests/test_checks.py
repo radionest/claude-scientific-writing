@@ -564,3 +564,20 @@ def test_repeated_disclaimer_anchors_every_restatement_on_the_first():
     hits = _genre_find(text, "genre-repeated-disclaimer")
     assert [(h.line, ) for h in hits] == [(9,), (13,)]
     assert all("строке 5" in h.message for h in hits)
+
+
+def test_list_marker_mix_is_flagged_on_every_occurrence():
+    hits = [f for f in _find("- доступ по сегментам\n* разметка под контролем\n* мобилизация печени\n")
+            if f.id == "doc-list-marker-consistency"]
+    assert len(hits) == 3
+    assert all(f.severity == "warn" for f in hits)
+
+
+def test_ordered_marker_period_and_paren_is_flagged():
+    ids = _ids("1. волюмометрия до резекции\n1) волюмометрия после резекции\n")
+    assert "doc-list-marker-consistency" in ids
+
+
+def test_list_markers_differ_by_level_legitimately():
+    text = "- хирургический доступ\n  * разметка под контролем ИОУЗИ\n"
+    assert "doc-list-marker-consistency" not in _ids(text)
