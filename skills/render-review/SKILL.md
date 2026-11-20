@@ -1,15 +1,17 @@
 ---
-description: Совещательное ревью отрендеренного документа — линт рендера + ревью генерирующих чанков
-argument-hint: <render.docx> <source.qmd>
+name: render-review
+description: Use when a rendered .docx is at hand: render_lint over paragraphs and table cells plus a prose-reviewer render-dimension pass over the generating chunks. Advisory.
 allowed-tools: Bash, Read, Task
 ---
 
 Ревью дефектов, материализующихся только в рендере (текст таблиц, подписи). Совещательно.
 
+`CLAUDE_PLUGIN_ROOT` — корень установленного плагина. Если переменная не задана (zcode), возьми корень из пути этого SKILL.md: он лежит на два уровня ниже корня плагина (`<корень>/skills/<имя>/SKILL.md`). Для pytest используй `.venv` в корне плагина; если её нет — скажи явно, что прогон pytest недоступен.
+
 ## Шаги
-1. Определи `render.docx` ($1) и исходный `source.qmd` ($2). Без них — спроси.
+1. Определи `render.docx` (`$R`) и исходный `source.qmd` (`$Q`) из аргументов вызова. Без них — спроси.
 2. Линт рендера:
-   `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.render_lint "$1" --qmd "$2" --json`.
+   `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.render_lint "$R" --qmd "$Q" --json`.
    Находки: `unit` — якорь в docx (`tbl2 r1 c3` / порядковый номер абзаца), `qmd` — строка
    исходника (генерирующий чанк). Прочитай `severity`: error/warn/info.
 

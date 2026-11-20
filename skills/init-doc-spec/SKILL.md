@@ -1,13 +1,13 @@
 ---
-description: Заготовка спецификации документа (разделы + термины + локальные запреты) из канона и жанрового профиля
-argument-hint: <file.qmd> [genre]
+name: init-doc-spec
+description: Use when a document has no <doc>.spec.md: scaffold sections, canonical terms, abbreviations and machine-checkable local bans from the canon and the genre profile, and seed the project-local dictionary.
 allowed-tools: Bash, Read, Write, AskUserQuestion
 ---
 
-Создай `<doc>.spec.md` для `$ARGUMENTS`.
+Создай `<doc>.spec.md` для целевого `.qmd` (аргументы вызова: `<file.qmd> [genre]`).
 
 ## Шаги
-1. Определи `.qmd` ($1) и жанр ($2). Жанр не задан → спроси (report/article/educational).
+1. Определи `.qmd` и жанр из аргументов вызова. Жанр не задан → спроси (report/article/educational).
 2. Прочитай `canon/profiles/<жанр>.md` — возьми список разделов как стартовый.
 3. Если `.qmd` уже существует — извлеки фактические заголовки и термины, предложи их (восстановив из готового файла).
 4. Спроси недостающее: канонические термины (один на понятие) + их запрещённые синонимы; сокращения;

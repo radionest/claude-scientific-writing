@@ -1,16 +1,18 @@
 ---
-description: Совещательное ревью прозы .qmd — линтер + ансамбль субагентов (кальки/повторы/структура/термины/рендер/обсуждение; условный evidence — при валидном claims-реестре полной статьи)
-argument-hint: <file.qmd> [--whole-file] [--deep]
+name: text-review
+description: Use when Russian scientific prose in a .qmd needs advisory review: the linter first, then a prose-reviewer ensemble (calques, repeats, structure, terminology, render, discussion; conditional evidence). Commits and blocks nothing.
 allowed-tools: Bash, Read, Task
 ---
 
-Ревью русской научной прозы для `$ARGUMENTS`. Совещательно — ничего не коммитит и не блокирует.
+Ревью русской научной прозы для целевого `.qmd` (аргументы вызова: `<file.qmd> [--whole-file] [--deep]`). Совещательно — ничего не коммитит и не блокирует. Пусть `$Q` — путь целевого файла.
+
+`CLAUDE_PLUGIN_ROOT` — корень установленного плагина. Если переменная не задана (zcode), возьми корень из пути этого SKILL.md: он лежит на два уровня ниже корня плагина (`<корень>/skills/<имя>/SKILL.md`). Для pytest используй `.venv` в корне плагина; если её нет — скажи явно, что прогон pytest недоступен.
 
 ## Шаги
-1. Определи целевой `.qmd` ($1). Без него — спроси.
+1. Определи целевой `.qmd` (`$Q`). Без него — спроси.
 2. Линтер (файл идёт ПЕРВЫМ аргументом — у `--diff` опциональное значение, иначе путь будет принят за значение флага):
-   - весь файл: `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose "$1" --json`
-   - только изменённое (по умолчанию, без `--whole-file`): `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose "$1" --json --diff`
+   - весь файл: `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose "$Q" --json`
+   - только изменённое (по умолчанию, без `--whole-file`): `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose "$Q" --json --diff`
    Прочитай находки (поле `severity`: error/warn/info).
 3. Запусти параллельно (в ОДНОМ сообщении) субагентов `prose-reviewer`, по одному на измерение:
    `calques`, `repeats`, `terminology`, `structure`, `render` — всегда; `discussion` — только если
@@ -27,7 +29,7 @@ allowed-tools: Bash, Read, Task
      в этом пути тоже прочитай раздел spec «Зафиксированные решения» — шаг 4 сверяет
      находки с ним.
      Прозо-скиллы не видят табличные чанки: при наличии рендера прогони
-     `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.render_lint <render.docx> --qmd "$1"` или `/render-review`.
+     `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.render_lint <render.docx> --qmd "$Q"` или `/render-review`.
 4. Синтез: собери находки всех измерений + линтера, дедуплицируй по (файл, строка, проблема), отранжируй
    blocker → warning → nit. Замечание, противоречащее разделу spec «Зафиксированные решения»,
    пометь `declined-by-owner-decision` со ссылкой на решение — в стадию fix оно не идёт
@@ -41,7 +43,7 @@ allowed-tools: Bash, Read, Task
 наряду с канонными.
 
 Измерение `fidelity` (before/after правки — вызывается из `/text-edit`) в диспетчеризацию
-этой команды не входит.
+этого скилла не входит.
 
 Exit-коды линтера (`lib.lint_prose`):
 

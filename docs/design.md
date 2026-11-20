@@ -60,11 +60,13 @@ scientific-writing/                      # own git repo (see "Where it lives")
     say-it-once-academic-prose/SKILL.md        # document level: repeats / information architecture
       references/                              # repeat-types, information-placement, examples
     tuning-rules/SKILL.md                      # rule-derivation discipline (see tune-draft/tune-learn)
-  commands/
-    init-doc-spec.md                     # scaffold a per-document spec from canon + genre (interactive)
-    text-edit.md                         # scoped .qmd edit: light/deep modes, protected inventory, revision_guard + fidelity check
-    text-review.md                       # advisory ensemble orchestrator (linter + prose subagents)
-    tune-draft.md  tune-learn.md         # rule-calibration loop (generate → hand-edit → derive rules)
+    init-doc-spec/SKILL.md                     # scaffold a per-document spec from canon + genre (interactive)
+    text-edit/SKILL.md                         # scoped .qmd edit: light/deep modes, protected inventory, revision_guard + fidelity check
+    text-review/SKILL.md                       # advisory ensemble orchestrator (linter + prose subagents)
+    tune-draft/SKILL.md                        # rule-calibration loop: generate → hand-edit
+    tune-learn/SKILL.md                        # … → derive rule changes from the edit
+    eval-prose/SKILL.md                        # eval harness run: lint baseline + behavioral rewrite eval
+    render-review/SKILL.md                     # advisory render review: render_lint + render ensemble dimension
   agents/
     scientific-writer.md                 # spec/canon/genre-aware writer
     prose-reviewer.md                    # one parameterized ensemble agent, dispatched once per dimension (dimension = arg)
@@ -256,7 +258,7 @@ a tracked overlay in the worktree itself wins over the main checkout's (the work
 
 ## Stages
 
-### spec — `commands/init-doc-spec.md`
+### spec — `skills/init-doc-spec/SKILL.md`
 Interactive: pick genre → load `profiles/<genre>.md` → propose section outline → collect doc-specific terms
 (canonical term per concept, abbreviations, any doc-local forbidden phrasings) → write `<doc>.spec.md`
 (sections + term list) and a doc-scoped dictionary overlay (`layer: doc`). The doc's forbidden terms thereby
@@ -268,7 +270,7 @@ to the spec's sections and the genre's style; every quantitative claim cited (ca
 writer); **self-checks against the dictionary — never introduces a banned calque**; external content it can't
 make canon-clean → `<!-- TODO ред: … -->`. Supersedes the generic `quarto-article-writer`.
 
-### review — `commands/text-review.md` (ensemble of subagents)
+### review — `skills/text-review/SKILL.md` (ensemble of subagents)
 1. Run `lint_prose.py` first (cheap) — its findings scope the agents (focus on what regex can't catch).
 2. Dispatch parallel subagents, one per dimension:
    - **phrase-calques** — applies `writing-russian-academic-prose` to changed prose.
@@ -358,8 +360,8 @@ originals) needs a `~/.claude`-capable session — sequence in the plan.
 2. `hooks/text-lint.sh` + diff router + marker coordination with the existing code hook.
 3. `canon/canon.md` + `canon/profiles/{report,article,educational}.md`.
 4. Migrate the two prose skills into the plugin; rewrite `russian-qmd-prose.md` references.
-5. `skills/writing-scientific-documents` (orchestrator) + `commands/text-review.md` (ensemble) + `agents/prose-reviewer.md`.
-6. `commands/init-doc-spec.md` + `agents/scientific-writer.md`.
+5. `skills/writing-scientific-documents` (orchestrator) + `skills/text-review/SKILL.md` (ensemble) + `agents/prose-reviewer.md`.
+6. `skills/init-doc-spec/SKILL.md` + `agents/scientific-writer.md`.
 7. `.claude-plugin/{plugin.json,marketplace.json}`; install; rewire `init-article`.
 8. Validate on nir_liver `lesion_nature_report.qmd` (lint diff, /text-review, hook block, fix loop).
 

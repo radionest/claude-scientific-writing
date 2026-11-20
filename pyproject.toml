@@ -8,8 +8,8 @@ version = "0"
 requires-python = ">=3.10"
 dependencies = []
 
-# The repo root is a Claude Code plugin, not a Python package root: canon/, hooks/, skills/,
-# agents/ and commands/ sit beside lib/. Naming lib/ explicitly stops flat-layout
+# The repo root is a Claude Code plugin, not a Python package root: canon/, hooks/, skills/
+# and agents/ sit beside lib/. Naming lib/ explicitly stops flat-layout
 # auto-discovery from aborting on "multiple top-level packages", which would make the
 # documented `pip install -e '.[morph]'` fail.
 [tool.setuptools]
