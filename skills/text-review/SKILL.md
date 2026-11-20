@@ -1,10 +1,6 @@
 ---
 name: text-review
-<<<<<<< HEAD
 description: Use when Russian scientific prose in a .qmd needs advisory review: the linter first, then a prose-reviewer ensemble (calques, repeats, structure, terminology, render, genre, discussion, argument; conditional evidence). Commits and blocks nothing.
-=======
-description: Use when Russian scientific prose in a .qmd needs advisory review: the linter first, then a prose-reviewer ensemble (calques, repeats, structure, terminology, render, genre, discussion; conditional evidence). Commits and blocks nothing.
->>>>>>> 26b85ba (feat(lint): Discussion genre tripwires + genre ensemble dimension (#53))
 allowed-tools: Bash, Read, Task
 ---
 
