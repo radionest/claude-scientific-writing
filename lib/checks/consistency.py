@@ -69,10 +69,11 @@ def _variant_hits(doc, pattern: re.Pattern[str], key: Callable[[str], str],
         tally = ", ".join(f"«{v}» ×{variants[v]}"
                           for v in sorted(variants, key=lambda v: (-variants[v], order[k][v])))
         text = detail(dominant, tally)
+        dominant_text = dominant_detail(dominant, tally) if dominant else None
         for variant in sorted(variants, key=lambda v: order[k][v]):
             for lineno, col in spots[k][variant]:
                 yield Hit(lineno=lineno, col=col, matched=variant,
-                          detail=dominant_detail(dominant, tally) if variant == dominant else text)
+                          detail=dominant_text if variant == dominant else text)
 
 
 @register("doc-abbrev-variants")
