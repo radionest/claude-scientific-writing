@@ -62,19 +62,24 @@ def test_latin_data_code_flagged():
 
 
 def test_latin_data_code_snake_family_and_boundaries():
-    # \w+_ перед ядром покрывает семейство с подчёркиваниями (partially_visible,
-    # not_faint); «invisible» входит в список, но «invisibility» (иное слово) — нет
+    # lookbehind (?<![\w@-]) вместо \b: не матчит хвост crossref-метки (@fig-visible,
+    # @tbl-faint — «-»/«@» перед началом матча); «invisible» входит в список,
+    # но «invisibility» (иное слово) — нет; not_faint покрыт префиксом
     assert "term-latin-data-code" in _ids("очаги partially_visible учтены отдельно\n")
     assert "term-latin-data-code" in _ids("очаг invisible при контрольной МРТ\n")
     assert "term-latin-data-code" in _ids("зоны not_faint оставлены отдельно\n")
     assert "term-latin-data-code" not in _ids("зона invisibility контраста расширена\n")
+    assert "term-latin-data-code" not in _ids("схема на рисунке: @fig-visible и @tbl-faint\n")
 
 
-def test_latin_data_code_legal_in_chunk():
-    # коды законны в чанках; подписи tbl-cap/fig-cap живут в опциях чанка —
-    # линтер их не видит, правило адресовано только прозе
+def test_latin_data_code_legal_paths():
+    # коды законны в чанках (подписи tbl-cap/fig-cap живут в опциях чанка), в
+    # inline-коде (вырезается до правил) и снимаются lint-ok по месту
     src = "```{r}\n#| tbl-cap: \"Категории очагов: visible, faint\"\nx <- c('visible', 'faint')\n```\n"
     assert _ids(src) == []
+    assert _ids("категория указана как `visible` в таблице 2\n") == []
+    assert "term-latin-data-code" not in _ids(
+        "видимые (visible) с русской расшифровкой <!-- lint-ok: term-latin-data-code -->\n")
 
 
 def test_error_finding_sets_exit_1(tmp_path):
