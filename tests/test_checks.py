@@ -584,7 +584,8 @@ def test_sequential_numbers_are_one_marker_style():
 
 
 def test_ordinal_range_with_preposition_is_not_flagged():
-    ids = _ids("С 2–3-го дня проводили контроль разметки.")
+    ids = _ids("С 2–3-го дня проводили контроль разметки.\n"
+               "С 10–15-х суток отёк спадает.\n")
     assert "ortho-range-preposition" not in ids
 
 
