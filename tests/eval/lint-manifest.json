@@ -295,12 +295,32 @@
       "id": "style-paired-conjunction",
       "severity": "warn",
       "rationale": "парный союз «как …, так и …» при однородных придаточных"
+    },
+    {
+      "id": "genre-discussion-opening-number",
+      "severity": "info",
+      "rationale": "жанровая норма статьи: цель + квантифицированный главный результат в первом абзаце «Обсуждения»; advisory-трипвайр, не гейт"
+    },
+    {
+      "id": "genre-lit-negation-ending",
+      "severity": "info",
+      "rationale": "литературный абзац «Обсуждения» заканчивается отказом вместо интерпретации; норма 0–2 на раздел, после отказа — сравнение и причина расхождения"
+    },
+    {
+      "id": "genre-repeated-disclaimer",
+      "severity": "info",
+      "rationale": "одна оговорка — одно место: дословный повтор формулировки в другом разделе (say-it-once на межразделном масштабе)"
     }
   ],
   "documents": {
     "lint-good.qmd": {
       "max_errors": 0,
       "findings": [
+        {
+          "id": "genre-discussion-opening-number",
+          "severity": "info",
+          "count": 1
+        },
         {
           "id": "ortho-spelling",
           "severity": "info",

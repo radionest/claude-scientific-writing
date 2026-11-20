@@ -405,3 +405,162 @@ def test_spelling_yields_nothing_without_morphology():
     degraded allow match."""
     assert "ortho-spelling" not in {f.id for f in lint_source(
         "Вздрыгопыр аблированного типа.\n", ENTRIES, CHECKS, Morph(available=False))}
+
+
+# --- Discussion genre checks (issue #53): advisory info tripwires at layer genre:article ---
+
+def _genre_find(text: str, rule: str):
+    return [f for f in _find(text) if f.id == rule]
+
+
+def test_discussion_opening_number_flags_a_numberless_first_paragraph():
+    """The genre norm puts a quantified main result into Discussion P1; its absence is
+    an info prompt on the first prose paragraph only — later paragraphs are not the tripwire."""
+    text = ("# Результаты\n\nЧувствительность составила 92 %.\n\n"
+            "# Обсуждение\n\nМы показали, что контроль уточняет взаимоотношения очагов с сосудами.\n\n"
+            "Во второй группе разница достигала 18 %.\n")
+    hits = _genre_find(text, "genre-discussion-opening-number")
+    assert [h.line for h in hits] == [7]
+    assert all(h.severity == "info" for h in hits)
+
+
+def test_discussion_opening_number_stays_silent_when_p1_is_quantified():
+    assert not _genre_find(
+        "# Обсуждение\n\nМы показали, что чувствительность составила 92 %: контроль уточняет границы очагов.\n",
+        "genre-discussion-opening-number")
+
+
+def test_discussion_opening_number_reads_a_hard_wrapped_paragraph():
+    """A hard-wrapped paragraph is one paragraph: the quantification on the second
+    physical line must douse the tripwire anchored on the first."""
+    wrapped = ("# Обсуждение\n\nМы показали, что контроль уточняет границы очагов:\n"
+               "чувствительность составила 92 % при медиане наблюдения 14 месяцев.\n")
+    assert not _genre_find(wrapped, "genre-discussion-opening-number")
+    split_by_blank = ("# Обсуждение\n\nМы показали, что контроль уточняет границы очагов.\n\n"
+                      "Чувствительность составила 92 %.\n")
+    assert [h.line for h in _genre_find(split_by_blank, "genre-discussion-opening-number")] == [3]
+
+
+def test_discussion_span_skips_a_literature_review_heading():
+    """«Обзор и обсуждение литературы» is a review chapter, not the IMRAD Discussion —
+    none of the genre tripwires may anchor on it."""
+    text = "## Обзор и обсуждение литературы\n\nНельзя напрямую переносить данные серии [5].\n"
+    assert not _genre_find(text, "genre-discussion-opening-number")
+    assert not _genre_find(text, "genre-lit-negation-ending")
+
+
+def test_genre_checks_stay_silent_without_a_discussion_heading():
+    """No «Обсуждение» — no genre scope: formulas and disclaimers elsewhere are not
+    the article-profile's Discussion norms."""
+    text = ("## Литературный обзор\n\nНельзя напрямую сравнивать эти показатели [@ivanov2019].\n\n"
+            "## Ограничения\n\nМалый объём выборки не позволяет исключить смещения.\n\n"
+            "## Выводы\n\nМалый объём выборки не позволяет исключить смещения.\n")
+    assert not _genre_find(text, "genre-discussion-opening-number")
+    assert not _genre_find(text, "genre-lit-negation-ending")
+    assert not _genre_find(text, "genre-repeated-disclaimer")
+
+
+def test_lit_negation_ending_flags_a_citation_paragraph_ended_on_a_refusal():
+    text = ("# Обсуждение\n\nЧастота прогресса в нашем ряду была ниже, чем в работе [@smirnov2020]. "
+            "Нельзя напрямую сравнивать эти показатели.\n")
+    hits = _genre_find(text, "genre-lit-negation-ending")
+    assert len(hits) == 1
+    assert hits[0].severity == "info"
+    assert hits[0].matched.lower().startswith("нельзя")
+
+
+def test_lit_negation_ending_needs_a_citation_and_the_final_sentence():
+    """The norm governs literature-directed paragraphs, not the article's own text; a
+    refusal mid-paragraph followed by an interpretation is the correct genre pattern."""
+    cited = ("# Обсуждение\n\nЧастота была ниже, чем в работе [@smirnov2020]. "
+             "Нельзя исключить недоучёт сроков. Расхождение объясняется более ранним "
+             "временем МРТ после абляции.\n")
+    uncited = ("# Обсуждение\n\nЧастота была ниже ожидаемой. "
+               "Нельзя напрямую сравнивать эти показатели.\n")
+    assert not _genre_find(cited, "genre-lit-negation-ending")
+    assert not _genre_find(uncited, "genre-lit-negation-ending")
+
+
+def test_lit_negation_ending_reads_a_hard_wrapped_paragraph():
+    """Citation on the first physical line, refusal at the end of the last — one
+    paragraph, one hit anchored where the refusal ends it."""
+    text = ("# Обсуждение\n\n"
+            "Частота локального прогресса оказалась ниже, чем в серии [@smirnov2020],\n"
+            "а прямое сравнение проводить нельзя.\n")
+    hits = _genre_find(text, "genre-lit-negation-ending")
+    assert [h.line for h in hits] == [4]
+    assert "1 из 1" in hits[0].message
+
+
+def test_lit_negation_ending_counts_numbered_refs_and_reports_the_ratio():
+    text = ("# Обсуждение\n\n"
+            "В нашем ряду было 12 наблюдений, согласующиеся данные получили Иванов и соавт [5].\n\n"
+            "Медиана выживаемости уступала серии из работы [7]. Не является прямым аналогом наша когорта.\n\n"
+            "Единственный очаг менее сантиметра не контрастировал [9]. Эти ряды несопоставимы по срокам МРТ.\n")
+    hits = _genre_find(text, "genre-lit-negation-ending")
+    assert len(hits) == 2
+    assert "2 из 3" in hits[0].message
+
+
+def test_lit_negation_ending_stays_silent_on_a_positive_comparison():
+    assert not _genre_find(
+        "# Обсуждение\n\nМедиана выживаемости в нашем ряду сопоставима с данными [7].\n",
+        "genre-lit-negation-ending")
+
+
+def test_repeated_disclaimer_flags_a_cross_subsection_restatement():
+    """The scan stays inside the Discussion span: the norm governs the section's own
+    subsections («Реферат»/«Заключение» restatements are genre-mandated, not duplicates)."""
+    text = ("## Обсуждение\n\n### Ограничения\n\nМалый объём выборки не позволяет исключить влияние "
+            "систематических смещений на полученные оценки.\n\n"
+            "### Выводы\n\nМалый объём выборки не позволяет исключить влияние систематических "
+            "смещений на итоговые оценки.\n")
+    hits = _genre_find(text, "genre-repeated-disclaimer")
+    assert [h.line for h in hits] == [9]
+    assert "строке 5" in hits[0].message
+
+
+def test_repeated_disclaimer_ignores_a_restatement_outside_the_discussion():
+    """The same duplication «Ограничения» → «Выводы» at the top level of a document
+    without «Обсуждение» is the repeats dimension's judgment, not this tripwire."""
+    text = ("## Ограничения\n\nМалый объём выборки не позволяет исключить влияние систематических "
+            "смещений на полученные оценки.\n\n"
+            "## Выводы\n\nМалый объём выборки не позволяет исключить влияние систематических "
+            "смещений на итоговые оценки.\n")
+    assert not _genre_find(text, "genre-repeated-disclaimer")
+
+
+def test_repeated_disclaimer_needs_different_subsections_and_a_real_overlap():
+    """Same-subsection restatement is the `repeats` dimension's judgment, not a tripwire;
+    short sentences never reach the Jaccard gate, a headingless fragment has no span."""
+    same_section = ("## Обсуждение\n\n### Ограничения\n\nМалый объём выборки не позволяет исключить "
+                    "влияние систематических смещений на полученные оценки.\n\n"
+                    "Малый объём выборки не позволяет исключить влияние систематических "
+                    "смещений на итоговые оценки.\n")
+    different_texts = ("## Обсуждение\n\n### Ограничения\n\nМалый объём выборки не позволяет исключить "
+                       "влияние систематических смещений.\n\n"
+                       "### Выводы\n\nИнтраоперационный контроль уточняет взаимоотношения "
+                       "очагов с сосудами и отвечает на цель исследования.\n")
+    short = ("## Обсуждение\n\n### Ограничения\n\nПорог не пройдёт.\n\n### Выводы\n\nПорог не пройдёт.\n")
+    headingless = ("Малый объём выборки не позволяет исключить влияние систематических "
+                   "смещений на полученные оценки.\n\n"
+                   "Малый объём выборки не позволяет исключить влияние систематических "
+                   "смещений на итоговые оценки.\n")
+    assert not _genre_find(same_section, "genre-repeated-disclaimer")
+    assert not _genre_find(different_texts, "genre-repeated-disclaimer")
+    assert not _genre_find(short, "genre-repeated-disclaimer")
+    assert not _genre_find(headingless, "genre-repeated-disclaimer")
+
+
+def test_repeated_disclaimer_anchors_every_restatement_on_the_first():
+    """Three copies in three subsections yield two hits, both pointing at the original —
+    not a pair per combination, which would put two findings on one line."""
+    text = ("## Обсуждение\n\n### Ограничения\n\nМалый объём выборки не позволяет исключить влияние "
+            "систематических смещений на полученные оценки.\n\n"
+            "### Выводы\n\nМалый объём выборки не позволяет исключить влияние систематических "
+            "смещений на итоговые оценки.\n\n"
+            "### Границы переноса\n\nМалый объём выборки не позволяет исключить влияние "
+            "систематических смещений на итоговые оценки.\n")
+    hits = _genre_find(text, "genre-repeated-disclaimer")
+    assert [(h.line, ) for h in hits] == [(9,), (13,)]
+    assert all("строке 5" in h.message for h in hits)

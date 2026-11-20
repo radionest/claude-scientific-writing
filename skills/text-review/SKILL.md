@@ -1,6 +1,6 @@
 ---
 name: text-review
-description: Use when Russian scientific prose in a .qmd needs advisory review: the linter first, then a prose-reviewer ensemble (calques, repeats, structure, terminology, render, discussion, argument; conditional evidence). Commits and blocks nothing.
+description: Use when Russian scientific prose in a .qmd needs advisory review: the linter first, then a prose-reviewer ensemble (calques, repeats, structure, terminology, render, genre, discussion, argument; conditional evidence). Commits and blocks nothing.
 allowed-tools: Bash, Read, Task
 ---
 
@@ -15,9 +15,10 @@ allowed-tools: Bash, Read, Task
    - только изменённое (по умолчанию, без `--whole-file`): `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.lint_prose "$Q" --json --diff`
    Прочитай находки (поле `severity`: error/warn/info).
 3. Запусти параллельно (в ОДНОМ сообщении) субагентов `prose-reviewer`, по одному на измерение:
-   `calques`, `repeats`, `terminology`, `structure`, `render` — всегда; `discussion` — только если
-   в документе есть раздел «Обсуждение»; `argument` — для содержательных секций (Введение, Методы,
-   Результаты, Реферат/Аннотация, Заключение) — пропусти при однофразовой или пунктуационной правке.
+   `calques`, `repeats`, `terminology`, `structure`, `render` — всегда; `genre` и `discussion` —
+   только если в документе есть раздел «Обсуждение»; `argument` — для содержательных секций
+   (Введение, Методы, Результаты, Реферат/Аннотация, Заключение) — пропусти при однофразовой
+   или пунктуационной правке.
    `evidence` — только при наличии валидного `<doc>.claims.jsonl` (полная статья).
    Передай каждому путь к файлу, спецификацию (`<doc>.spec.md`) вместе с её разделом
    «Зафиксированные решения» (процитируй раздел в задаче; раздела нет — передай spec

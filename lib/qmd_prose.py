@@ -9,6 +9,13 @@ class ProseLine:
     lineno: int
     text: str
     suppress: set[str] = field(default_factory=set)
+    cited: bool = False  # the raw line carries a `[@key]` citation (stripped from `text`)
+
+    @property
+    def heading(self) -> tuple[int, str] | None:
+        """(level, title) when this prose line is a heading — heading lines keep their «#»."""
+        m = _HEADING_RE.match(self.text)
+        return (len(m.group(1)), m.group(2).strip()) if m else None
 
 
 _FENCE_RE = re.compile(r"^\s*(?:```+|~~~+)")
@@ -103,5 +110,6 @@ def extract_prose(source: str) -> list[ProseLine]:
             working = raw.split("<!--", 1)[0]
         cleaned = _strip_inline(working)
         if cleaned.strip() and is_russian(cleaned):
-            out.append(ProseLine(lineno=lineno, text=cleaned, suppress=suppress))
+            out.append(ProseLine(lineno=lineno, text=cleaned, suppress=suppress,
+                                 cited=_CITATION_RE.search(working) is not None))
     return out
