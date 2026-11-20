@@ -5,7 +5,7 @@ from dataclasses import dataclass, asdict
 from difflib import SequenceMatcher
 from pathlib import Path
 
-from lib.lint_prose import ConfigError, Finding, _degraded_note, effective_entries, lint_source
+from lib.lint_prose import ConfigError, Finding, degraded_note, effective_entries, lint_source
 from lib.morph import Morph
 from lib.qmd_prose import extract_prose
 
@@ -114,7 +114,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  + {h.after}")
     if not morph.available:
         # stderr, so the stdout contract (hunks) stays parseable, as in lint_prose.main.
-        print(_degraded_note(checks), file=sys.stderr)
+        print(degraded_note(checks, tool="tune_diff"), file=sys.stderr)
     return 0
 
 

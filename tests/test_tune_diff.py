@@ -169,4 +169,6 @@ def test_degraded_morph_note_on_stderr(tmp_path, monkeypatch, capsys):
     edited = tmp_path / "edited.qmd"
     edited.write_text("Кальцинатные метки не изменены.\n", encoding="utf-8")
     assert main([str(pristine), str(edited)]) == 0
-    assert "без морфологии" in capsys.readouterr().err
+    err = capsys.readouterr().err
+    assert "tune_diff:" in err  # the note names its caller, not lint_prose
+    assert "без морфологии" in err

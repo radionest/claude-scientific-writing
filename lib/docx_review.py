@@ -21,7 +21,7 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 
 from lib.document import _is_abbreviation
-from lib.lint_prose import ConfigError, effective_entries, lint_source, load_check_entries, load_entries
+from lib.lint_prose import ConfigError, degraded_note, effective_entries, lint_source, load_check_entries, load_entries
 from lib.morph import Morph
 
 _W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
@@ -289,8 +289,9 @@ def main(argv: list[str] | None = None) -> int:
     if not path.exists():
         print(f"docx_review: файл не найден: {path}", file=sys.stderr)
         return 2
+    morph = Morph.load()
     try:
-        items = triage(extract(path, args.context), target=path)
+        items = triage(extract(path, args.context), morph=morph, target=path)
     except ConfigError as e:
         print(f"docx_review: ошибка локального словаря {e}", file=sys.stderr)
         return 3
@@ -308,6 +309,11 @@ def main(argv: list[str] | None = None) -> int:
         for i in items:
             if i.triage == "FN":
                 print(f"  ¶{i.line} «{i.comment[:48]}» ← {i.before[:90]}")
+    if not morph.available:
+        # stderr, so the stdout contract (JSON/text summary) stays parseable, as in
+        # tune_diff.main — under system python3 the FN/covered verdicts lose precision.
+        checks = effective_entries(path)[1]
+        print(degraded_note(checks, tool="docx_review"), file=sys.stderr)
     return 0
 
 
