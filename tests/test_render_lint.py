@@ -330,6 +330,24 @@ def test_corrupt_deflate_reports_instead_of_crashing(tmp_path):
     assert main([str(p)]) == 2
 
 
+def test_bad_crc_is_diagnosed_as_torn_payload(tmp_path):
+    """An intact deflate stream with a wrong CRC raises BadZipFile("Bad CRC-32…")
+    from z.read() — the container is a valid zip, so the generic «не .docx»
+    message would misdiagnose it (#97)."""
+    doc = f'<?xml version="1.0"?><w:document {W}><w:body>{_p("Чистый текст.")}</w:body></w:document>'
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("word/document.xml", doc)
+    data = bytearray(buf.getvalue())
+    cd = data.find(b"PK\x01\x02")  # central directory: the reader trusts its CRC field
+    data[cd + 16:cd + 20] = b"\x00\x00\x00\x00"
+    p = tmp_path / "bad_crc.docx"
+    p.write_bytes(data)
+    with pytest.raises(DocxError, match="CRC"):
+        extract_units(p)
+    assert main([str(p)]) == 2
+
+
 def test_strict_ooxml_fails_closed(tmp_path):
     """ISO 29500 Strict namespaces miss every _W lookup: the old body fallback
     silently linted zero units and exited 0 (#98) — now a DocxError demands a resave."""

@@ -90,6 +90,9 @@ def extract_units(path: Path) -> list[TextUnit]:
         with zipfile.ZipFile(path) as z:
             root = _parse_xml(z.read("word/document.xml"))
     except zipfile.BadZipFile as e:
+        if "CRC" in str(e):  # intact zip container, torn payload — a wrong diagnosis lies
+            raise DocxError(f"{path}: повреждённые данные внутри .docx "
+                            f"(несовпадение CRC) — {e}") from e
         raise DocxError(f"{path}: не .docx (не zip-архив)") from e
     except zlib.error as e:
         raise DocxError(f"{path}: повреждённые сжатые данные внутри .docx — {e}") from e
