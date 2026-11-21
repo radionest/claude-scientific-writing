@@ -77,6 +77,10 @@ def extract_units(path: Path) -> list[TextUnit]:
 
     A cell unit flattens every paragraph inside the cell (nested tables included)
     into one space-joined text — a cell is one linting unit, not many lines.
+
+    Fails closed (#96/#97/#98): anything short of a readable Transitional w:body —
+    a missing body, a corrupt deflate stream, Strict OOXML namespaces — raises
+    DocxError instead of yielding zero units and a lint-clean exit 0.
     """
     with path.open("rb") as fh:
         if fh.read(len(_OLE_MAGIC)) == _OLE_MAGIC:
