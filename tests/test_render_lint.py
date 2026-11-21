@@ -1,3 +1,4 @@
+import io
 import json
 import subprocess
 import zipfile
@@ -295,3 +296,98 @@ def test_continuation_table_is_not_a_duplicate(tmp_path):
     hits = [f for f in lint_render(_docx(tmp_path, body), ENTRIES)
             if f["id"] == "render-table-sequence"]
     assert hits == []  # the (продолжение) block carries its own caption, not a dup
+
+
+def test_missing_body_fails_closed(tmp_path):
+    """document.xml without w:body (damaged/foreign file) must raise DocxError and
+    exit 2 — the old `body or ()` fallback reported a damaged .docx lint-clean (#96)."""
+    p = tmp_path / "headless.docx"
+    with zipfile.ZipFile(p, "w") as z:
+        z.writestr("word/document.xml", f'<?xml version="1.0"?><w:document {W}/>')
+    with pytest.raises(DocxError, match="w:body"):
+        extract_units(p)
+    assert main([str(p)]) == 2
+
+
+def test_corrupt_deflate_reports_instead_of_crashing(tmp_path):
+    """A torn deflate stream raises zlib.error inside z.read(); it must surface as
+    a friendly DocxError, not leak a traceback past the except chain (#97)."""
+    doc = f'<?xml version="1.0"?><w:document {W}><w:body>{_p("Чистый текст.")}</w:body></w:document>'
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("word/document.xml", doc)
+    data = bytearray(buf.getvalue())
+    # local header: compressed size at 18-21, name/extra lengths at 26-29 — the
+    # compressed payload starts right after; garbling it breaks the deflate stream
+    csize = int.from_bytes(data[18:22], "little")
+    start = 30 + int.from_bytes(data[26:28], "little") + int.from_bytes(data[28:30], "little")
+    for i in range(start, start + csize):
+        data[i] ^= 0xFF
+    p = tmp_path / "torn_deflate.docx"
+    p.write_bytes(data)
+    with pytest.raises(DocxError, match="повреждённые"):
+        extract_units(p)
+    assert main([str(p)]) == 2
+
+
+def test_strict_ooxml_fails_closed(tmp_path):
+    """ISO 29500 Strict namespaces miss every _W lookup: the old body fallback
+    silently linted zero units and exited 0 (#98) — now a DocxError demands a resave."""
+    doc = ('<?xml version="1.0"?>'
+           '<w:document xmlns:w="http://purl.oclc.org/ooxml/wordprocessingml/main">'
+           f'<w:body>{_p("Чистый текст.")}</w:body></w:document>')
+    p = tmp_path / "strict.docx"
+    with zipfile.ZipFile(p, "w") as z:
+        z.writestr("word/document.xml", doc)
+    with pytest.raises(DocxError, match="Strict"):
+        extract_units(p)
+    assert main([str(p)]) == 2
+
+
+def test_glossed_latin_codes_exempt_in_caption_and_cell(tmp_path):
+    """issue #88: in captions/cells a Latin data code decoded by a Russian term
+    right beside it — «видимые (visible)» — is legal (the #54 allowance carried
+    into the render); a multi-code gloss group is exempt too."""
+    body = (_p("Таблица 1 — Категории очагов: видимые (visible), едва заметные (faint)")
+            + _tbl(("Категория", "Число"),
+                   ("Видимые (visible, faint)", "5 (50 %)")))
+    hits = [f for f in lint_render(_docx(tmp_path, body), ENTRIES)
+            if f["id"] == "term-latin-data-code"]
+    assert hits == []
+
+
+def test_bare_latin_code_in_cell_still_flagged(tmp_path):
+    """The allowance needs the Russian decoding: a bare code in a cell stays an
+    error finding (#88)."""
+    p = _docx(tmp_path, _tbl(("Категория", "visible"), ("Число", "5 (50 %)")))
+    hits = [f for f in lint_render(p, ENTRIES) if f["id"] == "term-latin-data-code"]
+    assert len(hits) == 1
+    assert hits[0]["unit"] == "tbl1 r1 c2"
+
+
+def test_glossed_code_in_body_prose_not_exempt(tmp_path):
+    """The exemption is caption/cell-only: body prose must name categories in
+    Russian even when a paren gloss decodes the code (#88)."""
+    p = _docx(tmp_path, _p("Категории — видимые (visible) и faint — учтены."))
+    hits = [f for f in lint_render(p, ENTRIES) if f["id"] == "term-latin-data-code"]
+    assert len(hits) == 2
+
+
+def test_out_of_order_trailing_caption_flagged(tmp_path):
+    """issue #100: a late out-of-order caption (1, 3, 4, 2) ends below the running
+    max with no duplicate — permutation disorder, its own finding, not «пропуск»."""
+    body = (_p("Таблица 1 — Критерии") + _p("Таблица 3 — Осложнения")
+            + _p("Таблица 4 — Исходы") + _p("Таблица 2 — Сравнение групп"))
+    hits = [f for f in lint_render(_docx(tmp_path, body), ENTRIES)
+            if f["id"] == "render-table-sequence"]
+    assert len(hits) == 2
+    assert "пропуск" in hits[0]["message"]
+    assert "нарушение порядка" in hits[1]["message"]
+
+
+def test_two_captions_swapped_flagged_as_reorder(tmp_path):
+    body = _p("Таблица 2 — Осложнения") + _p("Таблица 1 — Критерии")
+    hits = [f for f in lint_render(_docx(tmp_path, body), ENTRIES)
+            if f["id"] == "render-table-sequence"]
+    assert len(hits) == 2  # «не начинается с 1» + the swap
+    assert "нарушение порядка" in hits[1]["message"]
