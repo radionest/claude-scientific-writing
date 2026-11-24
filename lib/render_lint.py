@@ -15,7 +15,7 @@ exact miss falls back to the matched text with the rendered value stripped. Advi
 design: exit 1 on error-severity findings, but no hook gates on it.
 
 Beyond the regex rules, `_vertical_checks` reads paragraph styles and caption/mention
-numbers: table and figure caption sequences (jumps, duplicates), mention↔caption ref
+numbers: table and figure caption sequences (jumps, duplicates, reordering), mention↔caption ref
 targets («табл. N»), heading-level skips by `Heading1…6` styles. All findings are warn;
 the checks stay silent when the material is absent, so a non-Quarto .docx is not noise.
 Cross-reference existence is checked only at the render — `#| label:` lives in fenced
@@ -26,7 +26,7 @@ Regex application duplicates `lint_text`'s inner loop instead of reusing it:
 fences) would drop the very lines this module exists to lint.
 """
 from __future__ import annotations
-import argparse, json, re, sys, xml.parsers.expat, zipfile
+import argparse, json, re, sys, xml.parsers.expat, zipfile, zlib
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Iterable, Iterator
@@ -37,6 +37,8 @@ from lib.lint_prose import ConfigError, Finding, effective_entries, load_entries
 from lib.qmd_prose import _FENCE_RE
 
 _W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+# ISO 29500 Strict variant: every _W lookup would miss it, silently yielding zero units
+_STRICT_W = "{http://purl.oclc.org/ooxml/wordprocessingml/main}"
 
 
 @dataclass
@@ -75,6 +77,10 @@ def extract_units(path: Path) -> list[TextUnit]:
 
     A cell unit flattens every paragraph inside the cell (nested tables included)
     into one space-joined text — a cell is one linting unit, not many lines.
+
+    Fails closed (#96/#97/#98): anything short of a readable Transitional w:body —
+    a missing body, a corrupt deflate stream, Strict OOXML namespaces — raises
+    DocxError instead of yielding zero units and a lint-clean exit 0.
     """
     with path.open("rb") as fh:
         if fh.read(len(_OLE_MAGIC)) == _OLE_MAGIC:
@@ -84,7 +90,12 @@ def extract_units(path: Path) -> list[TextUnit]:
         with zipfile.ZipFile(path) as z:
             root = _parse_xml(z.read("word/document.xml"))
     except zipfile.BadZipFile as e:
+        if "CRC" in str(e):  # intact zip container, torn payload — a wrong diagnosis lies
+            raise DocxError(f"{path}: повреждённые данные внутри .docx "
+                            f"(несовпадение CRC) — {e}") from e
         raise DocxError(f"{path}: не .docx (не zip-архив)") from e
+    except zlib.error as e:
+        raise DocxError(f"{path}: повреждённые сжатые данные внутри .docx — {e}") from e
     except KeyError as e:
         raise DocxError(f"{path}: в архиве нет части {e} — файл повреждён или это не .docx") from e
     except xml.parsers.expat.ExpatError as e:
@@ -95,11 +106,17 @@ def extract_units(path: Path) -> list[TextUnit]:
     except RuntimeError as e:
         raise DocxError(f"{path}: файл защищён паролем — расшифруйте его и повторите") from e
 
+    if root.tag.startswith(_STRICT_W):
+        raise DocxError(f"{path}: Strict OOXML не поддерживается — "
+                        "пересохраните документ обычным .docx (Transitional)")
+    body = root.find(_W + "body")
+    if body is None:
+        raise DocxError(f"{path}: в document.xml нет w:body — файл повреждён "
+                        "или это не Word-документ")
     units: list[TextUnit] = []
     n = 0        # document-wide paragraph ordinal
     tbl_no = 0
-    body = root.find(_W + "body")
-    for el in _iter_body_content(body if body is not None else ()):
+    for el in _iter_body_content(body):
         if el.tag == _W + "p":
             n += 1
             units.append(TextUnit(n, "body", "", _para_text(el), _para_style(el)))
@@ -143,12 +160,21 @@ def _hint(lines: list[tuple[str, bool]], matched: str) -> str:
 # A caption is «Таблица N —/./: …» — the punctuation after the number keeps a prose
 # sentence starting with «Таблица 2 показывает…» from being taken for a caption.
 _CAPTION = re.compile(r"^\s*(таблиц[аы]|рисун\w*|рис\.|table|figure)\s*(\d+)\s*[-–—.:]", re.IGNORECASE)
+# issue #88: «русский термин (code)» — a parenthesized group attached to a Cyrillic
+# word decodes the Latin data codes inside it; only captions and table cells qualify.
+_GLOSS = re.compile(r"[\u0400-\u04FF][\w\u0400-\u04FF-]*\s*\(([^()]*)\)")
 _TAB_MENTION = re.compile(r"\b(?:табл\.|таблиц\w*|tables?)\s*(\d+)", re.IGNORECASE)
 _FIG_MENTION = re.compile(r"\b(?:рис\.|рисун\w*|fig\.|figures?)\s*(\d+)", re.IGNORECASE)
 # A range/enumeration continuation directly after a mention: «табл. 2–4», «рисунки 2 и 3».
 # A bare «и» cannot hijack «или» — the digit demanded right after the separator fails.
 _MENTION_CHAIN = re.compile(r"\s*(?:[и,]|and\b|–|—|-)\s*(\d+)", re.IGNORECASE)
 _HEADING_STYLE = re.compile(r"^Heading([1-6])$")
+
+
+def _gloss_spans(text: str) -> list[tuple[int, int]]:
+    """Spans of parenthesized Latin codes decoded by the Cyrillic word before «(» —
+    «видимые (visible)», multi-code groups «(visible, faint)» included."""
+    return [(m.start(1), m.end(1)) for m in _GLOSS.finditer(text)]
 
 
 def _mention_chain(text: str, m: re.Match) -> list[tuple[int, str]]:
@@ -211,7 +237,10 @@ def _vertical_checks(units: list[TextUnit], file: str,
                          ("figure", "render-figure-sequence")):
         seen: set[int] = set()
         top = 0
+        last: tuple[int, TextUnit, str] | None = None
+        last_dup = False
         for n, u, matched in caps[kind]:
+            last, last_dup = (n, u, matched), n in seen
             if n in seen:
                 finding(u, seq_id, f"дубликат номера: «{label[kind]} {n}» уже был", matched)
             elif top == 0 and n != 1:
@@ -223,6 +252,12 @@ def _vertical_checks(units: list[TextUnit], file: str,
                         matched)
             seen.add(n)
             top = max(top, n)
+        # issue #100: a late out-of-order caption — 1, 3, 4, 2 — ends below the
+        # running max with no duplicate to explain it: permutation-level disorder
+        if last is not None and not last_dup and last[0] < top:
+            finding(last[1], seq_id,
+                    f"нарушение порядка нумерации: «{label[kind]} {last[0]}» стоит после "
+                    f"«{label[kind]} {top}»", last[2])
 
     for kind in ("table", "figure"):
         cap_nums = {n for n, _u, _m in caps[kind]}
@@ -258,11 +293,18 @@ def lint_render(path: Path, entries: list[dict], qmd: Path | None = None) -> lis
     out: list[dict] = []
     units = extract_units(path)
     for u in units:
+        # issue #88: in captions and cells a Latin data code decoded by a Russian
+        # term right beside it — «видимые (visible)» — is legal; bare codes are not
+        glossed = (_gloss_spans(u.text)
+                   if u.kind == "cell" or _CAPTION.match(u.text) else [])
         for e in entries:
             exc = e.get("except")
             if exc and exc.lower() in u.text.lower():
                 continue
             for m in e["_rx"].finditer(u.text):
+                if (e["id"] == "term-latin-data-code"
+                        and any(s <= m.start() and m.end() <= t for s, t in glossed)):
+                    continue
                 f = Finding(str(path), u.lineno, m.start() + 1, e["id"],
                             e["severity"], e["message"], m.group(0))
                 d = asdict(f)

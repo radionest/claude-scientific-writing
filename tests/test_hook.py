@@ -78,6 +78,33 @@ def test_skips_tests_fixtures(tmp_path):
     assert r.returncode == 0
 
 
+def test_lints_user_eval_corpus_path(tmp_path):
+    # issue #89: the eval-corpus exemption is path identity, not a suffix — a user
+    # file at tests/eval/lint-bad.qmd is not the plugin's corpus and must be linted
+    repo = _repo(tmp_path)
+    d = repo / "tests" / "eval"
+    d.mkdir(parents=True)
+    (d / "lint-bad.qmd").write_text("референсный стандарт\n", encoding="utf-8")
+    _git(repo, "add", "tests/eval/lint-bad.qmd")
+    r = _run_hook(repo, "git commit -m x")
+    assert r.returncode == 2
+
+
+def test_skips_plugin_repo_own_eval_corpus(tmp_path):
+    # issue #89, the other side: in a plugin-shaped repo (dev checkout) the own
+    # corpus is the oracle — identity with the repo's lint-bad.qmd keeps it exempt
+    repo = _repo(tmp_path)
+    (repo / ".claude-plugin").mkdir()
+    (repo / ".claude-plugin" / "plugin.json").write_text('{"version": "1.0.0"}',
+                                                         encoding="utf-8")
+    d = repo / "tests" / "eval"
+    d.mkdir(parents=True)
+    (d / "lint-bad.qmd").write_text("референсный стандарт\n", encoding="utf-8")
+    _git(repo, "add", "tests/eval/lint-bad.qmd")
+    r = _run_hook(repo, "git commit -m x")
+    assert r.returncode == 0
+
+
 def test_blocks_with_dict_message_on_malformed_local_dict(tmp_path):
     repo = _repo(tmp_path)
     d = repo / ".claude" / "scientific-writing"

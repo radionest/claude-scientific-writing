@@ -9,8 +9,8 @@ with a deterministic prose linter. See `docs/design.md`.
 chunks and exist as prose only in the rendered .docx. `lib/render_lint.py` runs the canon's
 regex rules (plus the project overlay when `--qmd` is given) over that render (paragraphs +
 table cells) and points each finding back at the generating chunk (`--qmd`); vertical checks
-over the same pass flag caption-sequence gaps, mention↔caption ref targets and heading-level
-skips (all warn, silent when the material is absent). The advisory
+over the same pass flag caption-sequence gaps, reordering, mention↔caption ref targets and
+heading-level skips (all warn, silent when the material is absent). The advisory
 `/render-review` skill pairs it with a subagent review of the chunks themselves.
 
 ## Project-local dictionary
