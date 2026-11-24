@@ -4,8 +4,8 @@ An editor's review is the highest-quality calibration signal available: every co
 defect a human found that the rules did not. This reads the comments straight out of the
 OOXML parts, keeping exact character offsets, and anchors a comment stored as a bare
 `w:commentReference` without a range at that mark. It never goes through pandoc markdown:
-the report generator lost a heading-anchored comment (#22) and, on later live reviews, 7 of
-28 while it parsed comments from pandoc output.
+the importer's report generator (`~/.zcode/scripts/docx_review.py`) lost a heading-anchored
+comment (#22) and 7 of 28 on a later live review while parsing comments from pandoc output.
 
     python3 -m lib.docx_review review.docx --json
 
@@ -41,7 +41,7 @@ class ReviewItem:
     comment: str
     author: str
     anchor: str = ""  # exactly what the editor selected
-    sentence: str = ""  # the sentence it sits in — what triage is decided on
+    sentence: str = ""  # the sentence it sits in (its paragraph for a trailing reference) — what triage is decided on
     anchor_at: int = 0  # anchor offset within `sentence`
 
 
@@ -162,6 +162,8 @@ def triage(items: list[ReviewItem], rules: tuple[list[dict], list[dict]],
                 continue  # `ortho-spelling` fires on live terminology; it is not coverage
             if it.sentence and not (lo <= f.col - 1 <= hi):
                 continue
+            if not it.sentence and it.comment != "(tracked change)":
+                break  # a comment with no sentence and no paragraph has nothing to be near
             hit = f.id
             break
         out.append(ReviewItem(**{**asdict(it),

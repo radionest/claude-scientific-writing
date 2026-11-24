@@ -108,7 +108,12 @@ def test_trailing_reference_is_judged_near_the_mark(tmp_path):
                    _para(_run("Второй абзац оканчивается этими словами."), _ref("1"))])
     assert far.sentence == "Второй абзац оканчивается этими словами."
     assert far.triage == "FN", "находка в соседнем абзаце не должна засчитываться"
-    assert verdict([_para(_run("В конце абзаца референсный метод."), _ref("1"))]).triage == "covered"
+    near = verdict([_para(_run("В конце абзаца референсный метод."), _ref("1"))])
+    assert near.anchor_at == len("В конце абзаца референсный метод.") and near.triage == "covered"
+    assert verdict([_para(_run("Стандарт референсный здесь, затем ещё много слов до конца."), _ref("1"))
+                    ]).triage == "FN", "находка дальше 25 знаков в том же абзаце не засчитывается"
+    bare = verdict([_para(_ref("1")), _para(_run("Здесь референсный стандарт рядом."))])
+    assert bare.sentence == "" and bare.triage == "FN", "без абзаца находка из контекста не берётся"
 
 
 def test_triage_marks_covered_only_on_the_anchor(tmp_path):
