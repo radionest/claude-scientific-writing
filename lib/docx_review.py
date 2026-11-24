@@ -2,10 +2,10 @@
 
 An editor's review is the highest-quality calibration signal available: every comment is a
 defect a human found that the rules did not. This reads the comments straight out of the
-OOXML parts, keeping exact character offsets, and anchors a comment Word stored as a bare
-`w:commentReference` (nothing selected) at that mark. It never goes through pandoc markdown:
-a comment whose range crosses a line, sits in a table cell or nests in another one does not
-survive that round-trip (#22).
+OOXML parts, keeping exact character offsets, and anchors a comment stored as a bare
+`w:commentReference` without a range at that mark. It never goes through pandoc markdown:
+the report generator lost a heading-anchored comment (#22) and, on later live reviews, 7 of
+28 while it parsed comments from pandoc output.
 
     python3 -m lib.docx_review review.docx --json
 
@@ -112,6 +112,12 @@ def _extract(z: zipfile.ZipFile, context: int) -> list[ReviewItem]:
         start, end = span
         before = text[max(0, start - context):min(len(text), end + context)]
         sent_start, sent_end = _sentence_bounds(text, start, end)
+        if not text[sent_start:sent_end].strip():
+            # A reference after the paragraph's last period has no sentence of its own. Left
+            # empty, `triage` would drop the ±25 window and judge the whole context instead.
+            sent_start = text.rfind("\n", 0, start) + 1
+            sent_end = text.find("\n", end)
+            sent_end = len(text) if sent_end < 0 else sent_end
         sentence = _norm(text[sent_start:sent_end])
         anchor = _norm(text[start:end])
         # Offsets must be taken in normalised space: a prefix ending in whitespace loses a
@@ -210,7 +216,7 @@ def _comments(z: zipfile.ZipFile) -> tuple[dict[str, str], dict[str, str]]:
 
 
 def _document(z: zipfile.ZipFile):
-    """Flatten the body to text, recording comment-range offsets and paragraph starts."""
+    """Flatten the body to text, recording comment-range and reference offsets and paragraph starts."""
     root = _parse_xml(z.read("word/document.xml"))
     parts: list[str] = []
     pos = 0
@@ -247,9 +253,9 @@ def _document(z: zipfile.ZipFile):
     walk(root)
     text = "".join(parts)
     spans = {cid: (s, ends.get(cid, s)) for cid, s in starts.items()}
-    # Word leaves only the reference mark when the editor selects nothing: anchor there.
-    for cid, pos in refs.items():
-        spans.setdefault(cid, (pos, pos))
+    # A comment may carry its reference mark without any range: anchor it there.
+    for cid, ref_at in refs.items():
+        spans.setdefault(cid, (ref_at, ref_at))
 
     def para_at(offset: int) -> int:
         lo, hi = 0, len(para_starts) - 1

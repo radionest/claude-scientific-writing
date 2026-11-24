@@ -365,16 +365,16 @@ editor-reinjects-calque loop at its source.
 
 **The editor's review also feeds the rules** (added 2026-08-03). `lib/docx_review.py` reads
 comment anchors and tracked changes straight out of the OOXML parts, keeping exact offsets, and
-anchors a comment Word stored as a bare `w:commentReference` (nothing selected) at that mark
-instead of dropping it. It emits the triage shape `lib/tune_diff.py` produces, so
-`/tune-learn --from-docx <review.docx>` runs a real editor
-review through the same `tuning-rules` skill. An item counts as `covered` only when a rule fires
-**on the anchor** — within ±25 characters of it (`docx_review._NEAR`), and `info`-severity findings
-never count, since `ortho-spelling` fires on live terminology. The loose version, crediting any
-finding in the same sentence, is what made the old dictionary look like it covered a review it in
-fact missed entirely. The importer's report generator (`~/.zcode/scripts/docx_review.py`) parsed
-comments out of pandoc markdown until a live review lost 3 of 38 that way (#22: a range crossing
-a line, a table cell or a nested range does not survive the round-trip); it now reads the same
+anchors a comment stored as a bare `w:commentReference` without a range at that mark instead of
+dropping it — on its own paragraph when the mark follows the last period, so the ±25 window below
+still applies. It emits the triage shape `lib/tune_diff.py` produces, so `/tune-learn --from-docx
+<review.docx>` runs a real editor review through the same `tuning-rules` skill. An item counts as
+`covered` only when a rule fires **on the anchor** — within ±25 characters of it
+(`docx_review._NEAR`), and `info`-severity findings never count, since `ortho-spelling` fires on
+live terminology. The loose version, crediting any finding in the same sentence, is what made the
+old dictionary look like it covered a review it in fact missed entirely. The importer's report
+generator (`~/.zcode/scripts/docx_review.py`) lost comments while it parsed them out of pandoc
+markdown — a heading-anchored one in #22, 7 of 28 on a later live review; it now reads the same
 parts.
 
 ## Genre profiles (`canon/profiles/`)
