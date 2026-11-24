@@ -11,9 +11,7 @@ import json
 
 import pytest
 
-import lib.docx_review
 import lib.lint_prose
-import lib.tune_diff
 from lib.lint_prose import degraded_note, effective_entries, load_check_entries
 from lib.lint_prose import main as lint_main
 from lib.morph import Morph

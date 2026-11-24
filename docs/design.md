@@ -276,9 +276,9 @@ a tracked overlay in the worktree itself wins over the main checkout's (the work
 **The rule-set contour is family-wide.** Every prose CLI — `lint_prose`, `tune_diff`, `docx_review` —
 accepts the same `--dictionary` / `--local-dictionary` / `--no-local` trio and threads it into
 `effective_entries`, and the degraded-morphology stderr note is derived from that effective set, so
-the note and the triage always describe the rule set actually applied (issues #44/#55/#77/#93 were
-this bug found per entry point — canon-only or defaults-only derivation). Pinned by
-`tests/test_rule_set_threading.py`.
+the note and the triage describe the rule set actually applied — in a multi-file `lint_prose` run
+the last file's set wins (issues #44/#55/#77/#93 were this bug found per entry point — canon-only
+or defaults-only derivation). Pinned by `tests/test_rule_set_threading.py`.
 
 **The hook scans the diff, not the whole file.** Pre-existing calque debt must not block every PR; only
 **newly introduced** error-severity findings gate. `/text-review` may scan whole-file on demand.
