@@ -454,6 +454,7 @@ def main(argv: list[str] | None = None) -> int:
     morph = Morph(available=False) if args.no_morph else Morph.load()
     findings: list[Finding] = []
     seeded: set[str] = set()
+    check_entries: list[dict] = []  # last file's effective set — what the note describes
     try:
         for f in args.files:
             entries, check_entries = effective_entries(f, args.dictionary,
@@ -475,10 +476,11 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print(_format_text(findings))
     if not morph.available:
-        # stderr, so the stdout contract (a flat findings array) stays what
-        # /text-review and /tune-draft already parse.
-        print(degraded_note(load_check_entries(args.dictionary), tool="lint_prose"),
-              file=sys.stderr)
+        # The note describes the effective rule set of the linted target (canon ⊕ the
+        # overlay the lint actually applied — the last file wins), mirroring tune_diff
+        # and docx_review; #77. stderr, so the stdout contract (a flat findings array)
+        # stays what /text-review and /tune-draft already parse.
+        print(degraded_note(check_entries, tool="lint_prose"), file=sys.stderr)
     return 1 if any(f.severity == "error" for f in findings) else 0
 
 

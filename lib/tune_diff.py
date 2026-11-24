@@ -90,10 +90,15 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("pristine")
     ap.add_argument("edited")
     ap.add_argument("--dictionary", default=None)
+    ap.add_argument("--local-dictionary", default=None,
+                    help="use this file as the project-local dictionary (overrides auto-discovery)")
+    ap.add_argument("--no-local", action="store_true",
+                    help="ignore any project-local dictionary")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args(argv)
     try:
-        entries, checks = effective_entries(args.edited, args.dictionary)
+        entries, checks = effective_entries(args.edited, args.dictionary,
+                                            args.local_dictionary, not args.no_local)
     except ConfigError as e:
         print(f"tune_diff: ошибка локального словаря {e}", file=sys.stderr)
         return 3
