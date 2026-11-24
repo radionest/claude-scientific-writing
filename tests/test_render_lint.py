@@ -383,6 +383,16 @@ def test_bare_latin_code_in_cell_still_flagged(tmp_path):
     assert hits[0]["unit"] == "tbl1 r1 c2"
 
 
+def test_unlisted_code_follows_the_same_rule(tmp_path):
+    """Универсальная форма правила: код вне старого закрытого списка — «complete» —
+    в ячейке без расшифровки флагуется, с глоссой «Полные (complete)» — нет."""
+    p = _docx(tmp_path, _tbl(("Категория", "Полные (complete)", "complete"),
+                             ("Число", "5 (50 %)", "3 (30 %)")))
+    hits = [f for f in lint_render(p, ENTRIES) if f["id"] == "term-latin-data-code"]
+    assert len(hits) == 1
+    assert hits[0]["unit"] == "tbl1 r1 c3"
+
+
 def test_glossed_code_in_body_prose_not_exempt(tmp_path):
     """The exemption is caption/cell-only: body prose must name categories in
     Russian even when a paren gloss decodes the code (#88)."""

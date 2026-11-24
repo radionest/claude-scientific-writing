@@ -70,13 +70,39 @@ def test_latin_data_code_flagged():
 
 def test_latin_data_code_snake_family_and_boundaries():
     # lookbehind (?<![\w@-]) вместо \b: не матчит хвост crossref-метки (@fig-visible,
-    # @tbl-faint — «-»/«@» перед началом матча); «invisible» входит в список,
-    # но «invisibility» (иное слово) — нет; not_faint покрыт префиксом
+    # @tbl-faint — «-»/«@» перед началом матча); «invisibility» под универсальную
+    # ветку [a-z]{4,} попадает (по смыслу правила — то же заимствование, не код);
+    # not_faint покрыт snake-веткой
     assert "term-latin-data-code" in _ids("очаги partially_visible учтены отдельно\n")
     assert "term-latin-data-code" in _ids("очаг invisible при контрольной МРТ\n")
     assert "term-latin-data-code" in _ids("зоны not_faint оставлены отдельно\n")
-    assert "term-latin-data-code" not in _ids("зона invisibility контраста расширена\n")
+    assert "term-latin-data-code" in _ids("зона invisibility контраста расширена\n")
     assert "term-latin-data-code" not in _ids("схема на рисунке: @fig-visible и @tbl-faint\n")
+
+
+def test_latin_data_code_universal_form():
+    # универсальная форма вместо закрытого списка слов: snake-цепочки любой длины
+    # (включая суффиксные: not_visible_early), любое слово малой латиницей ≥4 букв
+    # (complete, nivolumab — необременённая латынь ловится тоже), цифры в snake
+    assert "term-latin-data-code" in _ids("категория not_visible_early учтена отдельно\n")
+    assert "term-latin-data-code" in _ids("статус complete у двоих пациентов\n")
+    assert "term-latin-data-code" in _ids("по сравнению с nivolumab’ом\n")
+    assert "term-latin-data-code" in _ids("группы arm_1 и arm_2 различаются\n")
+
+
+def test_latin_data_code_universal_exemptions():
+    # lookahead-исключения: грамматикализованная латынь (in vitro, de novo, post hoc,
+    # per rectum, status quo) и библиотеки из vulgar-obrabotali-na-python (pandas,
+    # numpy, scipy); ВЕРХНИЙ регистр (CR/PR/CI — легитимные аббревиатуры) и имена
+    # собственные (Lancet, Aspergillus, 3D Slicer) скоуп (?-i:) не матчит вовсе
+    assert "term-latin-data-code" not in _ids("эффект in vitro и de novo подтверждён\n")
+    assert "term-latin-data-code" not in _ids("post hoc анализ не выполнялся\n")
+    assert "term-latin-data-code" not in _ids("введение per rectum показано\n")
+    assert "term-latin-data-code" not in _ids("status quo не изменился\n")
+    assert "term-latin-data-code" not in _ids("анализ средствами pandas и numpy\n")
+    assert "term-latin-data-code" not in _ids("категории CR и PR и SD\n")
+    assert "term-latin-data-code" not in _ids("журнал Lancet и род Aspergillus\n")
+    assert "term-latin-data-code" not in _ids("модель в 3D Slicer построена\n")
 
 
 def test_latin_data_code_legal_paths():
