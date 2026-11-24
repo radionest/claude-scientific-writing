@@ -93,7 +93,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--local-dictionary", default=None,
                     help="use this file as the project-local dictionary (overrides auto-discovery)")
     ap.add_argument("--no-local", action="store_true",
-                    help="ignore any project-local dictionary")
+                    help="ignore any project-local dictionary (overrides --local-dictionary)")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args(argv)
     try:

@@ -146,3 +146,30 @@ def test_tune_diff_local_dictionary_flags_reach_triage(tmp_path, capsys):
     assert rc == 0
     hunks = json.loads(capsys.readouterr().out)
     assert len(hunks) == 1 and hunks[0]["triage"] == "FN" and hunks[0]["rule_hit"] is None
+
+
+def test_custom_dictionary_errors_exit_clean(tmp_path, capsys):
+    """A user-supplied `--dictionary` is rule-set input like the overlay: broken files
+    (missing, entry without `pattern`) must reach the clean ConfigError path (exit 3),
+    not a traceback — by the hook contract exit 1 means «error-severity findings»."""
+    qmd = _qmd(tmp_path, "doc.qmd", "Очаги распознавали вручную.\n")
+    docx = _docx(tmp_path, [_para(_run("Очаги распознавали вручную."))], [])
+    runs = [(lint_main, [str(qmd)]), (tune_main, [str(qmd), str(qmd)]),
+            (docx_main, [str(docx)])]
+    missing = str(tmp_path / "nope.json")
+    no_pattern = tmp_path / "no-pattern.json"
+    no_pattern.write_text(json.dumps({"entries": [{
+        "id": "calque-x", "kind": "regex", "severity": "warn",
+        "message": "m", "layer": "universal"}]}, ensure_ascii=False), encoding="utf-8")
+
+    for main, base in runs:
+        rc = main([*base, "--dictionary", missing])
+        err = capsys.readouterr().err
+        assert rc == 3, err
+        assert "ошибка" in err
+
+    for main, base in runs:
+        rc = main([*base, "--dictionary", str(no_pattern)])
+        err = capsys.readouterr().err
+        assert rc == 3, err
+        assert "pattern" in err

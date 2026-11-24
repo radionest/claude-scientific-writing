@@ -24,7 +24,7 @@ _LAYERS = {"universal", "genre:report", "genre:article", "genre:educational", "d
 
 
 class ConfigError(Exception):
-    """Malformed project-local dictionary."""
+    """Malformed dictionary — the project-local overlay or a `--dictionary` canon."""
 
 
 @dataclass
@@ -39,7 +39,16 @@ class Finding:
 
 
 def _read(p: Path) -> list[dict]:
-    return json.loads(p.read_text(encoding="utf-8"))["entries"]
+    """Entries of one dictionary file, shape-checked: a user-supplied `--dictionary`
+    must reach the CLIs' clean ConfigError path (exit 3), not a raw traceback — by
+    contract exit 1 means «error-severity findings», not a crash."""
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))["entries"]
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        raise ConfigError(f"{p}: {e}") from e
+    if not isinstance(data, list) or not all(isinstance(e, dict) for e in data):
+        raise ConfigError(f"{p}: ожидается «entries» — список объектов")
+    return data
 
 
 def load_entries(path: str | None) -> list[dict]:
@@ -50,7 +59,13 @@ def load_entries(path: str | None) -> list[dict]:
         for e in _read(p):
             if e.get("kind", "regex") != "regex":
                 continue
-            e["_rx"] = re.compile(e["pattern"], re.IGNORECASE | re.UNICODE)
+            if "pattern" not in e:
+                raise ConfigError(f"{p}: правило «{e.get('id', '?')}» без «pattern»")
+            try:
+                e["_rx"] = re.compile(e["pattern"], re.IGNORECASE | re.UNICODE)
+            except (re.error, TypeError) as err:
+                raise ConfigError(
+                    f"{p}: правило «{e.get('id', '?')}» — некорректный паттерн: {err}") from err
             out.append(e)
     return out
 
@@ -445,7 +460,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--local-dictionary", default=None,
                     help="use this file as the project-local dictionary (overrides auto-discovery)")
     ap.add_argument("--no-local", action="store_true",
-                    help="ignore any project-local dictionary")
+                    help="ignore any project-local dictionary (overrides --local-dictionary)")
     ap.add_argument("--no-morph", action="store_true",
                     help="ignore the optional morphology extra (checks skip or demote)")
     args = ap.parse_args(argv)
