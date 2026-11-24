@@ -39,6 +39,10 @@ def _anchor(cid, text):
             f'<w:commentRangeEnd w:id="{cid}"/>')
 
 
+def _ref(cid):
+    return f'<w:r><w:commentReference w:id="{cid}"/></w:r>'
+
+
 def test_extracts_comment_with_anchor_and_sentence(tmp_path):
     p = _docx(tmp_path,
               [_para(_run("Врач отметил "), _anchor("1", "очаг"), _run(" на срезе."))],
@@ -59,6 +63,38 @@ def test_paragraph_numbers_increase(tmp_path):
                _para(_run("Второй "), _anchor("1", "абзац"), _run(" тоже."))],
               [("1", "Ред", "убрать")])
     assert extract(p)[0].line == 2
+
+
+def test_comment_without_range_is_anchored_at_its_reference(tmp_path):
+    """Word leaves only a `w:commentReference` when the editor selects nothing. Such a
+    comment used to vanish, so the triage reported fewer remarks than the file holds —
+    27 of 28 on a live review."""
+    p = _docx(tmp_path,
+              [_para(_run("Первый абзац. "), _run("Второй абзац."), _ref("3"))],
+              [("3", "Редактор", "сократить")])
+    items = extract(p)
+    assert len(items) == 1
+    assert items[0].anchor == ""
+    assert items[0].before == "Первый абзац. Второй абзац."
+    assert items[0].comment == "сократить"
+
+
+def test_reference_mid_sentence_centers_the_triage_window(tmp_path):
+    """A reference inside a sentence takes that sentence, with the window where the
+    reference sits — the same geometry an empty range gets."""
+    p = _docx(tmp_path,
+              [_para(_run("Врач отметил "), _ref("1"), _run("очаг на срезе."))],
+              [("1", "Ред", "зпт")])
+    it = extract(p)[0]
+    assert it.sentence == "Врач отметил очаг на срезе."
+    assert it.anchor_at == len("Врач отметил")  # the space before the reference is normalised away
+
+
+def test_range_wins_over_the_reference_of_the_same_comment(tmp_path):
+    p = _docx(tmp_path,
+              [_para(_run("Врач отметил "), _anchor("1", "очаг"), _ref("1"), _run(" на срезе."))],
+              [("1", "Редактор", "зпт")])
+    assert extract(p)[0].anchor == "очаг"
 
 
 def test_triage_marks_covered_only_on_the_anchor(tmp_path):

@@ -2,8 +2,10 @@
 
 An editor's review is the highest-quality calibration signal available: every comment is a
 defect a human found that the rules did not. This reads the comments straight out of the
-OOXML parts, keeping exact character offsets — which is why it does not go through pandoc
-markdown like `~/.claude/scripts/docx_review.py` does.
+OOXML parts, keeping exact character offsets, and anchors a comment Word stored as a bare
+`w:commentReference` (nothing selected) at that mark. It never goes through pandoc markdown:
+a comment whose range crosses a line, sits in a table cell or nests in another one does not
+survive that round-trip (#22).
 
     python3 -m lib.docx_review review.docx --json
 
@@ -214,6 +216,7 @@ def _document(z: zipfile.ZipFile):
     pos = 0
     starts: dict[str, int] = {}
     ends: dict[str, int] = {}
+    refs: dict[str, int] = {}
     para_starts: list[int] = [0]
 
     def walk(el) -> None:
@@ -229,6 +232,8 @@ def _document(z: zipfile.ZipFile):
                 starts[ch.get(_W + "id") or ""] = pos
             elif tag == _W + "commentRangeEnd":
                 ends[ch.get(_W + "id") or ""] = pos
+            elif tag == _W + "commentReference":
+                refs[ch.get(_W + "id") or ""] = pos
             elif tag == _W + "t":
                 s = ch.text or ""
                 parts.append(s)
@@ -242,6 +247,9 @@ def _document(z: zipfile.ZipFile):
     walk(root)
     text = "".join(parts)
     spans = {cid: (s, ends.get(cid, s)) for cid, s in starts.items()}
+    # Word leaves only the reference mark when the editor selects nothing: anchor there.
+    for cid, pos in refs.items():
+        spans.setdefault(cid, (pos, pos))
 
     def para_at(offset: int) -> int:
         lo, hi = 0, len(para_starts) - 1
