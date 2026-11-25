@@ -1,0 +1,14 @@
+{
+  "entries": [
+    {"id": "calques", "tier": "default", "when": "always", "skills": ["scientific-writing:writing-russian-academic-prose"], "source": "agents/prose-reviewer.md#calques"},
+    {"id": "repeats", "tier": "default", "when": "always", "skills": ["scientific-writing:say-it-once-academic-prose"], "source": "agents/prose-reviewer.md#repeats"},
+    {"id": "structure", "tier": "default", "when": "always", "skills": [], "source": "agents/prose-reviewer.md#structure"},
+    {"id": "terminology", "tier": "default", "when": "always", "skills": [], "source": "agents/prose-reviewer.md#terminology"},
+    {"id": "render", "tier": "default", "when": "always", "skills": [], "source": "agents/prose-reviewer.md#render"},
+    {"id": "genre", "tier": "default", "when": "has_section:Обсуждение", "skills": [], "source": "agents/prose-reviewer.md#genre"},
+    {"id": "discussion", "tier": "default", "when": "has_section:Обсуждение", "skills": ["scientific-writing:writing-discussion"], "source": "agents/prose-reviewer.md#discussion"},
+    {"id": "argument", "tier": "default", "when": "substantive_edit", "skills": ["scientific-writing:reader-first-academic-prose"], "source": "agents/prose-reviewer.md#argument"},
+    {"id": "fidelity", "tier": "default", "when": "has_before_after", "skills": [], "source": "agents/prose-reviewer.md#fidelity"},
+    {"id": "evidence", "tier": "default", "when": "claims_registry_valid", "skills": [], "source": "agents/prose-reviewer.md#evidence"}
+  ]
+}
