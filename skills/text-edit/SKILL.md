@@ -24,12 +24,16 @@ allowed-tools: Bash, Read, Edit, Write, Task
    (сначала зафиксируй destination каждой функции, потом правь).
    `BEFORE=$(mktemp /tmp/text-edit-XXXXXX.qmd) && cp "$Q" "$BEFORE"`
 3. **Правка** через агента `scientific-writer` (передай режим language-only/structural
-   и границы). Правка идёт раундами; после каждого раунда — стоп-правило
-   `lib.revision_guard.next_state(prev, cur, EditState(rounds))`: `CONTINUE` — ещё
-   раунд; `STOP_ZERO_EDIT` — раунд ничего не изменил, стоп (нулевой список правок —
-   нормальный результат); `STOP_OVERHARDENING` — бюджет исчерпан
-   (`MAX_SUBSTANTIVE_ROUNDS` = 2: максимум два содержательных раунда, дальше полировка
-   только навредит — остатки находок доложи, не правь).
+   и границы). Правка идёт раундами; перед раундом сохрани кандидата
+   (`cp "$Q" "$PREV"`), после — стоп-правило. Счётчик раундов наращивается: первый
+   вызов — `EditState(rounds=0)`; содержательный раунд — следующий вызов с
+   `EditState(rounds + 1)`. Вызов (первый аргумент — кандидат до раунда, второй —
+   после, третий — число завершённых содержательных раундов):
+   `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -c 'import sys; from lib.revision_guard import EditState, next_state; a, b, n = open(sys.argv[1]).read(), open(sys.argv[2]).read(), int(sys.argv[3]); print(next_state(a, b, EditState(n)))' "$PREV" "$Q" "$ROUNDS"`
+   Вердикт: `CONTINUE` — ещё раунд; `STOP_ZERO_EDIT` — раунд ничего не изменил, стоп
+   (нулевой список правок — нормальный результат); `STOP_OVERHARDENING` — счётчик
+   дошёл до `MAX_SUBSTANTIVE_ROUNDS` (= 2: максимум два содержательных раунда, дальше
+   полировка только навредит — остатки находок доложи, не правь).
    Соседние абзацы — читать для связности, не переписывать. Изменение
    знаменателя, популяции, цели или причинности — не surface-правка: останови правку и
    доложи (нужен claim-calibration: рекомендация, изменение силы утверждения — только

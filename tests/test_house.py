@@ -333,7 +333,7 @@ def test_samples_below_three_raise(tmp_path):
         load_house(root / "doc.qmd")
 
 
-def test_empty_samples_list_raises_like_an_absent_baseline(tmp_path):
+def test_empty_samples_list_raises(tmp_path):
     root = _git_repo(tmp_path)
     _write_house(root, {"samples": []})
     with pytest.raises(ConfigError, match="не менее 3"):
