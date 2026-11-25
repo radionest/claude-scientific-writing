@@ -2,17 +2,20 @@
 validation (`ConfigError` → exit 3), the wiring into the linter (the `doc-term-*` rule
 records, the `doc-abbrev-*` allow lists) and the review plan's `covered_by_lint`."""
 import json
+import re
 import subprocess
 from pathlib import Path
 
 import pytest
 
 from lib import lint_prose
-from lib.house import house_path, load_house
+from lib.house import House, Norm, house_path, load_house, load_norms
 from lib.lint_prose import ConfigError, effective_entries
 from lib.lint_prose import main as lint_main
 from lib.review_plan import plan
 from lib.review_plan import main as plan_main
+
+ROOT = Path(__file__).resolve().parents[1]
 
 PACK = {
     "name": "rtk",
@@ -275,3 +278,29 @@ def test_cli_json_carries_covered_by_lint(tmp_path, capsys):
     assert all(set(d) == {"id", "when", "reason", "covered_by_lint"} for d in dims)
 
 
+
+
+# --- norms: canon defaults + the pack's overrides by id ---
+
+def _norms_refs() -> set[str]:
+    paths = list((ROOT / "canon" / "profiles").glob("*.md")) \
+        + list((ROOT / "skills").rglob("SKILL.md"))
+    text = "\n".join(p.read_text(encoding="utf-8") for p in paths)
+    return set(re.findall(r"norms:([a-z0-9-]+)", text))
+
+
+def test_norms_references_resolve_and_ids_are_unique():
+    ids = [n.id for n in load_norms()]
+    assert len(ids) == len(set(ids))
+    refs = _norms_refs()
+    assert refs, "ссылки norms:<id> потеряны"
+    assert refs <= set(ids)
+
+
+def test_house_norms_override_by_id_and_add_new():
+    house = House(norms=(Norm(id="denominator-policy", text="проектная правка"),
+                         Norm(id="local-norm", text="локальная норма")))
+    by_id = {n.id: n for n in load_norms(house)}
+    assert by_id["denominator-policy"].text == "проектная правка"
+    assert by_id["local-norm"].text == "локальная норма"
+    assert "denominator-policy" in _norms_refs()
