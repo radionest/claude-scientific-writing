@@ -27,7 +27,8 @@ PACK = {
     "passport": {"numbers": "точка", "list-markers": "дефис"},
     "norms": [{"id": "denominator-policy", "text": "Знаменатель n (%) явный.",
                "source": "протокол"}],
-    "samples": ["Печень — орган-мишень."],
+    "samples": ["Печень — орган-мишень.", "Зона абляции не видна на нативной КТ.",
+                "Очаг считали выявленным, если он был виден хотя бы нечётко."],
     "lanes": ["хирургия"],
 }
 FORBIDDEN_DOC = "Печать прототипа заняла два дня.\n"
@@ -102,7 +103,8 @@ def test_load_house_parses_every_field(tmp_path):
     assert h.abbreviations[0].abbr == "ИОУЗИ"
     assert h.passport.numbers == "точка" and h.passport.list_markers == "дефис"
     assert h.norms[0].id == "denominator-policy"
-    assert h.samples == ("Печень — орган-мишень.",)
+    assert h.samples == ("Печень — орган-мишень.", "Зона абляции не видна на нативной КТ.",
+                         "Очаг считали выявленным, если он был виден хотя бы нечётко.")
     assert h.lanes == ("хирургия",)
 
 
@@ -320,3 +322,25 @@ def test_house_norms_override_by_id_and_add_new():
     assert by_id["denominator-policy"].text == "проектная правка"
     assert by_id["local-norm"].text == "локальная норма"
     assert "denominator-policy" in _norms_refs()
+
+
+# --- samples: the owner-approved fragments baseline (R10) ---
+
+def test_samples_below_three_raise(tmp_path):
+    root = _git_repo(tmp_path)
+    _write_house(root, {"samples": ["Одна фраза."]})
+    with pytest.raises(ConfigError, match="не менее 3"):
+        load_house(root / "doc.qmd")
+
+
+def test_empty_samples_list_raises_like_an_absent_baseline(tmp_path):
+    root = _git_repo(tmp_path)
+    _write_house(root, {"samples": []})
+    with pytest.raises(ConfigError, match="не менее 3"):
+        load_house(root / "doc.qmd")
+
+
+def test_absent_samples_key_stays_valid(tmp_path):
+    root = _git_repo(tmp_path)
+    _write_house(root, {"name": "h"})
+    assert load_house(root / "doc.qmd").samples == ()

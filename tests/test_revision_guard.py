@@ -4,7 +4,9 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from lib.revision_guard import GuardFinding, compare, main, number_keys
+from lib.revision_guard import (CONTINUE, MAX_SUBSTANTIVE_ROUNDS, STOP_OVERHARDENING,
+                                STOP_ZERO_EDIT, EditState, GuardFinding, compare, main,
+                                next_state, number_keys)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -146,3 +148,28 @@ def test_guard_on_rewrite_gold():
             assert findings, f"{case['id']}: artifact damage must be flagged"
         else:
             assert findings == [], (case["id"], findings)
+
+
+# --- the /text-edit stop rule: three verdicts, at most two substantive rounds ---
+
+BEFORE, AFTER = "Было 78 %.\n", "Стало 87 %.\n"
+
+
+def test_first_substantive_round_continues():
+    assert next_state(BEFORE, AFTER, EditState(rounds=0)) == CONTINUE
+
+
+def test_second_substantive_round_is_still_admitted():
+    assert next_state(BEFORE, AFTER, EditState(rounds=1)) == CONTINUE
+
+
+def test_third_substantive_round_stops_as_overhardening():
+    assert next_state(BEFORE, AFTER, EditState(rounds=2)) == STOP_OVERHARDENING
+    assert MAX_SUBSTANTIVE_ROUNDS == 2
+
+
+def test_zero_edit_stops_at_any_round_budget():
+    assert next_state(BEFORE, BEFORE, EditState(rounds=0)) == STOP_ZERO_EDIT
+    assert next_state(BEFORE, BEFORE, EditState(rounds=1)) == STOP_ZERO_EDIT
+    # zero edit outranks the round limit: nothing was done, over-hardening is moot
+    assert next_state(BEFORE, BEFORE, EditState(rounds=2)) == STOP_ZERO_EDIT

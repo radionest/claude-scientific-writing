@@ -166,5 +166,35 @@ def main(argv: list[str] | None = None) -> int:
     return 1 if findings else 0
 
 
+# --- the /text-edit stop rule: at most two substantive rounds ---
+
+MAX_SUBSTANTIVE_ROUNDS = 2
+
+CONTINUE = "CONTINUE"
+STOP_ZERO_EDIT = "STOP_ZERO_EDIT"
+STOP_OVERHARDENING = "STOP_OVERHARDENING"
+
+
+@dataclass(frozen=True, slots=True)
+class EditState:
+    rounds: int = 0  # substantive edit rounds already completed before this candidate
+
+
+def next_state(prev: str, cur: str, guard: EditState) -> str:
+    """The edit-loop stop rule for `/text-edit --only rhetoric` (and any scoped edit).
+
+    `prev` is the candidate before the round, `cur` the candidate after it, `guard`
+    the accumulated `EditState`. A round that changed nothing stops the loop — a zero
+    edit list is a normal outcome, not a failure. A substantive round is admitted only
+    while `guard.rounds` is below `MAX_SUBSTANTIVE_ROUNDS`; beyond that budget further
+    rewriting is presumed over-hardening (polish loops erode fidelity), so the rule
+    stops and the leftovers get reported instead of edited."""
+    if cur == prev:
+        return STOP_ZERO_EDIT
+    if guard.rounds >= MAX_SUBSTANTIVE_ROUNDS:
+        return STOP_OVERHARDENING
+    return CONTINUE
+
+
 if __name__ == "__main__":
     raise SystemExit(main())

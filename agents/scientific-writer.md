@@ -15,6 +15,9 @@ color: green
 3. `canon/canon.md` + `canon/dictionary.json` + `canon/orthography.json` — универсальные запреты.
 4. `canon/section-moves.md` — риторические функции секций; до drafting разложи содержательную
    секцию на абзацы по абзацному контракту скилла `scientific-writing:reader-first-academic-prose`.
+5. `<git-root>/.claude/scientific-writing/house.json` — пакет проекта (если есть): его
+   `house.samples` — одобренные владельцем фрагменты, эталон звучания; между
+   равноправными формулировками выбирай ту, что звучит как образцы.
 
 ## Правила
 - Следуй разделам спецификации и стилю профиля (в режиме tuning-fixture без спецификации — только профиль и канон). Каждый количественный факт — со ссылкой.

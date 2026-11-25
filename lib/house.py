@@ -25,6 +25,9 @@ _NORM_FIELDS = frozenset({"id", "text", "source"})
 _PASSPORT_KEYS = {"numbers": "numbers", "dates": "dates", "ranges": "ranges",
                   "units": "units", "list-markers": "list_markers", "headings": "headings",
                   "links": "links", "house-style": "house_style"}
+# R10 «Образцы»: the pack's approved fragments are the writer's sound reference, and a
+# baseline of one or two fragments carries no spread — the key commits to the discipline.
+_MIN_SAMPLES = 3
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,6 +125,9 @@ def load_house(doc_path: str | Path) -> House | None:
     ids = [n.id for n in house.norms]
     if len(ids) != len(set(ids)):
         raise ConfigError(f"{p}: повтор id в «norms»")
+    if data.get("samples") is not None and len(house.samples) < _MIN_SAMPLES:
+        raise ConfigError(f"{p}: «samples» — не менее {_MIN_SAMPLES} одобренных "
+                          f"владельцем фрагментов, получено {len(house.samples)}")
     return house
 
 
