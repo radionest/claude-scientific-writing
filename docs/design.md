@@ -395,6 +395,31 @@ markdown — a heading-anchored one in #22, 7 of 28 on a later live review.
 The educational profile is the explicit reason genre is its own layer: it overrides style rules the report
 profile enforces, while the universal calque/term discipline still applies.
 
+## Judges (added 2026-11-25)
+
+Meaning-damage review above the deterministic layers: a decision-model judge (Jev,
+`typesafe/jev-1.14`) answers typed questions about a small `{before, after}` state —
+an `noul` question returns a yes-probability in 0..1. `lib/judges.py` (stdlib
+`urllib`, no SDK) posts both questions of one pair in a single request; descriptors
+live in `canon/judges.json` — only `edit-fidelity` for now (the two
+rewrite-preservation questions); `claim-support` / `rhetoric-context` / `term-sense`
+wait for annotated material. Only input tokens are billed ($0.042 per million).
+
+| Aspect | Contract |
+|---|---|
+| Transport | `openrouter` → `POST https://openrouter.ai/api/alpha/decisions` with `OPENROUTER_API_KEY`; `typesafe` → `POST https://api.typesafe.ai/v1/systemone` with `TYPESAFE_API_KEY`; picked by `SW_JUDGE__TRANSPORT`, else openrouter-if-keyed, else typesafe, else `unavailable` |
+| `run_judge(judge_id, state)` → `JudgeResult` | `status` ∈ `ok / refused / skipped / unavailable / error` — `refused` when any question answers `type: "refusal"`, `skipped` when the state exceeds 32 000 bytes (larger fragments drift into the less accurate long-context mode), `error` on network failure, 5xx or malformed JSON |
+| Privacy | keys are read from the environment per request and never logged or written to reports; texts leave the machine only when a judge actually runs — the pilot uses the plugin's own corpus, project texts need the owner's consent, patient identifiers never |
+| Pilot | `python3 -m lib.judges pilot --out tests/eval/judges-pilot.json` runs `edit-fidelity` over the 18 pairs of `tests/eval/rewrite-cases.json` (12 damage, 6 clean; only `before`/`after` travel in the request) and writes `{version, transport, status, cases: [{id, expect, answers, status, elapsed_ms}], usage}` — no pair texts, no thresholds, no verdicts; the step-0 question is whether Jev discriminates Russian scientific text at all, thresholds are calibrated on the stage-5 corpus |
+
+Pinned by `tests/test_judges.py` (network stubbed at `urllib.request.urlopen`; the
+recorded-response fixture is `THEORY (docs, not recorded)` — composed from the
+TypeSafe and OpenRouter Decisions docs, no key existed to capture a live payload).
+Without a key the judge reports `unavailable` and the pilot exits 0 — an edit is
+never blocked. Deliberately not wired into `/text-edit` yet
+(skills/text-edit/SKILL.md:33–36): enablement waits for the pilot and the owner's
+decision.
+
 ## Migration of existing assets
 
 | Asset | Action |

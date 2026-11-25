@@ -14,7 +14,7 @@ import urllib.request
 
 import pytest
 
-from lib.judges import _resolve_transport, run_judge
+from lib.judges import _resolve_transport, main, run_judge
 
 _RECORDED = {
     "answers": {
@@ -154,9 +154,41 @@ def test_oversized_state_is_skipped(monkeypatch):
     assert run_judge("edit-fidelity", small).status == "ok"
 
 
-def test_missing_key_is_unavailable(monkeypatch):
+def test_missing_key_is_unavailable_and_cli_exits_zero(monkeypatch, tmp_path):
     _env(monkeypatch)
     assert run_judge("edit-fidelity", _STATE).status == "unavailable"
+    out = tmp_path / "judges-pilot.json"
+    assert main(["pilot", "--out", str(out)]) == 0
+    report = json.loads(out.read_text(encoding="utf-8"))
+    assert report["status"] == "unavailable"
+    assert report["transport"] is None
+    assert len(report["cases"]) == 18
+    assert all(case["status"] == "unavailable" for case in report["cases"])
+
+
+def test_pilot_writes_report_of_expected_shape(monkeypatch, tmp_path):
+    _env(monkeypatch, openrouter="k")
+    sent = _install(monkeypatch)
+    out = tmp_path / "judges-pilot.json"
+    assert main(["pilot", "--out", str(out)]) == 0
+    text = out.read_text(encoding="utf-8")
+    report = json.loads(text)
+    assert set(report) == {"version", "transport", "status", "cases", "usage"}
+    assert report["transport"] == "openrouter"
+    assert report["status"] == "ok"
+    assert report["usage"] == {"input_tokens": 18 * 612}
+    assert len(report["cases"]) == 18
+    for case in report["cases"]:
+        assert set(case) == {"id", "expect", "answers", "status", "elapsed_ms"}
+    assert {case["expect"] for case in report["cases"]} == {"damage", "clean"}
+    assert len(sent) == 18  # both questions of a pair travel in one request
+    for request in sent:
+        payload = json.loads(request.data)
+        assert set(payload["state"]) == {"before", "after"}
+        assert len(payload["questions"]) == 2
+    # privacy: the report carries no pair texts
+    assert "Препарат" not in text
+    assert "резекци" not in text
 
 
 def test_unknown_judge_id_raises(monkeypatch):

@@ -9,8 +9,10 @@ larger fragments fall into the less accurate long-context mode. Statuses:
 ok | refused | skipped | unavailable | error.
 """
 from __future__ import annotations
+import argparse
 import json
 import os
+import sys
 import time
 import urllib.request
 from dataclasses import dataclass
@@ -18,6 +20,7 @@ from pathlib import Path
 
 _REPO = Path(__file__).resolve().parents[1]
 _CANON = _REPO / "canon" / "judges.json"
+_REWRITE_CASES = _REPO / "tests" / "eval" / "rewrite-cases.json"
 
 _MODEL = "typesafe/jev-1.14"
 _MAX_STATE_BYTES = 32_000
@@ -27,6 +30,7 @@ _TRANSPORTS = {
     "openrouter": ("https://openrouter.ai/api/alpha/decisions", "OPENROUTER_API_KEY"),
     "typesafe": ("https://api.typesafe.ai/v1/systemone", "TYPESAFE_API_KEY"),
 }
+_WORST_STATUS = {"ok": 0, "skipped": 1, "refused": 2, "error": 3}
 
 
 @dataclass(frozen=True, slots=True)
@@ -117,3 +121,48 @@ def run_judge(judge_id: str, state: dict[str, str]) -> JudgeResult:
     tokens = usage_raw.get("input_tokens") if isinstance(usage_raw, dict) else None
     usage = {"input_tokens": tokens} if isinstance(tokens, int) else {}
     return done("refused" if refused else "ok", answers, usage)
+
+
+def pilot(out: Path) -> int:
+    cases = json.loads(_REWRITE_CASES.read_text(encoding="utf-8"))["cases"]
+    rows = []
+    tokens = 0
+    for case in cases:
+        result = run_judge("edit-fidelity",
+                           {"before": case["before"], "after": case["after"]})
+        tokens += result.usage.get("input_tokens", 0)
+        rows.append({"id": case["id"], "expect": case["expect"],
+                     "answers": result.answers, "status": result.status,
+                     "elapsed_ms": result.elapsed_ms})
+    transport = _resolve_transport()
+    if transport is None:
+        overall = "unavailable"
+    else:
+        overall = max(rows, key=lambda r: _WORST_STATUS[r["status"]])["status"]
+    report = {
+        "version": 1,
+        "transport": transport[0] if transport else None,
+        "status": overall,
+        "cases": rows,
+        "usage": {"input_tokens": tokens},
+    }
+    out.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n",
+                   encoding="utf-8")
+    print(f"{len(rows)} case(s) -> {out} (status: {overall})", file=sys.stderr)
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(
+        description="Decision-model judges over OpenRouter/TypeSafe (advisory)")
+    sub = ap.add_subparsers(dest="command", required=True)
+    p_pilot = sub.add_parser(
+        "pilot", help="edit-fidelity pilot over tests/eval/rewrite-cases.json")
+    p_pilot.add_argument("--out", required=True, type=Path,
+                         help="report path (pair texts are never written)")
+    args = ap.parse_args(argv)
+    return pilot(args.out)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
