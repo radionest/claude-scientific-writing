@@ -74,7 +74,7 @@ def test_roles_carry_declared_lanes():
 
 def test_tier_of_follows_house_json(tmp_path):
     root = _git_repo(tmp_path)
-    _write_house(root, {"lanes": {"calques": "fast", "repeats": "strong"}})
+    _write_house(root, {"lanes": {" calques ": "fast", "repeats": "strong"}})
     doc = _doc(root)
     assert tier_of("calques", doc) == "fast"
     assert tier_of("repeats", doc) == "strong"

@@ -202,7 +202,7 @@ def _lanes(p: Path, v: object) -> Mapping[str, str]:
                                           for k, x in v.items()):
         raise ConfigError(f"{p}: «lanes» должен быть объектом с непустыми "
                           f"строковыми ключами и значениями")
-    return MappingProxyType(dict(v))
+    return MappingProxyType({k.strip(): x.strip() for k, x in v.items()})
 
 
 def _text(p: Path, obj: dict, key: str) -> str:
