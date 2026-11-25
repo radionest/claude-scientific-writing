@@ -278,8 +278,6 @@ def test_cli_json_carries_covered_by_lint(tmp_path, capsys):
     assert all(set(d) == {"id", "when", "reason", "covered_by_lint"} for d in dims)
 
 
-
-
 # --- norms: canon defaults + the pack's overrides by id ---
 
 def _norms_refs() -> set[str]:

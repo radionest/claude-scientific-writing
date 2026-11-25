@@ -281,7 +281,8 @@ bad/good oracle; the effective set replaces them with the pack's (or empties the
 without a pack both rules stay silent. Pack abbreviations join the `allow` lists of
 `doc-abbrev-first-use`/`doc-abbrev-variants` without duplicates. When the pack has
 `terms` and the document's `doc-term-canon` run is clean, the review plan marks
-`terminology` `covered_by_lint` — the ensemble skips the duplicate reviewer
+`terminology` `covered_by_lint` — the flag lets the ensemble skip the duplicate
+reviewer; wiring the dispatcher is the next step of the stack
 (`PlanEntry.covered_by_lint`, `lib.review_plan` joined the `--dictionary` /
 `--local-dictionary` / `--no-local` contour for it). `init-doc-spec` (steps 4–6)
 prefills terms, abbreviations and the passport from the pack. Pinned by
