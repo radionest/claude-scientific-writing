@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import http.client
 import json
+import math
 import os
 import sys
 import time
@@ -31,7 +32,7 @@ _TRANSPORTS = {
     "openrouter": ("https://openrouter.ai/api/alpha/decisions", "OPENROUTER_API_KEY"),
     "typesafe": ("https://api.typesafe.ai/v1/systemone", "TYPESAFE_API_KEY"),
 }
-_WORST_STATUS = {"ok": 0, "skipped": 1, "refused": 2, "error": 3}
+_WORST_STATUS = {"ok": 0, "skipped": 1, "refused": 2, "unavailable": 3, "error": 4}
 
 
 @dataclass(frozen=True, slots=True)
@@ -117,7 +118,8 @@ def run_judge(judge_id: str, state: dict[str, str]) -> JudgeResult:
             continue
         value = entry.get("value")
         if (kind != "noul" or not isinstance(value, (int, float))
-                or isinstance(value, bool)):
+                or isinstance(value, bool) or not math.isfinite(value)
+                or not 0.0 <= value <= 1.0):
             return done("error")
         answers[qname] = float(value)
     tokens = usage_raw.get("input_tokens") if isinstance(usage_raw, dict) else None

@@ -98,6 +98,18 @@ def test_refusal_is_refused(monkeypatch):
     assert result.usage == {"input_tokens": 300}
 
 
+def test_out_of_range_value_is_error(monkeypatch):
+    _env(monkeypatch, openrouter="k")
+    _install(monkeypatch, payload={
+        "answers": {"meaning-kept": {"type": "noul", "value": 1.5},
+                    "new-claim": {"type": "noul", "value": 0.04}},
+        "usage": {"input_tokens": 10}})
+    assert run_judge("edit-fidelity", _STATE).status == "error"
+    _install(monkeypatch, raw=b'{"answers": {"meaning-kept": '
+                             b'{"type": "noul", "value": NaN}}}')
+    assert run_judge("edit-fidelity", _STATE).status == "error"
+
+
 def test_http_500_is_error(monkeypatch):
     _env(monkeypatch, openrouter="k")
     _install(monkeypatch, error=urllib.error.HTTPError(
