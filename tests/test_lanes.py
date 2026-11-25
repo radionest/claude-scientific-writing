@@ -171,7 +171,8 @@ def test_registry_ids_split_across_agents_by_tier():
 sys.path.insert(0, str(ROOT / "hermes"))
 import sw_bridge  # noqa: E402
 
-CHECK_SCRIPTS = [ROOT / "hermes" / "lanes_check.py"]
+CHECK_SCRIPTS = [ROOT / "hermes" / "lanes_check.py",
+                 ROOT / ".zcode" / "scripts" / "lanes_check.py"]
 
 
 def _snapshot(home: Path) -> dict[str, bytes]:
