@@ -33,7 +33,9 @@ description: Use for Russian scientific prose and plugin releases.
    - формат: `# Spec: <doc>` / `genre:` / `## Разделы` / `## Канонические термины` / `## Сокращения` / `## Локальные запреты (layer: doc)`;
    - каждый машинно-проверяемый запрет (`pattern`) засей в локальный словарь проекта `<git-root>/.claude/scientific-writing/dictionary.json`
      (`{"entries": [{"id","layer":"doc","pattern","severity","message"}]}`; слияние по `id`, `{"id":..,"disabled":true}` отключает наследие);
-     термины и аббревиатуры документа заведи в `allow` правил `ortho-spelling` и `doc-abbrev-variants`.
+     термины и аббревиатуры документа заведи в `allow` правил `ortho-spelling` и `doc-abbrev-variants`;
+     термины и аббревиатуры из пакета (`house.json`) пересеивать в `allow` не нужно: синонимы пакета
+     проверяют `doc-term-canon`/`doc-term-caution`, аббревиатуры пакета попадают в `allow` `doc-abbrev-*` сами.
 
 2. **Write.** Пиши по спецификации и жанровому профилю; каждое количественное утверждение — с цитированием; не вводи кальку из словаря.
    Фразовый уровень — по скиллу `writing-russian-academic-prose`.

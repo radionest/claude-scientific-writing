@@ -514,7 +514,7 @@ def main(argv: list[str] | None = None) -> int:
                 changed = changed_lines(f, ref)
             findings += lint_file(f, entries, changed, check_entries, morph)
     except ConfigError as e:
-        print(f"lint_prose: ошибка локального словаря {e}", file=sys.stderr)
+        print(f"lint_prose: ошибка конфигурации {e}", file=sys.stderr)
         return 3
     if args.unseeded:
         print(json.dumps(_unseeded_counts(findings, seeded), ensure_ascii=False, indent=2))
