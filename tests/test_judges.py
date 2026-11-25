@@ -7,6 +7,7 @@ endpoint description — no OPENROUTER_API_KEY / TYPESAFE_API_KEY was available 
 capture a live payload, so the wire contract is pinned to the documented shape,
 not to a recorded response.
 """
+import http.client
 import io
 import json
 import urllib.error
@@ -106,6 +107,16 @@ def test_http_500_is_error(monkeypatch):
     assert result.status == "error"
     assert result.answers == {}
     assert result.usage == {}
+
+
+def test_truncated_response_is_error(monkeypatch):
+    # IncompleteRead is an http.client.HTTPException, not an OSError — it must not
+    # escape run_judge and abort the pilot batch mid-run
+    _env(monkeypatch, openrouter="k")
+    _install(monkeypatch, error=http.client.IncompleteRead(b"partial", 1200))
+    result = run_judge("edit-fidelity", _STATE)
+    assert result.status == "error"
+    assert result.answers == {}
 
 
 def test_malformed_response_is_error(monkeypatch):

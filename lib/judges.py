@@ -10,6 +10,7 @@ ok | refused | skipped | unavailable | error.
 """
 from __future__ import annotations
 import argparse
+import http.client
 import json
 import os
 import sys
@@ -94,8 +95,9 @@ def run_judge(judge_id: str, state: dict[str, str]) -> JudgeResult:
     try:
         with urllib.request.urlopen(request, timeout=_TIMEOUT_S) as response:
             body = response.read()
-    except OSError:
-        # network failures and HTTPError (incl. 5xx) are OSError subclasses
+    except (OSError, http.client.HTTPException):
+        # network failures: HTTPError (incl. 5xx) and URLError are OSError subclasses;
+        # a truncated body raises IncompleteRead, an HTTPException
         return done("error")
     try:
         data = json.loads(body)
