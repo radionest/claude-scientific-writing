@@ -366,9 +366,12 @@ The deliverable for "разграничить pre/post review для кода и
   still runs on any prose also touched.
 - mixed → both gates apply.
 
-**Exemptions are path identity, not suffixes** (#89, #102): the hook skips only the plugin's
-own oracles — the dev checkout's or the running copy's `tests/eval/lint-bad.qmd` and
-`tests/fixtures/` — while a user file at either path in another repo is linted like any prose.
+**Exemptions are path identity, not suffixes** (#89, #102): `text-lint.sh` exempts
+`tests/fixtures/` and `tests/eval/lint-bad.qmd` of the committing repo when it is the plugin
+itself (`.claude-plugin/plugin.json` at the toplevel — the dev checkout or a linked worktree),
+falling back to the running copy's otherwise; the hermes gate anchors the same toplevel
+identity for `tests/fixtures/` only (no eval-corpus exemption there — #108). A user file at
+either path in another repo is linted like any prose.
 
 Post-path formalization: `apply-docx-review` → `qmd-review-importer` already runs a prose pass (step 4, added
 2026-06-22); the plugin makes "apply → review → lint-clean before commit" the contract, closing the

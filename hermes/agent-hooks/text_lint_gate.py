@@ -79,13 +79,29 @@ def main() -> int:
     if not qmd_files:
         return 0
 
+    # fixtures exemption by path identity (#102): when the commit happens in the
+    # plugin's own repo — the dev checkout or a linked worktree of it, detected by
+    # .claude-plugin/plugin.json at the committing repo's toplevel — that repo's
+    # tests/fixtures are the oracles; otherwise the running plugin copy's are
+    try:
+        toplevel = subprocess.run(
+            ["git", "-C", cwd, "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, timeout=30,
+        ).stdout.strip()
+    except Exception:
+        toplevel = ""
+    if toplevel and (Path(toplevel) / ".claude-plugin" / "plugin.json").exists():
+        fixtures_dir = Path(toplevel) / "tests" / "fixtures"
+    else:
+        fixtures_dir = root / "tests" / "fixtures"
+
     findings_errs = []
     notes = []
     for f in qmd_files:
         fp = Path(cwd) / f
         if not fp.is_file():
             continue
-        if fp.resolve().is_relative_to((root / "tests" / "fixtures").resolve()):
+        if fp.resolve().is_relative_to(fixtures_dir.resolve()):
             continue  # oracle-фикстуры намеренно содержат кальки
         run_args = [py, "-m", "lib.lint_prose", str(fp), "--json", "--diff"]
         if ref:
