@@ -1,6 +1,6 @@
 ---
 name: scientific-writing
-description: Use for Russian scientific prose and plugin planning.
+description: Use for Russian scientific prose and plugin releases.
 ---
 
 # Scientific Writing (Hermes bridge)
@@ -9,6 +9,7 @@ description: Use for Russian scientific prose and plugin planning.
 
 - Пишешь или существенно правишь русский научно-медицинский документ в downstream-проекте.
 - Исследуешь внешние writing-скиллы или планируешь развитие самого плагина.
+- Релизишь плагин (бамп версии, тег) или раскатываешь его скиллы по профилям Hermes.
 - Не используй для нерусской прозы и задач без научно-редакционного компонента.
 
 Русская научная проза пишется как **spec → write → review → fix**, никогда не «с листа».
@@ -57,6 +58,18 @@ description: Use for Russian scientific prose and plugin planning.
 - Проза без spec → сначала шаг 1.
 - «Почищу кальки потом» → именно этот churn система и убивает: фикс на стадии fix.
 - Правки редактора из docx применяются дословно → это тоже редактирование: прогони review/fix.
+
+## Релиз версии и раскатка по профилям Hermes
+Версия живёт только в `.claude-plugin/plugin.json` (+ строка «currently X» в `AGENTS.md`). `pyproject.toml` версию не хранит (placeholder).
+
+1. Сначала интегрируй входящие коммиты: `git -C $ROOT status -sb`; если main behind origin/main — проверь `git log main..origin/main --stat` на пересечение с грязными файлами и сделай `git merge --ff-only origin/main` (FF с грязным деревом безопасен при отсутствии пересечений).
+2. Бамп явными путями: `git add .claude-plugin/plugin.json AGENTS.md` → `chore(release): bump plugin version to X.Y.Z` → `git tag vX.Y.Z`. Sweeping `git add` запрещён: в дереве регулярно лежит несвязный мусор (uv.lock, .zcode/), который попадёт в релизный коммит.
+3. Push сам не делай — покажи оператору `git -C $ROOT push origin main vX.Y.Z` (удалённые мутации только по явной команде).
+4. Раскатка:
+   - default-профиль: ничего копировать не нужно — его `skills.external_dirs` читает `$ROOT/skills` и `$ROOT/hermes/skills` из рабочего дерева напрямую; версия там = состояние репо.
+   - hwriter: копии-подмножество в `~/.hermes/profiles/hwriter/skills/scientific-writing/`. Перед перезаписью — `diff -rq` в обе стороны; уникальные правки дома сначала классифицируй (hermes-skill-canon), потом синкай `cp -r $ROOT/skills/<name>/. <house>/<name>/` (cp/ln/mkdir в skills/ разрешены гардом, rm/mv — оператор).
+   - Перед отчётом «всё синхронизировано» найди все остальные копии: `find ~/.hermes/profiles -maxdepth 5 -type d -path '*skills/scientific-writing*'` — копии живут не только в hwriter.
+5. Гейты: у hwriter `skills.write_approval: true` — прямые write_file/patch в его skills/ блокирует skill_write_guard; заблокированное гардом через терминал не обходить, косметические метки версии (DESCRIPTION.md) пропускай с пометкой оператору.
 
 ## Развитие плагина по внешним скиллам
 При исследовании чужих writing-скиллов и планировании улучшений плагина используй
