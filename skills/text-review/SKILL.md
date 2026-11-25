@@ -1,6 +1,6 @@
 ---
 name: text-review
-description: Use when Russian scientific prose in a .qmd needs advisory review: the linter first, then a prose-reviewer ensemble (calques, repeats, structure, terminology, render, genre, discussion, argument; conditional evidence). Commits and blocks nothing.
+description: Use when Russian scientific prose in a .qmd needs advisory review: the linter first, then a prose-reviewer ensemble dispatched from the review plan (canon/review-dimensions.json declares the dimensions and their launch conditions). Commits and blocks nothing.
 allowed-tools: Bash, Read, Task
 ---
 
@@ -61,3 +61,11 @@ Exit-коды линтера (`lib.lint_prose`):
 
 Трейсбек в stderr — это сбой: проверь `PYTHONPATH=${CLAUDE_PLUGIN_ROOT}`, что путь к словарю
 (`canon/dictionary.json`, `canon/orthography.json`) на месте и файл существует.
+
+Exit-коды плана (`lib.review_plan`):
+
+| Exit | Значение |
+|---|---|
+| 0 | план получен — запускай по измерению на ревьюера |
+| 2 | файл не найден или usage-ошибка CLI (проверь аргументы) |
+| 3 | битый `canon/review-dimensions.json` — stderr называет файл и ошибку, поправь его |

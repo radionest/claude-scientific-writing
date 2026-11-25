@@ -352,8 +352,9 @@ The ensemble dispatch had a hand-maintained copy in each consumer
 source is `canon/review-dimensions.json` — one record per dimension
 `{id, tier, when, skills, source}` (`tier` is `default` for all in v1; `source` anchors
 the contract at `agents/prose-reviewer.md#<id>`, which stays the home of the dimension
-contracts; `skills` names the prose skills the reviewer applies) — resolved per document
-by `lib/review_plan.py`:
+contracts — the anchors name the bold list items, not headings; JSON carries no comments,
+so this caveat lives here; `skills` names the prose skills the reviewer applies) —
+resolved per document by `lib/review_plan.py`:
 
 - `plan(doc, *, mode, spec=None, genre=None, before=None) -> ReviewPlan`;
   `ReviewPlan(mode, dimensions)`, `PlanEntry(id, when, reason)` — included dimensions
