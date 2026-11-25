@@ -261,7 +261,7 @@ Next to the overlay `dictionary.json` lives the pack — what every document of 
 shares: `name`, `genre_default`, `terms` (`canonical`, `forbidden`, `caution`, `note`),
 `abbreviations` (`abbr`, `expansion`), `passport` (the «Редакционного паспорта» keys),
 `norms` (`id`, `text`, `source` — project overrides of `canon/norms.json` by id),
-`samples`, `lanes`. All fields optional; a malformed file, an unknown key or a wrong
+`samples`, `lanes` (`{dimension id: fast|strong}` — the lanes override, see «Lanes» below). All fields optional; a malformed file, an unknown key or a wrong
 type raise `ConfigError` (CLI exit 3).
 
 `lib/house.py`:

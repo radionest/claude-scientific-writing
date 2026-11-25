@@ -155,6 +155,14 @@ def _bold_ids(path: Path) -> list[str]:
     return re.findall(r"\*\*([a-z-]+)\*\*", path.read_text(encoding="utf-8"))
 
 
+def _section(path: Path, title: str) -> str:
+    lines = path.read_text(encoding="utf-8").splitlines()
+    start = lines.index(f"## {title}")
+    end = next((i for i in range(start + 1, len(lines))
+                if lines[i].startswith("## ")), len(lines))
+    return "\n".join(lines[start:end])
+
+
 def test_registry_ids_split_across_agents_by_tier():
     registry = load_registry()
     fast = _bold_ids(ROOT / "agents" / "prose-reviewer.md")
@@ -165,6 +173,12 @@ def test_registry_ids_split_across_agents_by_tier():
     for e in registry:
         home = fast if e["tier"] == "fast" else strong
         assert e["id"] in home, f"{e['id']} ({e['tier']}) is not bold in its lane's agent"
+
+
+def test_shared_reviewer_sections_identical():
+    for title in ("Не считай находкой (частые ложные срабатывания)", "Статусы находок"):
+        assert _section(ROOT / "agents" / "prose-reviewer.md", title) == \
+            _section(ROOT / "agents" / "prose-reviewer-strong.md", title), title
 
 
 # --- harness adapters ---
