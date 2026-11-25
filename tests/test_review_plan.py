@@ -199,7 +199,7 @@ def test_cli_json_shape_and_exit_codes(tmp_path, capsys):
     data = json.loads(capsys.readouterr().out)
     assert data["mode"] == "diff"
     assert {d["id"] for d in data["dimensions"]} == ALWAYS | {"genre", "discussion"}
-    assert all(set(d) == {"id", "when", "reason"} and d["reason"]
+    assert all(set(d) == {"id", "when", "reason", "covered_by_lint"} and d["reason"]
                for d in data["dimensions"])
     assert main([str(tmp_path / "nope.qmd"), "--json"]) == 2
     with pytest.raises(SystemExit) as exc:

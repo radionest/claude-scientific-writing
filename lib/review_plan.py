@@ -10,7 +10,8 @@ from pathlib import Path
 from lib.claim_registry import check_document
 from lib.checks.genre import _discussion_span
 from lib.document import Document
-from lib.lint_prose import ConfigError, changed_lines
+from lib.lint_prose import ConfigError, changed_lines, effective_entries, lint_source
+from lib.morph import Morph
 
 _REGISTRY = Path(__file__).resolve().parents[1] / "canon" / "review-dimensions.json"
 _MODES = ("diff", "light", "deep", "full")
@@ -29,6 +30,7 @@ class PlanEntry:
     id: str
     when: str
     reason: str
+    covered_by_lint: bool = False  # terminology only: the pack's terms are linter-covered
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,8 +99,21 @@ def _claims_registry_valid(doc: Path) -> bool:
     return not any(f.category == "schema" for f in check_document(doc, claims, None))
 
 
+def _terminology_covered(doc: Path, source: str, *, dictionary: str | None,
+                         local_dictionary: str | None, use_local: bool) -> bool:
+    """The pack's `terms` plus a clean `doc-term-canon` run mean the linter already
+    enforces the term canon on this document — the ensemble reviewer would re-check the
+    same rule set the gate applies. Morphology-free rule, so the degraded run is exact."""
+    entries, checks = effective_entries(doc, dictionary, local_dictionary, use_local)
+    if not any(e["id"] == "doc-term-canon" and e.get("terms") for e in checks):
+        return False
+    findings = lint_source(source, entries, checks, Morph(available=False), file=str(doc))
+    return not any(f.id == "doc-term-canon" for f in findings)
+
+
 def plan(doc: Path, *, mode: str, spec: str | None = None, genre: str | None = None,
-         before: Path | None = None) -> ReviewPlan:
+         before: Path | None = None, dictionary: str | None = None,
+         local_dictionary: str | None = None, use_local: bool = True) -> ReviewPlan:
     if mode not in _MODES:
         raise ValueError(f"недопустимый mode «{mode}»: ожидается {', '.join(_MODES)}")
     source = doc.read_text(encoding="utf-8")
@@ -109,6 +124,9 @@ def plan(doc: Path, *, mode: str, spec: str | None = None, genre: str | None = N
         substantive_changed = len(changed_lines(str(doc), None)
                                   & _substantive_lines(document))
     claims_name = doc.with_suffix(".claims.jsonl").name
+    terminology_covered = _terminology_covered(doc, source, dictionary=dictionary,
+                                               local_dictionary=local_dictionary,
+                                               use_local=use_local)
     entries: list[PlanEntry] = []
     for e in load_registry():
         when = e["when"]
@@ -130,7 +148,9 @@ def plan(doc: Path, *, mode: str, spec: str | None = None, genre: str | None = N
             included = _claims_registry_valid(doc)
             reason = f"валидный реестр {claims_name}" if included else ""
         if included:
-            entries.append(PlanEntry(id=e["id"], when=when, reason=reason))
+            entries.append(PlanEntry(id=e["id"], when=when, reason=reason,
+                                     covered_by_lint=e["id"] == "terminology"
+                                     and terminology_covered))
     return ReviewPlan(mode=mode, dimensions=tuple(entries))
 
 
@@ -141,6 +161,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--mode", choices=list(_MODES), default="diff")
     ap.add_argument("--before", default=None,
                     help="pre-edit source (adds the fidelity dimension)")
+    ap.add_argument("--dictionary", default=None)
+    ap.add_argument("--local-dictionary", default=None,
+                    help="use this file as the project-local dictionary (overrides auto-discovery)")
+    ap.add_argument("--no-local", action="store_true",
+                    help="ignore any project-local dictionary (overrides --local-dictionary)")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args(argv)
     doc = Path(args.doc)
@@ -152,9 +177,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"file not found: {before}", file=sys.stderr)
         return 2
     try:
-        result = plan(doc, mode=args.mode, before=before)
+        result = plan(doc, mode=args.mode, before=before, dictionary=args.dictionary,
+                      local_dictionary=args.local_dictionary, use_local=not args.no_local)
     except ConfigError as e:
-        print(f"review_plan: битый canon/review-dimensions.json — {e}", file=sys.stderr)
+        print(f"review_plan: ошибка конфигурации — {e}", file=sys.stderr)
         return 3
     if args.json:
         print(json.dumps({"mode": result.mode,

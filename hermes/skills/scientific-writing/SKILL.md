@@ -28,6 +28,8 @@ description: Use for Russian scientific prose and plugin releases.
    - жанр из `$2` или спроси владельца (report/article/educational);
    - разделы — стартовый список из `canon/profiles/<жанр>.md`; если `.qmd` уже существует — извлеки фактические заголовки и термины;
    - зафиксируй канонические термины (один на понятие) + запрещённые синонимы, сокращения, локальные запреты;
+     если в проекте есть пакет `<git-root>/.claude/scientific-writing/house.json` — термины, сокращения
+     и паспорт предзаполняются из него, спрашивай только недостающее;
    - формат: `# Spec: <doc>` / `genre:` / `## Разделы` / `## Канонические термины` / `## Сокращения` / `## Локальные запреты (layer: doc)`;
    - каждый машинно-проверяемый запрет (`pattern`) засей в локальный словарь проекта `<git-root>/.claude/scientific-writing/dictionary.json`
      (`{"entries": [{"id","layer":"doc","pattern","severity","message"}]}`; слияние по `id`, `{"id":..,"disabled":true}` отключает наследие);

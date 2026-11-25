@@ -16,6 +16,7 @@ Morphology-dependent tests skip themselves when the optional extra is absent: `.
 | needs morphology, a whole sentence, or the whole document | `lib/checks/*.py` + a `kind: "check"` entry in `canon/orthography.json` |
 | the review dimension set and its launch conditions | `canon/review-dimensions.json` (dispatched by `lib.review_plan`) |
 | this document only (terms, abbreviations, wordlist) | project overlay `<git-root>/.claude/scientific-writing/dictionary.json` |
+| shared across a project's documents (terms, abbreviations, passport, norms) | project pack `<git-root>/.claude/scientific-writing/house.json` (`lib/house.py`; feeds `doc-term-*`/`doc-abbrev-*` and the review plan) |
 | judgment (когда тире законно, «;», ритм) | the prose skills — **not** the linter |
 
 ## Gotchas

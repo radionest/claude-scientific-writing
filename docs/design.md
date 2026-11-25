@@ -254,6 +254,39 @@ the specificity rule — the number is never invented — and anti-overcompensat
 `skills/writing-russian-academic-prose/references/rhetoric.md`; novelty claims pay their
 nearest precedent via `skills/reader-first-academic-prose/references/claims-and-caveats.md`.
 
+## Project pack (`<git-root>/.claude/scientific-writing/house.json`, added 2026-11-25)
+
+Next to the overlay `dictionary.json` lives the pack — what every document of a repo
+shares: `name`, `genre_default`, `terms` (`canonical`, `forbidden`, `caution`, `note`),
+`abbreviations` (`abbr`, `expansion`), `passport` (the «Редакционного паспорта» keys),
+`norms` (`id`, `text`, `source` — project overrides of `canon/norms.json` by id),
+`samples`, `lanes`. All fields optional; a malformed file, an unknown key or a wrong
+type raise `ConfigError` (CLI exit 3).
+
+`lib/house.py`:
+
+- `house_path(target)` / `load_house(doc_path) -> House | None` — discovery mirrors
+  `local_dict_path`: a linked worktree's own copy wins over the main checkout's.
+- `load_norms(house)` — `canon/norms.json` ⊕ the pack's `norms` by id; the first default
+  is `denominator-policy` (#75), referenced as `norms:denominator-policy` from
+  `canon/profiles/article.md` and `skills/writing-russian-academic-prose/SKILL.md`.
+
+The pack rides the rule-set contour: `effective_entries` connects it under the same
+`use_local` switch (`--no-local` drops it, `--local-dictionary` does not affect it) and
+its path joins the cache key. `terms` are passed to the checks through the rule records:
+`doc-term-canon` (warn — a forbidden synonym, the canonical term in `detail`) and
+`doc-term-caution` (info — a `caution` variant, the term's note in `detail`), both in
+`lib/checks/terms.py`, morphology-free. The canon entries carry demo `terms` for the
+bad/good oracle; the effective set replaces them with the pack's (or empties them), so
+without a pack both rules stay silent. Pack abbreviations join the `allow` lists of
+`doc-abbrev-first-use`/`doc-abbrev-variants` without duplicates. When the pack has
+`terms` and the document's `doc-term-canon` run is clean, the review plan marks
+`terminology` `covered_by_lint` — the ensemble skips the duplicate reviewer
+(`PlanEntry.covered_by_lint`, `lib.review_plan` joined the `--dictionary` /
+`--local-dictionary` / `--no-local` contour for it). `init-doc-spec` (steps 4–6)
+prefills terms, abbreviations and the passport from the pack. Pinned by
+`tests/test_house.py`.
+
 ## The linter (`lib/lint_prose.py`)
 
 | Aspect | Contract |
