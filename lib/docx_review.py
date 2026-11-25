@@ -301,13 +301,19 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--context", type=int, default=_CONTEXT)
     ap.add_argument("--only-missed", action="store_true",
                     help="drop items an existing rule already catches")
+    ap.add_argument("--dictionary", default=None)
+    ap.add_argument("--local-dictionary", default=None,
+                    help="use this file as the project-local dictionary (overrides auto-discovery)")
+    ap.add_argument("--no-local", action="store_true",
+                    help="ignore any project-local dictionary (overrides --local-dictionary)")
     args = ap.parse_args(argv)
     path = Path(args.docx)
     if not path.exists():
         print(f"docx_review: файл не найден: {path}", file=sys.stderr)
         return 2
     try:
-        rules = effective_entries(path)
+        rules = effective_entries(path, args.dictionary, args.local_dictionary,
+                                  not args.no_local)
         doc_items = extract(path, args.context)
         # Morph after extract: refused files (OLE .doc, password, broken zip) never reach
         # the degraded note, so they must not pay for the analyzer construction either.

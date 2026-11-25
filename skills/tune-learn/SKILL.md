@@ -20,6 +20,9 @@ allowed-tools: Bash, Read, Edit, Write, AskUserQuestion
    `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.tune_diff "<pristine>" "<edited.qmd>" --json`
    Пустой список → «прозы-правок нет, нечего выводить», остановись. Иначе прочитай фрагменты
    (`triage` FN/FP/neutral, `rule_hit`, `before_dirty`).
+   Тюнинг против словаря-кандидата: передай тот же набор правил, что у целевого линта —
+   `--dictionary <canon.json>` (свой канон), `--local-dictionary <overlay.json>` (форс-оверлей),
+   `--no-local` (без проектного); у `docx_review` (шаг 2b) флаги те же.
 2b. Разметка ревью редактора:
    `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.docx_review "<review.docx>" --json --only-missed`
    У этого пути нет ни файла-спутника, ни `<edited.qmd>`: спроси у пользователя путь **исходного .qmd**,
