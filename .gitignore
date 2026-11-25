@@ -12,6 +12,15 @@ docs/superpowers/
 # OpenSpec local spec store (Claude working memory, synced via doc-review gate)
 /openspec
 
+# Local zcode scratch (not the committed project layer: plans, runs, autopilot state)
+.zcode/plans/
+.zcode/workflow-runs/
+.zcode/workflow-drafts/
+.zcode/autopilot.json
+
+# uv lockfile — local environment artifact, kept out of release commits
+uv.lock
+
 # Python packaging metadata from `pip install -e .`
 *.egg-info/
 
