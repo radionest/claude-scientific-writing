@@ -344,6 +344,41 @@ make canon-clean → `<!-- TODO ред: … -->`. Supersedes the generic `quarto
 Implementable as a command dispatching parallel `Agent`s, or a `Workflow` (fan-out + synthesis) for big
 multi-section docs.
 
+## Review plan (added 2026-11-25)
+
+The ensemble dispatch had a hand-maintained copy in each consumer
+(`skills/text-review/SKILL.md`, `skills/writing-scientific-documents/SKILL.md`,
+`agents/prose-reviewer.md`, `hermes/skills/scientific-writing/SKILL.md`). The single
+source is `canon/review-dimensions.json` — one record per dimension
+`{id, tier, when, skills, source}` (`tier` is `default` for all in v1; `source` anchors
+the contract at `agents/prose-reviewer.md#<id>`, which stays the home of the dimension
+contracts; `skills` names the prose skills the reviewer applies) — resolved per document
+by `lib/review_plan.py`:
+
+- `plan(doc, *, mode, spec=None, genre=None, before=None) -> ReviewPlan`;
+  `ReviewPlan(mode, dimensions)`, `PlanEntry(id, when, reason)` — included dimensions
+  only, `reason` is one line. Sections come from `qmd_prose.extract_prose`, the
+  «Обсуждение» flag from `checks/genre._discussion_span`, registry validity from
+  `claim_registry.check_document` (an existing `<doc>.claims.jsonl` with no `schema`
+  findings).
+- `when` ∈ `always` (calques, repeats, terminology, structure, render) ·
+  `has_section:Обсуждение` (genre, discussion) · `substantive_edit` (argument) ·
+  `has_before_after` (fidelity) · `claims_registry_valid` (evidence).
+- Modes: `light` drops `argument`; `diff` (the default) takes the staged changed lines
+  via `lint_prose.changed_lines` and includes `argument` only when at least two prose
+  lines of a substantive section (Введение, Методы, Результаты, Реферат/Аннотация,
+  Заключение/Выводы) changed; `deep`/`full` take everything the conditions allow.
+- CLI: `python3 -m lib.review_plan <file.qmd> [--mode diff|light|deep|full]
+  [--before <path>] --json` → `{"mode", "dimensions": [{id, when, reason}]}`; exit 0
+  normal, 2 missing file / usage error, 3 broken `canon/review-dimensions.json`
+  (`ConfigError`, like the linter).
+
+Consumers keep only the plan command and what each reviewer is handed (spec, genre
+profile, linter findings); `/text-review` maps `--deep` → `--mode deep`, else
+`--mode diff`. The contour's behavior is unchanged. Pinned by `tests/test_review_plan.py`
+(registry ids = the agent's bold ids, scenario documents match the hand dispatch, CLI
+contract, exit 3).
+
 ### fix
 Not blind regex-replace. Unambiguous literal swaps (референсный→эталонный) auto-applied; risky ones (тире,
 «полностью») edited by the prose skill **with judgment**; hard rule «never bake a calque — fix or leave
