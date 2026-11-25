@@ -68,11 +68,28 @@ def test_ignores_non_git_commands(tmp_path):
     assert r.returncode == 0
 
 
-def test_skips_tests_fixtures(tmp_path):
-    # test fixtures intentionally contain calques (the plugin's own oracle) -> must NOT block
+def test_lints_user_tests_fixtures_path(tmp_path):
+    # issue #102: the fixtures exemption is path identity, not a suffix — a user
+    # file under tests/fixtures/ is not the plugin's oracle and must be linted
     repo = _repo(tmp_path)
-    (repo / "tests" / "fixtures").mkdir(parents=True, exist_ok=True)
-    (repo / "tests" / "fixtures" / "calques.qmd").write_text("референсный стандарт\n", encoding="utf-8")
+    d = repo / "tests" / "fixtures"
+    d.mkdir(parents=True)
+    (d / "calques.qmd").write_text("референсный стандарт\n", encoding="utf-8")
+    _git(repo, "add", "tests/fixtures/calques.qmd")
+    r = _run_hook(repo, "git commit -m x")
+    assert r.returncode == 2
+
+
+def test_skips_plugin_repo_own_fixtures(tmp_path):
+    # issue #102, the other side: in a plugin-shaped repo (dev checkout) the own
+    # fixtures are the oracle — identity with the repo's tests/fixtures keeps them exempt
+    repo = _repo(tmp_path)
+    (repo / ".claude-plugin").mkdir()
+    (repo / ".claude-plugin" / "plugin.json").write_text('{"version": "1.0.0"}',
+                                                         encoding="utf-8")
+    d = repo / "tests" / "fixtures"
+    d.mkdir(parents=True)
+    (d / "calques.qmd").write_text("референсный стандарт\n", encoding="utf-8")
     _git(repo, "add", "tests/fixtures/calques.qmd")
     r = _run_hook(repo, "git commit -m x")
     assert r.returncode == 0

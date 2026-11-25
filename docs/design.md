@@ -366,6 +366,10 @@ The deliverable for "разграничить pre/post review для кода и
   still runs on any prose also touched.
 - mixed → both gates apply.
 
+**Exemptions are path identity, not suffixes** (#89, #102): the hook skips only the plugin's
+own oracles — the dev checkout's or the running copy's `tests/eval/lint-bad.qmd` and
+`tests/fixtures/` — while a user file at either path in another repo is linted like any prose.
+
 Post-path formalization: `apply-docx-review` → `qmd-review-importer` already runs a prose pass (step 4, added
 2026-06-22); the plugin makes "apply → review → lint-clean before commit" the contract, closing the
 editor-reinjects-calque loop at its source.

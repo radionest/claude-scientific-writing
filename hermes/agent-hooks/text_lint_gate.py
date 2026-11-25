@@ -85,7 +85,7 @@ def main() -> int:
         fp = Path(cwd) / f
         if not fp.is_file():
             continue
-        if "tests/fixtures/" in str(fp).replace("\\", "/"):
+        if fp.resolve().is_relative_to((root / "tests" / "fixtures").resolve()):
             continue  # oracle-фикстуры намеренно содержат кальки
         run_args = [py, "-m", "lib.lint_prose", str(fp), "--json", "--diff"]
         if ref:
