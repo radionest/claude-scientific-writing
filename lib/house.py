@@ -206,7 +206,7 @@ def _passport(p: Path, v: object) -> Passport:
     unknown = sorted(set(v) - set(_PASSPORT_KEYS))
     if unknown:
         raise ConfigError(f"{p}: «passport» — неизвестные поля: {', '.join(unknown)}")
-    wrong = sorted(k for k, x in v.items() if not isinstance(x, str))
+    wrong = sorted(k for k, x in v.items() if not _is_text(x))
     if wrong:
         raise ConfigError(f"{p}: «passport» — не строковые значения: {', '.join(wrong)}")
     return Passport(**{_PASSPORT_KEYS[k]: x for k, x in v.items()})
