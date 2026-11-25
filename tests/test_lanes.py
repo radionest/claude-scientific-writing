@@ -13,6 +13,7 @@ import pytest
 from lib import lanes as lanes_mod
 from lib.lanes import load_lanes, tier_of
 from lib.lint_prose import ConfigError
+from lib.review_plan import load_registry
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -142,6 +143,24 @@ def test_no_model_ids_outside_roadmap_workflow():
             if m:
                 offenders.append(f"{rel}:{i}: {m.group(0)}")
     assert not offenders, "model ids leaked into the repo:\n" + "\n".join(offenders)
+
+
+# --- the agent split ---
+
+def _bold_ids(path: Path) -> list[str]:
+    return re.findall(r"\*\*([a-z-]+)\*\*", path.read_text(encoding="utf-8"))
+
+
+def test_registry_ids_split_across_agents_by_tier():
+    registry = load_registry()
+    fast = _bold_ids(ROOT / "agents" / "prose-reviewer.md")
+    strong = _bold_ids(ROOT / "agents" / "prose-reviewer-strong.md")
+    ids = [e["id"] for e in registry]
+    assert sorted(fast + strong) == sorted(ids), "registry ids != the two agents' bold ids"
+    assert sorted(set(fast) & set(strong)) == [], "a dimension is bold in both agents"
+    for e in registry:
+        home = fast if e["tier"] == "fast" else strong
+        assert e["id"] in home, f"{e['id']} ({e['tier']}) is not bold in its lane's agent"
 
 
 # --- harness adapters (bridges, snapshots) land with their commits ---

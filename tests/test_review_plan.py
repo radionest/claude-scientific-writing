@@ -95,8 +95,11 @@ def ids(result) -> set[str]:
 def test_registry_ids_match_prose_reviewer():
     reg_ids = [e["id"] for e in load_registry()]
     assert len(reg_ids) == len(set(reg_ids)), "duplicate registry ids"
-    agent = (ROOT / "agents" / "prose-reviewer.md").read_text(encoding="utf-8")
-    assert sorted(re.findall(r"\*\*([a-z-]+)\*\*", agent)) == sorted(reg_ids)
+    bold: list[str] = []
+    for name in ("prose-reviewer.md", "prose-reviewer-strong.md"):
+        agent = (ROOT / "agents" / name).read_text(encoding="utf-8")
+        bold += re.findall(r"\*\*([a-z-]+)\*\*", agent)
+    assert sorted(bold) == sorted(reg_ids)
 
 
 def test_registry_contract_fields():
