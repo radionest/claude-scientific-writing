@@ -4,8 +4,10 @@ holds — the lib/canon core knows no harness names and no tracked file names a 
 except the sanctioned workflow. Harness-side behavior is pinned by the adapter tests
 below (`build_tasks`/`audit_results`, the read-only check scripts)."""
 import json
+import os
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -13,6 +15,7 @@ import pytest
 from lib import lanes as lanes_mod
 from lib.lanes import load_lanes, tier_of
 from lib.lint_prose import ConfigError
+from lib.review_plan import PlanEntry, ReviewPlan
 from lib.review_plan import load_registry
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -163,4 +166,71 @@ def test_registry_ids_split_across_agents_by_tier():
         assert e["id"] in home, f"{e['id']} ({e['tier']}) is not bold in its lane's agent"
 
 
-# --- harness adapters (bridges, snapshots) land with their commits ---
+# --- harness adapters ---
+
+sys.path.insert(0, str(ROOT / "hermes"))
+import sw_bridge  # noqa: E402
+
+CHECK_SCRIPTS = [ROOT / "hermes" / "lanes_check.py"]
+
+
+def _snapshot(home: Path) -> dict[str, bytes]:
+    return {str(p.relative_to(home)): p.read_bytes()
+            for p in sorted(home.rglob("*")) if p.is_file()}
+
+
+@pytest.mark.parametrize("script", CHECK_SCRIPTS, ids=lambda p: p.parent.name)
+def test_check_scripts_write_nothing(tmp_path, script):
+    before = _snapshot(tmp_path)
+    env = {**os.environ, "HOME": str(tmp_path), "PYTHONPATH": str(ROOT),
+           "PYTHONDONTWRITEBYTECODE": "1"}
+    r = subprocess.run([sys.executable, str(script)], env=env,
+                       capture_output=True, text=True, timeout=120)
+    assert r.returncode == 0, r.stderr
+    assert "writer" in r.stdout  # the «роль — полоса — модель» table
+    assert _snapshot(tmp_path) == before
+
+
+def test_build_tasks_batch_by_lane():
+    plan = ReviewPlan(mode="full", dimensions=(
+        PlanEntry(id="calques", tier="strong", when="always", reason=""),
+        PlanEntry(id="repeats", tier="fast", when="always", reason="")))
+    tasks = sw_bridge.build_tasks(plan)
+    assert len(tasks) == 2
+    assert {t["group"] for t in tasks} == {"sw-review"}  # one batch, one common group
+    assert [t["model"] for t in tasks] == ["sw-strong", "sw-fast"]
+    for t in tasks:
+        assert set(t) == {"id", "group", "goal", "model", "output_schema"}
+        assert t["goal"].startswith(f"- **{t['id']}** — ")
+        assert t["output_schema"]["items"]["required"] == \
+            ["file", "line", "dimension", "severity", "problem", "fix"]
+
+
+def test_audit_results_flags_schema_and_route():
+    tasks = sw_bridge.build_tasks(ReviewPlan(mode="full", dimensions=(
+        PlanEntry(id="calques", tier="strong", when="always", reason=""),
+        PlanEntry(id="repeats", tier="fast", when="always", reason=""))))
+    ok = sw_bridge.audit_results(tasks, [
+        {"id": "calques", "schema_valid": True, "route": "sw-strong"},
+        {"id": "repeats", "schema_valid": True, "route": "sw-fast"}])
+    assert ok["ok"] == ["calques", "repeats"] and ok["all_ok"] is True
+
+    bad_schema = sw_bridge.audit_results(tasks, [
+        {"id": "calques", "schema_valid": False, "route": "sw-strong"},
+        {"id": "repeats", "schema_valid": True, "route": "sw-fast"}])
+    assert bad_schema["schema_invalid"] == ["calques"] and not bad_schema["all_ok"]
+
+    bad_route = sw_bridge.audit_results(tasks, [
+        {"id": "calques", "schema_valid": True, "route": "sw-strong"},
+        {"id": "repeats", "schema_valid": True, "route": "sw-strong"}])
+    assert bad_route["route_mismatch"] == ["repeats"] and not bad_route["all_ok"]
+
+    missing = sw_bridge.audit_results(tasks, [{"id": "calques", "schema_valid": True,
+                                               "route": "sw-strong"}])
+    assert missing["missing"] == ["repeats"] and not missing["all_ok"]
+
+    unexpected = sw_bridge.audit_results(tasks, [
+        {"id": "calques", "schema_valid": True, "route": "sw-strong"},
+        {"id": "repeats", "schema_valid": True, "route": "sw-fast"},
+        {"id": "ghost", "schema_valid": True, "route": "sw-fast"}])
+    assert unexpected["unexpected"] == ["ghost"] and not unexpected["all_ok"]
