@@ -12,8 +12,9 @@ allowed-tools: Bash, Read, Write, WebFetch, Task
 1. Определи источник (первый аргумент): URL → WebFetch; путь к файлу → Read; иначе трактуй как тему-задание.
    Жанр (второй аргумент) ∈ {report, article, educational}; не задан → спроси (default: article).
    Необязательная подсказка длины из запроса (напр. «~1000 слов»).
-2. Выбери стабильный каталог: `D=${TMPDIR:-/tmp}/sci-tune` и короткое имя из источника
-   (`SLUG` — короткое имя темы/файла в kebab-case; при коллизии добавь суффикс). `mkdir -p "$D"`.
+2. Выбери стабильный каталог — пакет проекта: `D=<git-root>/.claude/scientific-writing/tune/<slug>`
+   (git root — `git rev-parse --show-toplevel`; `SLUG` — короткое имя темы/файла в kebab-case;
+   при коллизии добавь суффикс). `mkdir -p "$D"`.
 3. Вызови агента `scientific-writer` в режиме **tuning-fixture** (БЕЗ `<doc>.spec.md`): напиши
    `<genre>`-черновик из источника по `canon/profiles/<жанр>.md` + `canon/canon.md` + `canon/dictionary.json` + `canon/orthography.json`, применяя канон.
    Спецификация намеренно пропускается — это калибровочная фикстура, правило «нет документа без спецификации» здесь не действует.
