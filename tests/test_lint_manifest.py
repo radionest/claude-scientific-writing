@@ -4,7 +4,8 @@ Layers, from inner to outer:
 - `tests/fixtures/*.qmd` — a finding must appear on each defective line;
 - canon `bad`/`good` — the rule flags its own bad and leaves its good alone;
 - this module — every rule is *registered* (id + pinned severity + rationale) and the
-  two eval documents reproduce their frozen finding profiles exactly.
+  two eval documents and the gold rewrite pairs reproduce their frozen finding profiles
+  exactly.
 
 A canon change that shifts any of that fails here on purpose: the baseline update must
 be a conscious manifest edit, not a silent drift.
@@ -89,6 +90,14 @@ def test_manifest_registration_is_complete():
         assert rule["rationale"].strip(), f"{rid}: пустое обоснование"
 
 
+def test_manifest_rule_ids_are_unique():
+    """A duplicate id collapses silently in the `RULES` dict comprehension, so uniqueness
+    is asserted on the raw manifest list — before any dict can swallow it."""
+    counts = Counter(r["id"] for r in MANIFEST["rules"])
+    dupes = sorted(rid for rid, n in counts.items() if n > 1)
+    assert not dupes, f"дубликаты id правил в манифесте: {dupes}"
+
+
 @pytest.mark.parametrize("rid", sorted(RULES))
 def test_bad_trips_the_rule_at_pinned_severity(rid):
     entry = CANON[rid]
@@ -137,12 +146,43 @@ def test_rewrite_cases_schema():
         assert c["note"].strip(), f"{c['id']}: нет пояснения"
 
 
+GOLD_PAIR_FINDINGS = Counter({
+    # info ×3: legitimate terms outside the seed allow-list — «гемангиому» on both sides
+    # of modality-strengthen-01, «неоадъювантной» on condition-loss-01/before; topping up
+    # the project allow-list is an overlay decision, not meaning damage.
+    ("ortho-spelling", "info"): 3,
+    # warn on comparator-loss-01/after: the canon note itself calls this heuristic
+    # FP-prone; «МРТ выявляла» is instrument-as-agent phrasing left for the reviewer.
+    ("agent-instrument-detect", "warn"): 1,
+    # warn on voice-clean-01/before: the before side deliberately preserves the source's
+    # patients-as-subjects style — flagging it would defeat the pair.
+    ("style-patient-surgery-subject", "warn"): 1,
+    # warn on bureau-clean-01/before: the before side deliberately keeps «в целях» —
+    # the pair exists to show the rewrite removing it.
+    ("parasite-v-celyah", "warn"): 1,
+})
+
+
 def test_rewrite_cases_are_invisible_to_the_linter():
     """The gold set isolates *meaning* damage: no side of any pair raises the
     deterministic error gate — catching these is the semantic reviewer's job, which
-    is exactly why token comparison can never certify fidelity."""
+    is exactly why token comparison can never certify fidelity. The warn/info hits on
+    the gold set are tolerated but frozen, see the inventory test below."""
     for c in CASES:
         for side in ("before", "after"):
             errors = [f for f in _lint(c[side] + "\n") if f.severity == "error"]
             assert not errors, \
                 f"{c['id']}/{side}: линтер видит {[(f.id, f.matched) for f in errors]}"
+
+
+def test_rewrite_cases_non_error_inventory_is_frozen():
+    """Gold pairs tolerate non-error findings, but the inventory is frozen: warn/info
+    drift on the gold set is a conscious baseline update, not background noise."""
+    if not MORPH.available:
+        pytest.skip("инвентарь золотых пар без экстра morph другой")
+    inventory = Counter()
+    for c in CASES:
+        for side in ("before", "after"):
+            inventory += Counter((f.id, f.severity) for f in _lint(c[side] + "\n"))
+    assert inventory == GOLD_PAIR_FINDINGS, \
+        f"инвентарь золотых пар разошёлся: лишние {dict(inventory - GOLD_PAIR_FINDINGS)}, недостающие {dict(GOLD_PAIR_FINDINGS - inventory)}"
