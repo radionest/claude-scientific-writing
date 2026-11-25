@@ -39,6 +39,10 @@ def _anchor(cid, text):
             f'<w:commentRangeEnd w:id="{cid}"/>')
 
 
+def _ref(cid):
+    return f'<w:r><w:commentReference w:id="{cid}"/></w:r>'
+
+
 def test_extracts_comment_with_anchor_and_sentence(tmp_path):
     p = _docx(tmp_path,
               [_para(_run("Врач отметил "), _anchor("1", "очаг"), _run(" на срезе."))],
@@ -59,6 +63,85 @@ def test_paragraph_numbers_increase(tmp_path):
                _para(_run("Второй "), _anchor("1", "абзац"), _run(" тоже."))],
               [("1", "Ред", "убрать")])
     assert extract(p)[0].line == 2
+
+
+def test_comment_without_range_is_anchored_at_its_reference(tmp_path):
+    """A comment can be stored as a bare `w:commentReference` without a range. Such a
+    comment used to vanish, so the triage reported fewer remarks than the file holds —
+    27 of 28 on a live review."""
+    p = _docx(tmp_path,
+              [_para(_run("Первый абзац. "), _run("Второй абзац."), _ref("3"))],
+              [("3", "Редактор", "сократить")])
+    items = extract(p)
+    assert len(items) == 1
+    assert items[0].anchor == ""
+    assert items[0].before == "Первый абзац. Второй абзац."
+    assert items[0].comment == "сократить"
+
+
+def test_reference_mid_sentence_centers_the_triage_window(tmp_path):
+    """A reference inside a sentence takes that sentence, with the window where the
+    reference sits — the same geometry an empty range gets."""
+    p = _docx(tmp_path,
+              [_para(_run("Врач отметил "), _ref("1"), _run("очаг на срезе."))],
+              [("1", "Ред", "зпт")])
+    it = extract(p)[0]
+    assert it.sentence == "Врач отметил очаг на срезе."
+    assert it.anchor_at == len("Врач отметил")  # the space before the reference is normalised away
+
+
+def test_range_wins_over_the_reference_of_the_same_comment(tmp_path):
+    p = _docx(tmp_path,
+              [_para(_run("Врач отметил "), _anchor("1", "очаг"), _ref("1"), _run(" на срезе."))],
+              [("1", "Редактор", "зпт")])
+    assert extract(p)[0].anchor == "очаг"
+
+
+def test_trailing_reference_is_judged_near_the_mark(tmp_path):
+    """A reference after the paragraph's last period has no sentence of its own. Judged on
+    the context window instead, a finding in the neighbouring paragraph passed for coverage."""
+    def verdict(paragraphs):
+        p = _docx(tmp_path, paragraphs, [("1", "Ред", "сократить")])
+        return triage(extract(p), effective_entries(p, use_local=False), Morph.load())[0]
+
+    far = verdict([_para(_run("Использовали референсный стандарт сравнения здесь.")),
+                   _para(_run("Второй абзац оканчивается этими словами."), _ref("1"))])
+    assert far.sentence == "Второй абзац оканчивается этими словами."
+    assert far.triage == "FN", "находка в соседнем абзаце не должна засчитываться"
+    near = verdict([_para(_run("В конце абзаца референсный метод."), _ref("1"))])
+    assert near.anchor_at == len("В конце абзаца референсный метод.") and near.triage == "covered"
+    assert verdict([_para(_run("Стандарт референсный здесь, затем ещё много слов до конца."), _ref("1"))
+                    ]).triage == "FN", "находка дальше 25 знаков в том же абзаце не засчитывается"
+    bare = verdict([_para(_ref("1")), _para(_run("Здесь референсный стандарт рядом."))])
+    assert bare.sentence == "" and bare.triage == "FN", "без абзаца находка из контекста не берётся"
+
+
+def test_tracked_change_without_sentence_keeps_the_context_path(tmp_path):
+    """A tracked change carries no sentence: triage judges `before` on the context window —
+    the fallback #19 built it for. The carve-out that keeps this path open is exactly what the
+    always-FN rule for anchor-less comments must not swallow."""
+    para = ("<w:p>"
+            f'<w:del w:id="9" w:author="Ред"><w:r><w:delText>референсного</w:delText></w:r></w:del>'
+            f'<w:ins w:id="10" w:author="Ред">{_run("эталонного")}</w:ins>'
+            "</w:p>")
+    p = _docx(tmp_path, [para], [])
+    it = triage(extract(p), effective_entries(p, use_local=False), Morph.load())[0]
+    assert it.sentence == "" and it.before == "референсного"
+    assert it.triage == "covered" and it.rule_hit == "calque-referens"
+
+
+def test_zero_width_range_on_empty_paragraph_stays_a_miss(tmp_path):
+    """An empty range (adjacent start/end, nothing selected) anchors like a bare reference:
+    on an empty paragraph there is nothing to be near, so a finding in the neighbouring
+    paragraph must not pass."""
+    zero_width = f'<w:commentRangeStart w:id="4"/><w:commentRangeEnd w:id="4"/>' + _ref("4")
+    p = _docx(tmp_path,
+              [_para(zero_width), _para(_run("Референсный стандарт сравнения здесь."))],
+              [("4", "Ред", "уточнить")])
+    it = extract(p)[0]
+    assert it.anchor == "" and it.comment == "уточнить"
+    it = triage(extract(p), effective_entries(p, use_local=False), Morph.load())[0]
+    assert it.sentence == "" and it.triage == "FN"
 
 
 def test_triage_marks_covered_only_on_the_anchor(tmp_path):

@@ -2,8 +2,11 @@
 
 An editor's review is the highest-quality calibration signal available: every comment is a
 defect a human found that the rules did not. This reads the comments straight out of the
-OOXML parts, keeping exact character offsets — which is why it does not go through pandoc
-markdown like `~/.claude/scripts/docx_review.py` does.
+OOXML parts, keeping exact character offsets, and anchors a comment stored without selected
+text — a bare `w:commentReference` or an empty range — at that mark. It never goes through
+pandoc markdown: the importer's report generator (`~/.zcode/scripts/docx_review.py`) lost a
+heading-anchored comment (#22) and 7 of 28 on a later live review while parsing comments from
+pandoc output.
 
     python3 -m lib.docx_review review.docx --json
 
@@ -39,7 +42,7 @@ class ReviewItem:
     comment: str
     author: str
     anchor: str = ""  # exactly what the editor selected
-    sentence: str = ""  # the sentence it sits in — what triage is decided on
+    sentence: str = ""  # the sentence it sits in (its paragraph when that slice is blank) — what triage is decided on
     anchor_at: int = 0  # anchor offset within `sentence`
 
 
@@ -110,6 +113,13 @@ def _extract(z: zipfile.ZipFile, context: int) -> list[ReviewItem]:
         start, end = span
         before = text[max(0, start - context):min(len(text), end + context)]
         sent_start, sent_end = _sentence_bounds(text, start, end)
+        if not text[sent_start:sent_end].strip():
+            # A mark can have no sentence of its own — right after the paragraph's last period,
+            # or in an empty paragraph. Left blank, `triage` would drop the ±25 window and judge
+            # the whole context instead.
+            sent_start = text.rfind("\n", 0, start) + 1
+            sent_end = text.find("\n", end)
+            sent_end = len(text) if sent_end < 0 else sent_end
         sentence = _norm(text[sent_start:sent_end])
         anchor = _norm(text[start:end])
         # Offsets must be taken in normalised space: a prefix ending in whitespace loses a
@@ -154,6 +164,8 @@ def triage(items: list[ReviewItem], rules: tuple[list[dict], list[dict]],
                 continue  # `ortho-spelling` fires on live terminology; it is not coverage
             if it.sentence and not (lo <= f.col - 1 <= hi):
                 continue
+            if not it.sentence and it.comment != "(tracked change)":
+                break  # a comment with no sentence and no paragraph has nothing to be near
             hit = f.id
             break
         out.append(ReviewItem(**{**asdict(it),
@@ -208,12 +220,13 @@ def _comments(z: zipfile.ZipFile) -> tuple[dict[str, str], dict[str, str]]:
 
 
 def _document(z: zipfile.ZipFile):
-    """Flatten the body to text, recording comment-range offsets and paragraph starts."""
+    """Flatten the body to text, recording comment-range and reference offsets and paragraph starts."""
     root = _parse_xml(z.read("word/document.xml"))
     parts: list[str] = []
     pos = 0
     starts: dict[str, int] = {}
     ends: dict[str, int] = {}
+    refs: dict[str, int] = {}
     para_starts: list[int] = [0]
 
     def walk(el) -> None:
@@ -229,6 +242,8 @@ def _document(z: zipfile.ZipFile):
                 starts[ch.get(_W + "id") or ""] = pos
             elif tag == _W + "commentRangeEnd":
                 ends[ch.get(_W + "id") or ""] = pos
+            elif tag == _W + "commentReference":
+                refs[ch.get(_W + "id") or ""] = pos
             elif tag == _W + "t":
                 s = ch.text or ""
                 parts.append(s)
@@ -242,6 +257,9 @@ def _document(z: zipfile.ZipFile):
     walk(root)
     text = "".join(parts)
     spans = {cid: (s, ends.get(cid, s)) for cid, s in starts.items()}
+    # A comment may carry its reference mark without any range: anchor it there.
+    for cid, ref_at in refs.items():
+        spans.setdefault(cid, (ref_at, ref_at))
 
     def para_at(offset: int) -> int:
         lo, hi = 0, len(para_starts) - 1
