@@ -24,9 +24,10 @@ allowed-tools: Bash, Read, Edit, Write, Task
    (сначала зафиксируй destination каждой функции, потом правь).
    `BEFORE=$(mktemp /tmp/text-edit-XXXXXX.qmd) && cp "$Q" "$BEFORE"`
 3. **Правка** через агента `scientific-writer` (передай режим language-only/structural
-   и границы). Правка идёт раундами; перед раундом сохрани кандидата
-   (`cp "$Q" "$PREV"`), после — стоп-правило. Счётчик раундов наращивается: первый
-   вызов — `EditState(rounds=0)`; содержательный раунд — следующий вызов с
+   и границы). Правка идёт раундами; перед первым раундом заведи путь снимка
+   (`PREV=$(mktemp /tmp/text-edit-XXXXXX.qmd)`), перед каждым раундом сохрани
+   кандидата (`cp "$Q" "$PREV"`), после — стоп-правило. Счётчик раундов наращивается:
+   первый вызов — `EditState(rounds=0)`; содержательный раунд — следующий вызов с
    `EditState(rounds + 1)`. Вызов (первый аргумент — кандидат до раунда, второй —
    после, третий — число завершённых содержательных раундов):
    `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -c 'import sys; from lib.revision_guard import EditState, next_state; a, b, n = open(sys.argv[1]).read(), open(sys.argv[2]).read(), int(sys.argv[3]); print(next_state(a, b, EditState(n)))' "$PREV" "$Q" "$ROUNDS"`
