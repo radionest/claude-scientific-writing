@@ -148,6 +148,23 @@ def test_malformed_pack_raises_configerror(tmp_path, bad, fragment):
         load_house(root / "doc.qmd")
 
 
+def test_padded_phrases_are_trimmed(tmp_path, capsys):
+    """Padded pack phrases must match like their trimmed form — `_phrase_rx` anchors on
+    word boundaries, so a stray space in the record silently kills the hit; a
+    whitespace-only phrase is rejected like an empty one."""
+    root = _git_repo(tmp_path)
+    _write_house(root, {**PACK, "terms": [{"canonical": " мастер-модель ",
+                                           "forbidden": [" прототип "]}]})
+    q = _qmd(root, FORBIDDEN_DOC)
+    assert lint_main([str(q), "--json"]) == 0
+    hits = [f for f in json.loads(capsys.readouterr().out) if f["id"] == "doc-term-canon"]
+    assert len(hits) == 1
+    assert "мастер-модель" in hits[0]["message"]
+    _write_house(root, {"terms": [{"canonical": "  "}]})
+    with pytest.raises(ConfigError):
+        load_house(q)
+
+
 def test_duplicate_norm_ids_raise(tmp_path):
     root = _git_repo(tmp_path)
     _write_house(root, {"norms": [{"id": "x", "text": "a"}, {"id": "x", "text": "b"}]})

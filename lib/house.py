@@ -104,13 +104,13 @@ def load_house(doc_path: str | Path) -> House | None:
         name=_text(p, data, "name"),
         genre_default=_text(p, data, "genre_default"),
         terms=tuple(
-            Term(canonical=x["canonical"],
+            Term(canonical=x["canonical"].strip(),
                  forbidden=tuple(_strings(p, "terms.forbidden", x.get("forbidden"))),
                  caution=tuple(_strings(p, "terms.caution", x.get("caution"))),
                  note=_text(p, x, "note"))
             for x in _records(p, data, "terms", _TERM_FIELDS, ("canonical",))),
         abbreviations=tuple(
-            Abbreviation(abbr=x["abbr"], expansion=x["expansion"])
+            Abbreviation(abbr=x["abbr"].strip(), expansion=x["expansion"])
             for x in _records(p, data, "abbreviations", _ABBR_FIELDS, ("abbr", "expansion"))),
         passport=_passport(p, data.get("passport")),
         norms=tuple(
@@ -157,7 +157,7 @@ def _norm(p: Path, x: object) -> Norm:
 
 
 def _is_text(v: object) -> bool:
-    return isinstance(v, str) and bool(v)
+    return isinstance(v, str) and bool(v.strip())
 
 
 def _records(p: Path, data: dict, field: str, allowed: frozenset[str],
@@ -181,9 +181,12 @@ def _records(p: Path, data: dict, field: str, allowed: frozenset[str],
 def _strings(p: Path, where: str, v: object) -> list[str]:
     if v is None:
         return []
-    if not isinstance(v, list) or not all(_is_text(x) for x in v):
+    if not isinstance(v, list) or not all(isinstance(x, str) for x in v):
         raise ConfigError(f"{p}: «{where}» должно быть списком непустых строк")
-    return v
+    stripped = [x.strip() for x in v]  # a padded phrase would silently break matching
+    if not all(stripped):
+        raise ConfigError(f"{p}: «{where}» должно быть списком непустых строк")
+    return stripped
 
 
 def _text(p: Path, obj: dict, key: str) -> str:
