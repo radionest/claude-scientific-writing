@@ -9,8 +9,10 @@ it to exit 3).
 """
 from __future__ import annotations
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from types import MappingProxyType
 
 from lib.lint_prose import ConfigError, _git_main_root, _git_root
 
@@ -60,6 +62,9 @@ class Passport:
     house_style: str = ""
 
 
+_NO_LANES: Mapping[str, str] = MappingProxyType({})
+
+
 @dataclass(frozen=True, slots=True)
 class House:
     name: str = ""
@@ -69,7 +74,7 @@ class House:
     passport: Passport = Passport()
     norms: tuple[Norm, ...] = ()
     samples: tuple[str, ...] = ()
-    lanes: tuple[str, ...] = ()
+    lanes: Mapping[str, str] = _NO_LANES  # dimension id → fast|strong, read by lib.lanes
 
 
 def house_path(target: str | Path) -> Path | None:
@@ -117,7 +122,7 @@ def load_house(doc_path: str | Path) -> House | None:
             Norm(id=x["id"], text=x["text"], source=_text(p, x, "source"))
             for x in _records(p, data, "norms", _NORM_FIELDS, ("id", "text"))),
         samples=tuple(_strings(p, "samples", data.get("samples"))),
-        lanes=tuple(_strings(p, "lanes", data.get("lanes"))),
+        lanes=_lanes(p, data.get("lanes")),
     )
     ids = [n.id for n in house.norms]
     if len(ids) != len(set(ids)):
@@ -187,6 +192,17 @@ def _strings(p: Path, where: str, v: object) -> list[str]:
     if not all(stripped):
         raise ConfigError(f"{p}: «{where}» должно быть списком непустых строк")
     return stripped
+
+
+def _lanes(p: Path, v: object) -> Mapping[str, str]:
+    if v is None:
+        return _NO_LANES
+    if not isinstance(v, dict) or not all(isinstance(k, str) and k.strip()
+                                          and isinstance(x, str) and x.strip()
+                                          for k, x in v.items()):
+        raise ConfigError(f"{p}: «lanes» должен быть объектом с непустыми "
+                          f"строковыми ключами и значениями")
+    return MappingProxyType(dict(v))
 
 
 def _text(p: Path, obj: dict, key: str) -> str:

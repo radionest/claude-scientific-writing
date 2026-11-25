@@ -4,20 +4,24 @@ document (mode, sections, before/after, claim registry) and every consumer dispa
 one reviewer per plan entry instead of a hand-maintained list."""
 from __future__ import annotations
 import argparse, json, re, sys
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from lib.claim_registry import check_document
 from lib.checks.genre import _discussion_span
 from lib.document import Document
+from lib.house import load_house
 from lib.lint_prose import ConfigError, changed_lines, effective_entries, lint_source
 from lib.morph import Morph
 
 _REGISTRY = Path(__file__).resolve().parents[1] / "canon" / "review-dimensions.json"
+_ROOT = _REGISTRY.parents[1]
 _MODES = ("diff", "light", "deep", "full")
 _WHEN = {"always", "has_section:Обсуждение", "substantive_edit",
          "has_before_after", "claims_registry_valid"}
 _FIELDS = ("id", "tier", "when", "skills", "source")
+TIERS = ("fast", "strong")
 # Sections whose edits count as substantive («argument»); «Обсуждение» has its own
 # dimensions and never counts here.
 _SUBSTANTIVE = re.compile(
@@ -28,6 +32,7 @@ _SUBSTANTIVE = re.compile(
 @dataclass(frozen=True, slots=True)
 class PlanEntry:
     id: str
+    tier: str  # fast | strong: the lane the dimension is dispatched on
     when: str
     reason: str
     covered_by_lint: bool = False  # terminology only: the pack's terms are linter-covered
@@ -60,8 +65,8 @@ def load_registry(path: Path | None = None) -> list[dict]:
         missing = [k for k in _FIELDS if k not in e]
         if missing:
             raise ConfigError(f"{p}: запись «{eid}» без полей: {', '.join(missing)}")
-        if e["tier"] != "default":
-            raise ConfigError(f"{p}: «{eid}» — tier должен быть «default»")
+        if e["tier"] not in TIERS:
+            raise ConfigError(f"{p}: «{eid}» — tier должен быть «fast» или «strong»")
         if e["when"] not in _WHEN:
             raise ConfigError(f"{p}: «{eid}» — недопустимый when «{e['when']}»: "
                               f"ожидается {', '.join(sorted(_WHEN))}")
@@ -71,6 +76,39 @@ def load_registry(path: Path | None = None) -> list[dict]:
         if not isinstance(e["source"], str):
             raise ConfigError(f"{p}: «{eid}» — «source» должно быть строкой")
     return data
+
+
+def effective_tiers(overrides: Mapping[str, str] | None = None) -> dict[str, str]:
+    """Registry `tier` per dimension with the pack's `lanes` applied on top (override by
+    dimension id). An id outside the registry or a value outside `TIERS` is ConfigError —
+    a silent `fast` would route judgment dimensions to the weak lane."""
+    tiers = {e["id"]: e["tier"] for e in load_registry()}
+    if not overrides:
+        return tiers
+    outside = sorted(set(overrides) - tiers.keys())
+    if outside:
+        raise ConfigError(f"«lanes» в house.json — измерения вне реестра: {', '.join(outside)}")
+    wrong = sorted(k for k, v in overrides.items() if v not in TIERS)
+    if wrong:
+        raise ConfigError(f"«lanes» в house.json — недопустимая полоса у {', '.join(wrong)}: "
+                          f"ожидается {', '.join(TIERS)}")
+    return {**tiers, **overrides}
+
+
+def dimension_contracts(root: Path | None = None) -> dict[str, str]:
+    """The dimension contract bullets keyed by id, extracted from the anchored agent
+    files (`source` is `agents/<file>.md#<id>`): the text a dispatched reviewer is
+    handed as its goal."""
+    root = Path(root) if root is not None else _ROOT
+    out: dict[str, str] = {}
+    for e in load_registry():
+        rel, anchor = e["source"].split("#", 1)
+        text = (root / rel).read_text(encoding="utf-8")
+        m = re.search(rf"(?ms)^- \*\*{re.escape(anchor)}\*\* — .*?(?=^- |^## |\Z)", text)
+        if m is None:
+            raise ConfigError(f"{rel}: контракт измерения «{anchor}» не найден")
+        out[e["id"]] = m.group(0).rstrip()
+    return out
 
 
 def _substantive_lines(document: Document) -> set[int]:
@@ -127,6 +165,8 @@ def plan(doc: Path, *, mode: str, spec: str | None = None, genre: str | None = N
     terminology_covered = _terminology_covered(doc, source, dictionary=dictionary,
                                                local_dictionary=local_dictionary,
                                                use_local=use_local)
+    house = load_house(doc)
+    tiers = effective_tiers(house.lanes if house else None)
     entries: list[PlanEntry] = []
     for e in load_registry():
         when = e["when"]
@@ -148,7 +188,7 @@ def plan(doc: Path, *, mode: str, spec: str | None = None, genre: str | None = N
             included = _claims_registry_valid(doc)
             reason = f"валидный реестр {claims_name}" if included else ""
         if included:
-            entries.append(PlanEntry(id=e["id"], when=when, reason=reason,
+            entries.append(PlanEntry(id=e["id"], tier=tiers[e["id"]], when=when, reason=reason,
                                      covered_by_lint=e["id"] == "terminology"
                                      and terminology_covered))
     return ReviewPlan(mode=mode, dimensions=tuple(entries))
