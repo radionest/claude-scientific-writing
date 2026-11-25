@@ -49,7 +49,8 @@ description: Use for Russian scientific prose and plugin releases.
      `PYTHONPATH=$ROOT $ROOT/.venv/bin/python -m lib.review_plan <file.qmd> --json`
      (`--mode diff` по умолчанию; `--mode deep` для глубокого ревью; `--before <path>` добавляет
      `fidelity`) и полосы — `... -c "import json, sys; sys.path.insert(0, '$ROOT'); from lib.lanes import load_lanes; l = load_lanes(r'<file.qmd>'); print(json.dumps({'writer': l.writer, 'judge': l.judge, 'tiers': dict(l.tiers)}))"`;
-     задачи строит мост `hermes/sw_bridge.py` — `build_tasks(plan)` возвращает ОДНУ партию для
+     задачи строит мост `hermes/sw_bridge.py` — `build_tasks(plan)` (измерения с `covered_by_lint`
+     мост пропускает — их уже закрыл линтер) возвращает ОДНУ партию для
      `delegate_task(tasks=[...])`: общая группа, `goal` задачи — контракт измерения,
      `output_schema` — массив находок `{file, line, dimension, severity, problem, fix}`,
      `model` — ключ полосы `sw-fast`/`sw-strong` по `tier`; модель разрешает `model_map`

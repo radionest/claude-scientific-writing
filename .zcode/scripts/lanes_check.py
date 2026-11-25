@@ -49,15 +49,16 @@ def main() -> int:
     lanes = load_lanes()
     agents = REPO / "agents"
 
-    def actual(agent: str, tier: str) -> str:
-        if agent in pins:
-            return pins[agent]
-        alias = _frontmatter_alias(agents / _AGENT_FILES[tier])
+    def actual(name: str, agent_file: str) -> str:
+        if name in pins:
+            return pins[name]
+        alias = _frontmatter_alias(agents / agent_file)
         return f"{alias} (псевдоним frontmatter, модель не задаёт)" if alias else "—"
 
-    rows = [("writer", lanes.writer, actual("scientific-writer", "fast")),
-            ("judge", lanes.judge, actual("prose-reviewer-strong", "strong"))]
-    rows += [(e["id"], e["tier"], actual(_AGENT_FILES[e["tier"]].removesuffix(".md"), e["tier"]))
+    rows = [("writer", lanes.writer, actual("scientific-writer", "scientific-writer.md")),
+            ("judge", lanes.judge, actual("prose-reviewer-strong", "prose-reviewer-strong.md"))]
+    rows += [(e["id"], e["tier"],
+              actual(_AGENT_FILES[e["tier"]].removesuffix(".md"), _AGENT_FILES[e["tier"]]))
              for e in load_registry()]
     width = max(len(r[0]) for r in rows)
     print(f"{'роль':<{width}}  полоса              фактическая модель")

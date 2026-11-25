@@ -81,9 +81,11 @@ const planOut = await world.run("/home/nest/Projects/claude-scientific-writing/.
   "import sys, json; sys.path.insert(0, '" + REPO + "'); " +
   "from dataclasses import asdict; from pathlib import Path; " +
   "from lib.review_plan import plan as review_plan; " +
-  "p = review_plan(Path('" + doc + "'), mode='" + mode + "'" +
-  (beforePath ? ", before=Path('" + beforePath + "')" : "") + "); " +
+  "p = review_plan(Path(sys.argv[1]), mode='" + mode + "', " +
+  "before=Path(sys.argv[2]) if sys.argv[2] else None); " +
   "print(json.dumps({'mode': p.mode, 'dimensions': [asdict(d) for d in p.dimensions]}))",
+  doc,
+  beforePath ?? "",
 ], { output: { tail: 65536 } });
 if (planOut.exitCode !== 0) {
   throw new Error("lib.review_plan failed: " + (planOut.stderr || planOut.stdout).slice(-2000));
@@ -93,8 +95,9 @@ const plan = JSON.parse(planOut.stdout) as { mode: string; dimensions: PlanDimen
 const lanesOut = await world.run("/home/nest/Projects/claude-scientific-writing/.venv/bin/python", [
   "-c",
   "import sys, json; sys.path.insert(0, '" + REPO + "'); " +
-  "from lib.lanes import load_lanes; l = load_lanes('" + doc + "'); " +
+  "from lib.lanes import load_lanes; l = load_lanes(sys.argv[1]); " +
   "print(json.dumps({'writer': l.writer, 'judge': l.judge, 'tiers': dict(l.tiers)}))",
+  doc,
 ], { output: { tail: 16384 } });
 if (lanesOut.exitCode !== 0) {
   throw new Error("lib.lanes failed: " + (lanesOut.stderr || lanesOut.stdout).slice(-2000));
@@ -131,6 +134,7 @@ const runs: DimensionRun[] = await Promise.all(dispatched.map(async (d) => {
       doc.replace(/\.qmd$/, ".spec.md") + " (если существует), жанровый профиль из canon/profiles " +
       "и применяй только своё измерение. Никаких правок файлов. Верни строго JSON-список находок " +
       "[{file, line, dimension, severity, problem, fix}] — только находки, не переписывай документ.",
+    model,
   });
   const findings = await reviewer.ask<ReviewFinding[]>(
     "Прогони измерение " + d.id + " по документу " + doc +

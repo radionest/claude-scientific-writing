@@ -80,8 +80,9 @@ def score_run(gold: Sequence[GoldItem], findings: Sequence[Mapping]) -> dict[str
     out: dict[str, dict] = {}
     for f in findings:
         dim = f.get("dimension")
-        entry = out.setdefault(dim if isinstance(dim, str) else "", 
-                               {"hits": 0, "extra": 0, "covered": set()})
+        if not isinstance(dim, str):
+            continue
+        entry = out.setdefault(dim, {"hits": 0, "extra": 0, "covered": set()})
         line = f.get("line")
         hit = [i for i, g in enumerate(gold)
                if g.dimension == dim and isinstance(line, int)

@@ -34,7 +34,7 @@ def build_tasks(plan: ReviewPlan, *, root: Path | None = None) -> list[dict]:
     contracts = dimension_contracts(root)
     return [{"id": d.id, "group": _GROUP, "goal": contracts[d.id],
              "model": _LANE_KEYS[d.tier], "output_schema": FINDINGS_SCHEMA}
-            for d in plan.dimensions]
+            for d in plan.dimensions if not d.covered_by_lint]
 
 
 def audit_results(tasks: list[dict], results: list[dict]) -> dict:

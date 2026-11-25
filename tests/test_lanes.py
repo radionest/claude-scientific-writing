@@ -196,11 +196,14 @@ def test_check_scripts_write_nothing(tmp_path, script):
 def test_build_tasks_batch_by_lane():
     plan = ReviewPlan(mode="full", dimensions=(
         PlanEntry(id="calques", tier="strong", when="always", reason=""),
-        PlanEntry(id="repeats", tier="fast", when="always", reason="")))
+        PlanEntry(id="repeats", tier="fast", when="always", reason=""),
+        PlanEntry(id="terminology", tier="fast", when="always", reason="",
+                  covered_by_lint=True)))
     tasks = sw_bridge.build_tasks(plan)
     assert len(tasks) == 2
     assert {t["group"] for t in tasks} == {"sw-review"}  # one batch, one common group
     assert [t["model"] for t in tasks] == ["sw-strong", "sw-fast"]
+    assert "terminology" not in {t["id"] for t in tasks}
     for t in tasks:
         assert set(t) == {"id", "group", "goal", "model", "output_schema"}
         assert t["goal"].startswith(f"- **{t['id']}** — ")
