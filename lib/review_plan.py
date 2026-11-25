@@ -79,7 +79,10 @@ def _substantive_lines(document: Document) -> set[int]:
         h = pl.heading
         if h:
             if _SUBSTANTIVE.search(h[1]):
-                in_section, level = True, h[0]
+                if not in_section:
+                    # the entry level is fixed once — a nested substantive heading keeps it,
+                    # so its non-substantive siblings stay inside (see `_discussion_span`)
+                    in_section, level = True, h[0]
             elif h[0] <= level:
                 in_section = False
         if in_section:
@@ -96,6 +99,8 @@ def _claims_registry_valid(doc: Path) -> bool:
 
 def plan(doc: Path, *, mode: str, spec: str | None = None, genre: str | None = None,
          before: Path | None = None) -> ReviewPlan:
+    if mode not in _MODES:
+        raise ValueError(f"недопустимый mode «{mode}»: ожидается {', '.join(_MODES)}")
     source = doc.read_text(encoding="utf-8")
     document = Document.from_source(source)
     has_discussion = _discussion_span(document) is not None

@@ -55,6 +55,18 @@ CLAIMS = json.dumps({"claim_id": "c1", "section": "Результаты",
 
 INTRO_LINE = "Изучена связь курения с риском рецидива у пациентов после резекции."
 
+NESTED = """# Отчёт
+
+## Методы
+Проза методов.
+
+### Материалы и методы сбора
+Проза сбора.
+
+### Критерии включения
+Проза критериев.
+"""
+
 
 def write(tmp_path: Path, name: str, text: str) -> Path:
     p = tmp_path / name
@@ -134,6 +146,19 @@ def test_diff_non_substantive_lines_do_not_count(tmp_path, monkeypatch):
         "Главный результат — снижение частоты рецидива на 4 % в год.")
     doc = staged(tmp_path, monkeypatch, REPORT, edited)
     assert "argument" not in ids(plan(doc, mode="diff"))
+
+
+def test_nested_substantive_headings_do_not_truncate(tmp_path, monkeypatch):
+    edited = NESTED.replace("Проза методов.", "Проза методов уточнена.").replace(
+        "Проза критериев.", "Проза критериев уточнена.")
+    doc = staged(tmp_path, monkeypatch, NESTED, edited)
+    assert "argument" in ids(plan(doc, mode="diff"))
+
+
+def test_plan_rejects_unknown_mode(tmp_path):
+    doc = write(tmp_path, "report.qmd", REPORT)
+    with pytest.raises(ValueError, match="mode"):
+        plan(doc, mode="bogus")
 
 
 def test_no_discussion_no_genre_discussion(tmp_path):
