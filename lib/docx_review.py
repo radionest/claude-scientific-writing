@@ -2,10 +2,11 @@
 
 An editor's review is the highest-quality calibration signal available: every comment is a
 defect a human found that the rules did not. This reads the comments straight out of the
-OOXML parts, keeping exact character offsets, and anchors a comment stored as a bare
-`w:commentReference` without a range at that mark. It never goes through pandoc markdown:
-the importer's report generator (`~/.zcode/scripts/docx_review.py`) lost a heading-anchored
-comment (#22) and 7 of 28 on a later live review while parsing comments from pandoc output.
+OOXML parts, keeping exact character offsets, and anchors a comment stored without selected
+text — a bare `w:commentReference` or an empty range — at that mark. It never goes through
+pandoc markdown: the importer's report generator (`~/.zcode/scripts/docx_review.py`) lost a
+heading-anchored comment (#22) and 7 of 28 on a later live review while parsing comments from
+pandoc output.
 
     python3 -m lib.docx_review review.docx --json
 
@@ -41,7 +42,7 @@ class ReviewItem:
     comment: str
     author: str
     anchor: str = ""  # exactly what the editor selected
-    sentence: str = ""  # the sentence it sits in (its paragraph for a trailing reference) — what triage is decided on
+    sentence: str = ""  # the sentence it sits in (its paragraph when that slice is blank) — what triage is decided on
     anchor_at: int = 0  # anchor offset within `sentence`
 
 
@@ -113,8 +114,9 @@ def _extract(z: zipfile.ZipFile, context: int) -> list[ReviewItem]:
         before = text[max(0, start - context):min(len(text), end + context)]
         sent_start, sent_end = _sentence_bounds(text, start, end)
         if not text[sent_start:sent_end].strip():
-            # A reference after the paragraph's last period has no sentence of its own. Left
-            # empty, `triage` would drop the ±25 window and judge the whole context instead.
+            # A mark can have no sentence of its own — right after the paragraph's last period,
+            # or in an empty paragraph. Left blank, `triage` would drop the ±25 window and judge
+            # the whole context instead.
             sent_start = text.rfind("\n", 0, start) + 1
             sent_end = text.find("\n", end)
             sent_end = len(text) if sent_end < 0 else sent_end

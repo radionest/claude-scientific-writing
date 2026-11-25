@@ -116,6 +116,34 @@ def test_trailing_reference_is_judged_near_the_mark(tmp_path):
     assert bare.sentence == "" and bare.triage == "FN", "без абзаца находка из контекста не берётся"
 
 
+def test_tracked_change_without_sentence_keeps_the_context_path(tmp_path):
+    """A tracked change carries no sentence: triage judges `before` on the context window —
+    the fallback #19 built it for. The carve-out that keeps this path open is exactly what the
+    always-FN rule for anchor-less comments must not swallow."""
+    para = ("<w:p>"
+            f'<w:del w:id="9" w:author="Ред"><w:r><w:delText>референсного</w:delText></w:r></w:del>'
+            f'<w:ins w:id="10" w:author="Ред">{_run("эталонного")}</w:ins>'
+            "</w:p>")
+    p = _docx(tmp_path, [para], [])
+    it = triage(extract(p), effective_entries(p, use_local=False), Morph.load())[0]
+    assert it.sentence == "" and it.before == "референсного"
+    assert it.triage == "covered" and it.rule_hit == "calque-referens"
+
+
+def test_zero_width_range_on_empty_paragraph_stays_a_miss(tmp_path):
+    """An empty range (adjacent start/end, nothing selected) anchors like a bare reference:
+    on an empty paragraph there is nothing to be near, so a finding in the neighbouring
+    paragraph must not pass."""
+    zero_width = f'<w:commentRangeStart w:id="4"/><w:commentRangeEnd w:id="4"/>' + _ref("4")
+    p = _docx(tmp_path,
+              [_para(zero_width), _para(_run("Референсный стандарт сравнения здесь."))],
+              [("4", "Ред", "уточнить")])
+    it = extract(p)[0]
+    assert it.anchor == "" and it.comment == "уточнить"
+    it = triage(extract(p), effective_entries(p, use_local=False), Morph.load())[0]
+    assert it.sentence == "" and it.triage == "FN"
+
+
 def test_triage_marks_covered_only_on_the_anchor(tmp_path):
     """A rule firing elsewhere in the sentence must not mask a miss — that illusion is
     exactly what made the old dictionary look like it covered a review it did not."""
