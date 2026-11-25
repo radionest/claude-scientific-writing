@@ -15,6 +15,7 @@ Morphology-dependent tests skip themselves when the optional extra is absent: `.
 | punctuation / orthography, closed list | `canon/orthography.json` (regex) |
 | needs morphology, a whole sentence, or the whole document | `lib/checks/*.py` + a `kind: "check"` entry in `canon/orthography.json` |
 | the review dimension set and its launch conditions | `canon/review-dimensions.json` (dispatched by `lib.review_plan`) |
+| which model strength serves a dimension | lanes: `lanes.json` (roles) + `tier` in `canon/review-dimensions.json`, project override `lanes` in `house.json`; harness knowledge stays in the adapters (`.zcode/scripts/`, `hermes/`) |
 | this document only (terms, abbreviations, wordlist) | project overlay `<git-root>/.claude/scientific-writing/dictionary.json` |
 | shared across a project's documents (terms, abbreviations, passport, norms) | project pack `<git-root>/.claude/scientific-writing/house.json` (`lib/house.py`; feeds `doc-term-*`/`doc-abbrev-*` and the review plan) |
 | judgment (когда тире законно, «;», ритм) | the prose skills — **not** the linter |
@@ -27,3 +28,4 @@ Morphology-dependent tests skip themselves when the optional extra is absent: `.
 - `.claude-plugin/plugin.json` is deliberately minimal — one field must **stay absent**:
   - **`hooks`** — for `commands`/`agents`/`outputStyles`/`themes` a manifest field *shadows* the default folder, but `hooks/hooks.json` is always auto-read and `manifest.hooks` only ever *adds* files. Pointing it at that same file is therefore a duplicate: it gets skipped and logged as a plugin load error ("Duplicate hooks file detected"). The hooks still register, but the plugin shows up errored in `/plugin`. `manifest.hooks` is only for *additional* hook files outside the standard path.
 - `version` in `.claude-plugin/plugin.json` (currently `0.7.0`) is **bumped manually per release** — its presence pins the plugin version (without it Claude Code uses the git commit SHA and auto-updates per commit), so plugin updates follow explicit bumps.
+- **Model identifiers never enter the repo** (it is public; the harness assigns models to lanes): lanes carry symbolic names only — `fast`/`strong` tiers in the registry, `sw-fast`/`sw-strong` keys in `hermes/sw_bridge.py`, and sw-review workflow models passed as launch args. The known exception, the dead ids in `.zcode/workflows/roadmap-write-review-fix.dwf.ts:96-97`, is tracked in issue #119 — do not replicate it. Pinned by `tests/test_lanes.py`.
