@@ -48,8 +48,19 @@ description: Use for Russian scientific prose and plugin releases.
    - ансамбль (для сколько-нибудь длинного документа): план ревью —
      `PYTHONPATH=$ROOT $ROOT/.venv/bin/python -m lib.review_plan <file.qmd> --json`
      (`--mode diff` по умолчанию; `--mode deep` для глубокого ревью; `--before <path>` добавляет
-     `fidelity`), затем до 10 параллельных субагентов (delegate_task) — по одному на измерение из
-     плана; каждому передай его измерение, путь к файлу, `<doc>.spec.md`, жанровый профиль и находки линтера;
+     `fidelity`) и полосы — `... -c "import json, sys; sys.path.insert(0, '$ROOT'); from lib.lanes import load_lanes; l = load_lanes(r'<file.qmd>'); print(json.dumps({'writer': l.writer, 'judge': l.judge, 'tiers': dict(l.tiers)}))"`;
+     задачи строит мост `hermes/sw_bridge.py` — `build_tasks(plan)` (измерения с `covered_by_lint`
+     мост пропускает — их уже закрыл линтер) возвращает ОДНУ партию для
+     `delegate_task(tasks=[...])`: общая группа, `goal` задачи — контракт измерения,
+     `output_schema` — массив находок `{file, line, dimension, severity, problem, fix}`,
+     `model` — ключ полосы `sw-fast`/`sw-strong` по `tier`; модель разрешает `model_map`
+     профиля, идентификаторы моделей нигде не хранятся; разбор результатов —
+     `audit_results(tasks, results)` (проверяет `schema_valid` и совпадение `route` с полосой);
+     если `delegation.backend` профиля не `model_map` — скажи об этом в отчёте: назначение
+     моделей по полосам не активно. Фактическое назначение показывает
+     `PYTHONPATH=$ROOT $ROOT/.venv/bin/python $ROOT/hermes/lanes_check.py` (таблица
+     «роль — объявленная полоса — фактическая модель», только чтение);
+     каждому измерению передай также путь к файлу, `<doc>.spec.md`, жанровый профиль и находки линтера;
      для короткого документа — примени прозо-скиллы (`writing-russian-academic-prose`, `say-it-once-academic-prose`; при наличии «Обсуждения» — также `writing-discussion`; содержательные секции — `reader-first-academic-prose`) последовательно сам; прозо-скиллы не видят табличные чанки — при наличии рендера прогони `lib.render_lint` (python3 -m, с `--qmd`);
    - синтез: дедуп по (файл, строка, проблема), ранжир blocker → warning → nit.
 

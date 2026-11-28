@@ -95,18 +95,53 @@ def ids(result) -> set[str]:
 def test_registry_ids_match_prose_reviewer():
     reg_ids = [e["id"] for e in load_registry()]
     assert len(reg_ids) == len(set(reg_ids)), "duplicate registry ids"
-    agent = (ROOT / "agents" / "prose-reviewer.md").read_text(encoding="utf-8")
-    assert sorted(re.findall(r"\*\*([a-z-]+)\*\*", agent)) == sorted(reg_ids)
+    bold: list[str] = []
+    for name in ("prose-reviewer.md", "prose-reviewer-strong.md"):
+        agent = (ROOT / "agents" / name).read_text(encoding="utf-8")
+        bold += re.findall(r"\*\*([a-z-]+)\*\*", agent)
+    assert sorted(bold) == sorted(reg_ids)
 
 
 def test_registry_contract_fields():
-    agent = (ROOT / "agents" / "prose-reviewer.md").read_text(encoding="utf-8")
     for e in load_registry():
         assert set(e) == {"id", "tier", "when", "skills", "source"}
-        assert e["tier"] == "default"
-        assert e["source"] == f"agents/prose-reviewer.md#{e['id']}"
+        assert e["tier"] in {"fast", "strong"}
+        agent_file = e["source"].rsplit("#", 1)[0]
+        assert e["source"] == f"{agent_file}#{e['id']}"
+        agent = (ROOT / agent_file).read_text(encoding="utf-8")
         for s in e["skills"]:
-            assert s in agent, f"{e['id']}: skill «{s}» не назван у prose-reviewer"
+            assert s in agent, f"{e['id']}: skill «{s}» не назван у {agent_file}"
+
+
+def test_registry_carries_tier():
+    tiers = {e["id"]: e["tier"] for e in load_registry()}
+    assert tiers == {
+        "calques": "strong", "repeats": "fast", "structure": "fast", "terminology": "fast",
+        "render": "fast", "genre": "fast", "discussion": "strong", "argument": "strong",
+        "fidelity": "strong", "evidence": "strong",
+    }
+
+
+def test_plan_entry_carries_tier(tmp_path):
+    doc = write(tmp_path, "article.qmd", REPORT)
+    write(tmp_path, "article.claims.jsonl", CLAIMS)
+    result = plan(doc, mode="full", before=doc)
+    tiers = {d.id: d.tier for d in result.dimensions}
+    assert tiers["calques"] == "strong" and tiers["evidence"] == "strong"
+    assert tiers["repeats"] == "fast" and tiers["structure"] == "fast"
+
+
+def test_house_lanes_override_tier(tmp_path):
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    d = tmp_path / ".claude" / "scientific-writing"
+    d.mkdir(parents=True)
+    (d / "house.json").write_text(
+        json.dumps({"lanes": {"calques": "fast", "repeats": "strong"}}, ensure_ascii=False),
+        encoding="utf-8")
+    doc = write(tmp_path, "report.qmd", REPORT)
+    result = plan(doc, mode="light")
+    tiers = {x.id: x.tier for x in result.dimensions}
+    assert tiers["calques"] == "fast" and tiers["repeats"] == "strong"
 
 
 def test_full_article_scenario(tmp_path):
@@ -199,7 +234,7 @@ def test_cli_json_shape_and_exit_codes(tmp_path, capsys):
     data = json.loads(capsys.readouterr().out)
     assert data["mode"] == "diff"
     assert {d["id"] for d in data["dimensions"]} == ALWAYS | {"genre", "discussion"}
-    assert all(set(d) == {"id", "when", "reason", "covered_by_lint"} and d["reason"]
+    assert all(set(d) == {"id", "tier", "when", "reason", "covered_by_lint"} and d["reason"]
                for d in data["dimensions"])
     assert main([str(tmp_path / "nope.qmd"), "--json"]) == 2
     with pytest.raises(SystemExit) as exc:
