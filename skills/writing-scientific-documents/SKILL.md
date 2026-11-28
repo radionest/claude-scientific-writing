@@ -19,6 +19,9 @@ repeats are caught before a PR, not in a later cleanup commit.
    and create a spec there only if the book has none.
 2. **Write.** Dispatch the `scientific-writer` agent (or write per the spec yourself). Obey the genre
    profile's style; every quantitative claim cited; never introduce a dictionary calque.
+   - **House samples.** If the project pack carries `house.samples`
+     (`<git-root>/.claude/scientific-writing/house.json`), hand them to the writer as the
+     owner-approved sound reference.
    - **REQUIRED SUB-SKILL:** For substantive sections (Введение/Методы/Результаты/Реферат/Заключение),
      lay out the section moves (`canon/section-moves.md`) and the paragraph contract first —
      scientific-writing:reader-first-academic-prose; cold read of the final candidate after edits.

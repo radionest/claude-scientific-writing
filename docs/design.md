@@ -614,6 +614,58 @@ the registry/plan `tier` contract and `tests/test_house.py` for the `lanes` pack
 - Replacing the docx import mechanics (`docx_review.py`) — the plugin formalizes the *pass*, not the parser.
 - Code review itself (`pr-diff-reviewer` unchanged) — the plugin only routes around it for text.
 
+## Owner style (added 2026-11-26)
+
+The style the owner actually writes with is calibrated, not decreed.
+
+**Pairs (R8).** A «draft → owner edit» pair lives in the project pack,
+`<git-root>/.claude/scientific-writing/tune/<slug>/pairs.jsonl` — one record
+`{id, file, base_commit, edit_commit, before, after, provenance}` per prose hunk
+of the edit commit against its base (code chunks never count). The plugin keeps
+only a local index, `var/tune/index.jsonl` in its own root (gitignored):
+`{project_root, slug, pairs_path, pairs}`. The first pairs are the owner's manual
+edits from the article history — 9432ea8 against the 55c9755 snapshot of
+`clarinet_nir_ablation`, six prose hunks, `provenance: "owner"`; they currently
+ride the gitignored eval-reports scratch dir as eval data, the article repo's own
+pack directory is their destination. `tune-draft` now writes its tuning fixtures
+into the same destination path (the project pack) instead of a throwaway `/tmp`
+dir.
+
+**Profile (R9).** `lib/style_profile.py`: `profile(doc, morph)` — a fixed vector
+of style features (`FEATURES`, deliberately keyed off none of тире/«является»/
+«данный»), `baseline(samples, morph)` — per-feature (median, MAD) over approved
+samples, `distance(profile, baseline)` — robust z-scores. `/eval-prose --only
+style` calibrates over two corpora — «human / LLM» (AINL-Eval-2025, downloaded as
+untrusted data into a fresh `$TMPDIR` dir, nothing executed from it, Python only
+with `-I`) and the owner pairs; the third corpus («samples vs new drafts») does
+not exist yet and its step is skipped. Pinned by `tests/test_style_profile.py`.
+
+**Experiment outcome (2026-11-26): no calibrated markers.** No feature is
+direction-stable across both corpora (LLM-vs-human in AINL vs draft-vs-edit in
+the pairs): the corpora disagree on every feature's direction, and the two
+near-agreements — `commas_per_sent` by means, `mattr` by medians — flip under the
+other estimator, knife-edge artifacts of six light-edit pairs, not signals. Per
+the gate (only features agreeing in at least two corpora go to the report), step
+3 was skipped in full: no markers table or «Что не считать машинным признаком»
+section in `references/rhetoric.md`, no `doc-rhetoric-density` check, no canon,
+manifest or test-oracle changes. Re-run `/eval-prose --only style` as the pairs
+accumulate — the harness is the library plus the skill step, the corpus and the
+report stay out of the repo.
+
+**Samples (R10).** `house.samples` — at least three owner-approved fragments; the
+key present with fewer raises `ConfigError`. `init-doc-spec` (step 4) asks for
+them when the pack lacks the key and prefills the passport's «house-style» from
+them; the writer receives them as input — the sound reference between equal
+formulations (`agents/scientific-writer.md`, the orchestrator's write stage).
+
+**Stop rule (R10).** `/text-edit` gains the `--only rhetoric` class (the
+`rhetoric-*` family, edited by `references/rhetoric.md`) and every scoped edit is
+bounded by `lib.revision_guard.next_state(prev, cur, guard)` → `CONTINUE |
+STOP_ZERO_EDIT | STOP_OVERHARDENING`: a round that changed nothing stops the loop
+(a zero edit list is a normal outcome), and past `MAX_SUBSTANTIVE_ROUNDS` (2)
+further rewriting is presumed over-hardening — leftovers get reported, not
+polished away.
+
 ## Related
 
 - `skills/tuning-rules/SKILL.md` — rule-calibration loop driven by the user's edits

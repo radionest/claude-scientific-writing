@@ -26,3 +26,6 @@ uv.lock
 
 # Behavioral eval reports (/eval-prose) — local A/B history, not part of the oracle
 tests/eval/reports/
+
+# Local owner-style state: the tune-pair index pointing at project packs (R8)
+var/

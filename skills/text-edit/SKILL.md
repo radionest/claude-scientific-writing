@@ -11,7 +11,10 @@ allowed-tools: Bash, Read, Edit, Write, Task
 
 ## Шаги
 1. Определи целевой `.qmd` (`$Q`), режим (`--mode light` по умолчанию | `deep`), фокус
-   (`--only <класс находок>`) и область (`--scope <разделы>`; для deep обязательна).
+   (`--only <класс находок>` — семейство правил канона: `calque-*`, `parasite-*`,
+   `punct-*`, …; `--only rhetoric` — риторический класс: семейство `rhetoric-*`,
+   правка по `references/rhetoric.md` скилла `writing-russian-academic-prose`) и
+   область (`--scope <разделы>`; для deep обязательна).
    Прочитай `<doc>.spec.md` (в т.ч. «Зафиксированные решения» и «Защищённые
    формулировки», если есть) и жанровый профиль.
 2. **Protected inventory до правки.** Сохрани копию исходника и зафиксируй в отчёте:
@@ -21,7 +24,18 @@ allowed-tools: Bash, Read, Edit, Write, Task
    (сначала зафиксируй destination каждой функции, потом правь).
    `BEFORE=$(mktemp /tmp/text-edit-XXXXXX.qmd) && cp "$Q" "$BEFORE"`
 3. **Правка** через агента `scientific-writer` (передай режим language-only/structural
-   и границы). Соседние абзацы — читать для связности, не переписывать. Изменение
+   и границы). Правка идёт раундами; перед первым раундом заведи путь снимка и
+   счётчик (`PREV=$(mktemp /tmp/text-edit-XXXXXX.qmd)`, `ROUNDS=0`), перед каждым
+   раундом сохрани кандидата (`cp "$Q" "$PREV"`), после — стоп-правило. Счётчик
+   раундов наращивается: первый вызов — `EditState(rounds=0)`; содержательный раунд —
+   следующий вызов с `EditState(rounds + 1)`. Вызов (первый аргумент — кандидат до
+   раунда, второй — после, третий — число завершённых содержательных раундов):
+   `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -c 'import sys; from lib.revision_guard import EditState, next_state; a, b, n = open(sys.argv[1], encoding="utf-8").read(), open(sys.argv[2], encoding="utf-8").read(), int(sys.argv[3]); print(next_state(a, b, EditState(n)))' "$PREV" "$Q" "$ROUNDS"`
+   Вердикт: `CONTINUE` — ещё раунд; `STOP_ZERO_EDIT` — раунд ничего не изменил, стоп
+   (нулевой список правок — нормальный результат); `STOP_OVERHARDENING` — счётчик
+   дошёл до `MAX_SUBSTANTIVE_ROUNDS` (= 2: максимум два содержательных раунда, дальше
+   полировка только навредит — остатки находок доложи, не правь).
+   Соседние абзацы — читать для связности, не переписывать. Изменение
    знаменателя, популяции, цели или причинности — не surface-правка: останови правку и
    доложи (нужен claim-calibration: рекомендация, изменение силы утверждения — только
    после решения автора).
