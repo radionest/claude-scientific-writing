@@ -171,9 +171,12 @@ line) sits the eval layer, `tests/eval/`:
   `lint-good.qmd` stays gated.
 - `rewrite-cases.json` — meaning-damage minimal pairs (lost negation/quantifier/
   comparator, modality shifts, denominator change, dropped citation key, altered inline
-  code, plus clean controls) that the linter provably does not see: catching them is the
-  semantic reviewer's job, not the regex layer's. Gold set for the future revision
-  fidelity work.
+  code, plus clean controls) on which the linter raises no error-severity finding
+  (`test_rewrite_cases_are_invisible_to_the_linter`): catching them is the semantic
+  reviewer's job, not the regex layer's. The warn/info findings the pairs do carry are
+  pinned — their inventory is frozen by `test_rewrite_cases_non_error_inventory_is_frozen`,
+  so drift there is a conscious baseline update, not noise. Gold set for the future
+  revision fidelity work.
 - `/eval-prose` runs the deterministic baseline and the behavioral rewrite eval (hidden
   rubric, fresh subagents, gitignored JSON reports, A/B against a previous report);
   behavioral runs stay out of blocking CI.
@@ -440,6 +443,13 @@ The deliverable for "разграничить pre/post review для кода и
   still runs on any prose also touched.
 - mixed → both gates apply.
 
+**Exemptions are path identity, not suffixes** (#89, #102): `text-lint.sh` exempts
+`tests/fixtures/` and `tests/eval/lint-bad.qmd` of the committing repo when it is the plugin
+itself (`.claude-plugin/plugin.json` at the toplevel — the dev checkout or a linked worktree),
+falling back to the running copy's otherwise; the hermes gate anchors the same toplevel
+identity for `tests/fixtures/` only (no eval-corpus exemption there — #108). A user file at
+either path in another repo is linted like any prose.
+
 Post-path formalization: `apply-docx-review` → `qmd-review-importer` already runs a prose pass (step 4, added
 2026-06-22); the plugin makes "apply → review → lint-clean before commit" the contract, closing the
 editor-reinjects-calque loop at its source.
@@ -468,6 +478,31 @@ markdown — a heading-anchored one in #22, 7 of 28 on a later live review.
 
 The educational profile is the explicit reason genre is its own layer: it overrides style rules the report
 profile enforces, while the universal calque/term discipline still applies.
+
+## Judges (added 2026-11-25)
+
+Meaning-damage review above the deterministic layers: a decision-model judge (Jev,
+`typesafe/jev-1.14`) answers typed questions about a small `{before, after}` state —
+an `noul` question returns a yes-probability in 0..1. `lib/judges.py` (stdlib
+`urllib`, no SDK) posts both questions of one pair in a single request; descriptors
+live in `canon/judges.json` — only `edit-fidelity` for now (the two
+rewrite-preservation questions); `claim-support` / `rhetoric-context` / `term-sense`
+wait for annotated material. Only input tokens are billed ($0.042 per million).
+
+| Aspect | Contract |
+|---|---|
+| Transport | `openrouter` → `POST https://openrouter.ai/api/alpha/decisions` with `OPENROUTER_API_KEY`; `typesafe` → `POST https://api.typesafe.ai/v1/systemone` with `TYPESAFE_API_KEY`; picked by `SW_JUDGE__TRANSPORT`, else openrouter-if-keyed, else typesafe, else `unavailable` |
+| `run_judge(judge_id, state)` → `JudgeResult` | `status` ∈ `ok / refused / skipped / unavailable / error` — `refused` when any question answers `type: "refusal"`, `skipped` when the state exceeds 32 000 bytes (larger fragments drift into the less accurate long-context mode), `error` on network failure, non-2xx HTTP responses or malformed JSON; `answers` holds probabilities when `ok`, the probabilities of the non-refusing questions when `refused`, and is empty for `skipped` / `unavailable` / `error` |
+| Privacy | keys are read from the environment per request and never logged or written to reports; texts leave the machine only when a judge actually runs — the pilot uses the plugin's own corpus, project texts need the owner's consent, patient identifiers never |
+| Pilot | `python3 -m lib.judges pilot --out tests/eval/judges-pilot.json` runs `edit-fidelity` over the 18 pairs of `tests/eval/rewrite-cases.json` (12 damage, 6 clean; only `before`/`after` travel in the request) and writes `{version, transport, status, cases: [{id, expect, answers, status, elapsed_ms}], usage}` — no pair texts, no thresholds, no verdicts; the step-0 question is whether Jev discriminates Russian scientific text at all, thresholds are calibrated on the stage-5 corpus |
+
+Pinned by `tests/test_judges.py` (network stubbed at `urllib.request.urlopen`; the
+recorded-response fixture is `THEORY (docs, not recorded)` — composed from the
+TypeSafe and OpenRouter Decisions docs, no key existed to capture a live payload).
+Without a key the judge reports `unavailable` and the pilot exits 0 — an edit is
+never blocked. Deliberately not wired into `/text-edit` yet
+(skills/text-edit/SKILL.md:33–36): enablement waits for the pilot and the owner's
+decision.
 
 ## Migration of existing assets
 
