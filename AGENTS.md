@@ -14,6 +14,7 @@ Morphology-dependent tests skip themselves when the optional extra is absent: `.
 | a lexical calque, jargon, term canon | `canon/dictionary.json` (regex) |
 | punctuation / orthography, closed list | `canon/orthography.json` (regex) |
 | needs morphology, a whole sentence, or the whole document | `lib/checks/*.py` + a `kind: "check"` entry in `canon/orthography.json` |
+| the review dimension set and its launch conditions | `canon/review-dimensions.json` (dispatched by `lib.review_plan`) |
 | this document only (terms, abbreviations, wordlist) | project overlay `<git-root>/.claude/scientific-writing/dictionary.json` |
 | judgment (когда тире законно, «;», ритм) | the prose skills — **not** the linter |
 

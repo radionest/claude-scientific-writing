@@ -24,9 +24,10 @@ repeats are caught before a PR, not in a later cleanup commit.
      scientific-writing:reader-first-academic-prose; cold read of the final candidate after edits.
    - **REQUIRED SUB-SKILL:** For the «Обсуждение» section, use scientific-writing:writing-discussion
      (moves × topics, the findings → comparison → meaning cycle, anti-patterns).
-3. **Review.** Run `/scientific-writing:text-review` on the changed prose: the deterministic linter + the
-   ensemble (calques / repeats / structure / terminology / render / discussion / argument)
-   (evidence — при валидном claims-реестре полной статьи).
+3. **Review.** Run `/scientific-writing:text-review` on the changed prose: the deterministic linter +
+   the ensemble dispatched from the review plan —
+   `PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python3 -m lib.review_plan <file.qmd> [--mode diff|light|deep|full] [--before <path>] --json`
+   (`canon/review-dimensions.json` declares the dimensions and their launch conditions).
    - **REQUIRED SUB-SKILL:** Use scientific-writing:writing-russian-academic-prose for phrase-level findings.
    - **REQUIRED SUB-SKILL:** Use scientific-writing:say-it-once-academic-prose for cross-section repeats (multi-section docs).
 4. **Fix.** Правь через `/scientific-writing:text-edit` (light/deep): protected

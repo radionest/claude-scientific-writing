@@ -41,8 +41,11 @@ description: Use for Russian scientific prose and plugin releases.
 3. **Review.** Прогони изменённую прозу:
    - линтер: `PYTHONPATH=$ROOT $ROOT/.venv/bin/python -m lib.lint_prose <file.qmd> --json --diff`
      (без `--diff` — весь файл; `severity`: error/warn/info);
-   - ансамбль (для сколько-нибудь длинного документа): до 9 параллельных субагентов (delegate_task) — по одному на измерение
-     `calques` / `repeats` / `terminology` / `structure` / `render` / `genre` / `discussion` (оба — только при наличии раздела «Обсуждение») / `argument` (содержательные секции: Введение/Методы/Результаты/Реферат/Заключение; пунктуационная или однофразовая правка — пропусти) / `evidence` (при валидном claims-реестре полной статьи); каждому передай путь к файлу, `<doc>.spec.md`, жанровый профиль и находки линтера;
+   - ансамбль (для сколько-нибудь длинного документа): план ревью —
+     `PYTHONPATH=$ROOT $ROOT/.venv/bin/python -m lib.review_plan <file.qmd> --json`
+     (`--mode diff` по умолчанию; `--mode deep` для глубокого ревью; `--before <path>` добавляет
+     `fidelity`), затем до 10 параллельных субагентов (delegate_task) — по одному на измерение из
+     плана; каждому передай его измерение, путь к файлу, `<doc>.spec.md`, жанровый профиль и находки линтера;
      для короткого документа — примени прозо-скиллы (`writing-russian-academic-prose`, `say-it-once-academic-prose`; при наличии «Обсуждения» — также `writing-discussion`; содержательные секции — `reader-first-academic-prose`) последовательно сам; прозо-скиллы не видят табличные чанки — при наличии рендера прогони `lib.render_lint` (python3 -m, с `--qmd`);
    - синтез: дедуп по (файл, строка, проблема), ранжир blocker → warning → nit.
 
