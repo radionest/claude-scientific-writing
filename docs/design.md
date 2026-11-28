@@ -170,9 +170,12 @@ line) sits the eval layer, `tests/eval/`:
   `lint-good.qmd` stays gated.
 - `rewrite-cases.json` — meaning-damage minimal pairs (lost negation/quantifier/
   comparator, modality shifts, denominator change, dropped citation key, altered inline
-  code, plus clean controls) that the linter provably does not see: catching them is the
-  semantic reviewer's job, not the regex layer's. Gold set for the future revision
-  fidelity work.
+  code, plus clean controls) on which the linter raises no error-severity finding
+  (`test_rewrite_cases_are_invisible_to_the_linter`): catching them is the semantic
+  reviewer's job, not the regex layer's. The warn/info findings the pairs do carry are
+  pinned — their inventory is frozen by `test_rewrite_cases_non_error_inventory_is_frozen`,
+  so drift there is a conscious baseline update, not noise. Gold set for the future
+  revision fidelity work.
 - `/eval-prose` runs the deterministic baseline and the behavioral rewrite eval (hidden
   rubric, fresh subagents, gitignored JSON reports, A/B against a previous report);
   behavioral runs stay out of blocking CI.
