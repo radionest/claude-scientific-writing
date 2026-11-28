@@ -371,7 +371,7 @@ def test_malformed_local_returns_3_and_message(tmp_path, capsys):
     q = _qmd(root, "любой текст\n")
     rc = main([str(q)])
     assert rc == 3
-    assert "ошибка локального словаря" in capsys.readouterr().err
+    assert "ошибка конфигурации" in capsys.readouterr().err
 
 
 def test_forced_missing_local_dictionary_errors(tmp_path, capsys):
@@ -379,7 +379,7 @@ def test_forced_missing_local_dictionary_errors(tmp_path, capsys):
     q.write_text("текст\n", encoding="utf-8")
     rc = main([str(q), "--local-dictionary", str(tmp_path / "nope.json")])
     assert rc == 3
-    assert "ошибка локального словаря" in capsys.readouterr().err
+    assert "ошибка конфигурации" in capsys.readouterr().err
 
 
 def test_config_error_exit_3_distinct_from_argparse_exit_2(tmp_path):

@@ -592,3 +592,31 @@ def test_ordinal_range_with_preposition_is_not_flagged():
 def test_list_markers_differ_by_level_legitimately():
     text = "- хирургический доступ\n  * разметка под контролем ИОУЗИ\n"
     assert "doc-list-marker-consistency" not in _ids(text)
+
+
+# --- House-pack term rules: data rides the rule record (`entry["terms"]`). The canon
+# --- demo terms below are the oracle — the effective set replaces them with the pack's.
+
+def test_doc_term_canon_flags_the_forbidden_synonym():
+    hits = [f for f in _find("Печать прототипа заняла два дня.")
+            if f.id == "doc-term-canon"]
+    assert len(hits) == 1
+    assert hits[0].severity == "warn"
+    assert hits[0].matched == "прототипа"
+    assert "мастер-модель" in hits[0].message
+
+
+def test_doc_term_canon_leaves_the_canonical_term_alone():
+    assert "doc-term-canon" not in _ids("Печать мастер-модели заняла два дня.")
+
+
+def test_doc_term_caution_gives_info_with_the_note():
+    hits = [f for f in _find("Макет печени обсудили перед примеркой.")
+            if f.id == "doc-term-caution"]
+    assert len(hits) == 1
+    assert hits[0].severity == "info"
+    assert "мастер-модель" in hits[0].message
+
+
+def test_doc_term_caution_leaves_the_canonical_term_alone():
+    assert "doc-term-caution" not in _ids("Мастер-модель печени обсудили перед примеркой.")

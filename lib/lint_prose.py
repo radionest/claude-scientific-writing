@@ -4,11 +4,15 @@ import argparse, json, re, subprocess, sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass, asdict, replace
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from lib import checks as check_registry
 from lib.document import Document
 from lib.morph import Morph
 from lib.qmd_prose import extract_prose
+
+if TYPE_CHECKING:
+    from lib.house import House
 
 _CANON = Path(__file__).resolve().parents[1] / "canon"
 _DEFAULT_DICT = _CANON / "dictionary.json"
@@ -16,11 +20,15 @@ _ORTHO_DICT = _CANON / "orthography.json"
 _LOCAL_RELPATH = Path(".claude") / "scientific-writing" / "dictionary.json"
 _GIT_ROOT_CACHE: dict[str, "Path | None"] = {}
 _MAIN_ROOT_CACHE: dict[str, "Path | None"] = {}
-_EFFECTIVE_CACHE: dict[tuple[str | None, str, bool], tuple[list[dict], list[dict]]] = {}
+_EFFECTIVE_CACHE: dict[tuple[str | None, str, bool, str], tuple[list[dict], list[dict]]] = {}
 _SEVERITIES = {"error", "warn", "info"}
 _KINDS = {"regex", "check"}
 # Single source of the layer enum — the dictionary test imports it.
 _LAYERS = {"universal", "genre:report", "genre:article", "genre:educational", "doc"}
+# Rules whose data lives in the project pack (`lib.house`): canon entries carry demo
+# `terms` for the bad/good oracle, the effective set gets the pack's.
+_PACK_FED = ("doc-term-canon", "doc-term-caution")
+_ABBR_FED = ("doc-abbrev-first-use", "doc-abbrev-variants")
 
 
 class ConfigError(Exception):
@@ -382,30 +390,54 @@ def _local_overlay_path(target: str | Path, forced: str | None,
     return p if p is not None and p.exists() else None
 
 
+def _pack_checks(checks: list[dict], house: House | None) -> list[dict]:
+    """The pack rides the rule records: its `terms` replace the canon demo list (the
+    bad/good oracle needs data to trip — a project without a pack must see the rules
+    silent), its abbreviations join the `allow` lists without duplicates."""
+    terms = [asdict(t) for t in house.terms] if house else []
+    abbrs = [a.abbr for a in house.abbreviations] if house else []
+    out: list[dict] = []
+    for e in checks:
+        if e["id"] in _PACK_FED:
+            e = {**e, "terms": terms}
+        elif abbrs and e["id"] in _ABBR_FED:
+            e = {**e, "allow": list(dict.fromkeys([*e.get("allow", []), *abbrs]))}
+        out.append(e)
+    return out
+
+
 def effective_entries(target: str | Path, dictionary: str | None = None,
                       local_dictionary: str | None = None,
                       use_local: bool = True) -> tuple[list[dict], list[dict]]:
-    """Effective (regex, check) rule sets for `target`: canon ⊕ the project overlay.
+    """Effective (regex, check) rule sets for `target`: canon ⊕ the project overlay ⊕
+    the project pack.
 
     Discovers the overlay at the git root of `target` (`local_dictionary` forces a file,
-    `use_local=False` skips it), merges it onto the base upsert-by-id and partitions by
-    kind — exactly the rule set `main()` lints with. Triage tools (`lib.tune_diff`,
-    `lib.docx_review`) go through this so rule mining sees what the gate enforces.
-    Raises ConfigError on a malformed overlay. Cached per (dictionary, overlay path,
-    use_local): the returned lists are shared between calls — consumers (`main`,
-    `lib.tune_diff`, `lib.docx_review`) must not mutate them.
+    `use_local=False` skips overlay and pack alike), merges it onto the base upsert-by-id
+    and partitions by kind — exactly the rule set `main()` lints with. The pack
+    (`<git-root>/.claude/scientific-writing/house.json`, discovered like the overlay)
+    feeds its `terms` to the `doc-term-*` checks and its abbreviations into the
+    `doc-abbrev-*` `allow` lists; `local_dictionary` does not affect it. Triage tools
+    (`lib.tune_diff`, `lib.docx_review`) go through this so rule mining sees what the
+    gate enforces. Raises ConfigError on a malformed overlay or pack. Cached per
+    (dictionary, overlay path, use_local, pack path): the returned lists are shared
+    between calls — consumers (`main`, `lib.tune_diff`, `lib.docx_review`,
+    `lib.review_plan`) must not mutate them.
     """
+    from lib.house import house_path, load_house  # lib.house imports the helpers below
     p = _local_overlay_path(target, local_dictionary, use_local)
-    key = (dictionary, str(p) if p else "", use_local)
+    hp = house_path(target) if use_local else None
+    key = (dictionary, str(p) if p else "", use_local, str(hp) if hp else "")
     if key in _EFFECTIVE_CACHE:
         return _EFFECTIVE_CACHE[key]
+    house = load_house(target) if hp is not None else None
     base = load_entries(dictionary)
     base_checks = load_check_entries(dictionary)
     base_ids = frozenset(e["id"] for e in base) | frozenset(e["id"] for e in base_checks)
     local = load_raw(p, base_ids) if p else []
     local_rx, local_ck = partition_kinds(local)
-    result = (merge_entries(base, local_rx) if local else base,
-              merge_entries(base_checks, local_ck) if local else base_checks)
+    checks = merge_entries(base_checks, local_ck) if local else base_checks
+    result = (merge_entries(base, local_rx) if local else base, _pack_checks(checks, house))
     _EFFECTIVE_CACHE[key] = result
     return result
 
@@ -482,7 +514,7 @@ def main(argv: list[str] | None = None) -> int:
                 changed = changed_lines(f, ref)
             findings += lint_file(f, entries, changed, check_entries, morph)
     except ConfigError as e:
-        print(f"lint_prose: ошибка локального словаря {e}", file=sys.stderr)
+        print(f"lint_prose: ошибка конфигурации {e}", file=sys.stderr)
         return 3
     if args.unseeded:
         print(json.dumps(_unseeded_counts(findings, seeded), ensure_ascii=False, indent=2))

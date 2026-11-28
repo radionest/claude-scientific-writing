@@ -1,13 +1,14 @@
 """The rule-set contour is family-wide: every prose CLI (`lint_prose`, `tune_diff`,
-`docx_review`) accepts the same `--dictionary` / `--local-dictionary` / `--no-local`
-trio, threads it into `effective_entries`, and derives the degraded-morphology note
-from that effective set.
+`docx_review`, `review_plan`) accepts the same `--dictionary` / `--local-dictionary` /
+`--no-local` trio, threads it into `effective_entries`, and derives the
+degraded-morphology note (and the plan's `covered_by_lint`) from that effective set.
 
 One bug kept being found per entry point (issues #44, #55, #77, #93): a tool deriving
 the note or the triage rule set from canon-only/defaults-only entries describes a
 different rule set than the one it actually applied. These tests pin the family, not
 the instances."""
 import json
+import subprocess
 
 import pytest
 
@@ -15,6 +16,7 @@ import lib.lint_prose
 from lib.lint_prose import degraded_note, effective_entries, load_check_entries
 from lib.lint_prose import main as lint_main
 from lib.morph import Morph
+from lib.review_plan import main as review_main
 from lib.tune_diff import main as tune_main
 from lib.docx_review import main as docx_main
 from tests.test_docx_review import _anchor, _docx, _para, _run
@@ -58,8 +60,8 @@ def no_morph(monkeypatch):
     monkeypatch.setattr(Morph, "load", lambda: Morph(available=False))
 
 
-@pytest.mark.parametrize("main", [lint_main, tune_main, docx_main],
-                         ids=["lint_prose", "tune_diff", "docx_review"])
+@pytest.mark.parametrize("main", [lint_main, tune_main, docx_main, review_main],
+                         ids=["lint_prose", "tune_diff", "docx_review", "review_plan"])
 def test_uniform_rule_set_flag_contour(main, capsys):
     with pytest.raises(SystemExit) as exc:
         main(["--help"])
@@ -67,6 +69,34 @@ def test_uniform_rule_set_flag_contour(main, capsys):
     out = capsys.readouterr().out
     for flag in ("--dictionary", "--local-dictionary", "--no-local"):
         assert flag in out, f"{main.__module__} is missing {flag} — the contour is per-entry-point again"
+
+
+def test_house_pack_rides_the_contour(tmp_path, capsys):
+    """The pack is rule-set input like the overlay: its terms drive `doc-term-canon` and
+    the plan's `covered_by_lint`, and `--no-local` drops them from both."""
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    d = tmp_path / ".claude" / "scientific-writing"
+    d.mkdir(parents=True)
+    (d / "house.json").write_text(json.dumps(
+        {"name": "h", "terms": [{"canonical": "мастер-модель", "forbidden": ["прототип"]}]},
+        ensure_ascii=False), encoding="utf-8")
+    dirty = tmp_path / "dirty.qmd"
+    dirty.write_text("Печать прототипа заняла весь день.\n", encoding="utf-8")
+    clean = tmp_path / "clean.qmd"
+    clean.write_text("Печать мастер-модели заняла весь день.\n", encoding="utf-8")
+
+    assert lint_main([str(dirty), "--json"]) == 0
+    assert "doc-term-canon" in capsys.readouterr().out
+    assert lint_main([str(dirty), "--json", "--no-local"]) == 0
+    assert "doc-term-canon" not in capsys.readouterr().out
+
+    def covered(*args: str) -> bool:
+        assert review_main([str(clean), "--json", *args]) == 0
+        dims = json.loads(capsys.readouterr().out)["dimensions"]
+        return next(d for d in dims if d["id"] == "terminology")["covered_by_lint"]
+
+    assert covered() is True
+    assert covered("--no-local") is False
 
 
 def test_lint_prose_note_from_effective_set(tmp_path, capsys):
