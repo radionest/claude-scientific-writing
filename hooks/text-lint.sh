@@ -20,24 +20,27 @@ else
 fi
 [ "${#files[@]}" -eq 0 ] && exit 0
 
-# the eval bad-corpus exemption is path identity, not a suffix pattern (#89): a user
-# file at tests/eval/lint-bad.qmd must not bypass linting. When the commit happens in
-# the plugin's own repo (dev checkout), that repo's corpus is the oracle; otherwise
-# the running plugin copy's corpus is.
+# the oracle exemptions are path identity, not suffix patterns (#89, #102): a user
+# file at tests/eval/lint-bad.qmd or under tests/fixtures/ must not bypass linting.
+# When the commit happens in the plugin's own repo (dev checkout), that repo's
+# corpus and fixtures are the oracles; otherwise the running plugin copy's are.
 root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 if [ -n "$root" ] && [ -f "$root/.claude-plugin/plugin.json" ]; then
   evalcorpus="$root/tests/eval/lint-bad.qmd"
+  fixturesdir="$root/tests/fixtures"
 else
   evalcorpus="$PLUGIN_DIR/tests/eval/lint-bad.qmd"
+  fixturesdir="$PLUGIN_DIR/tests/fixtures"
 fi
 
 rc=0
 for f in "${files[@]}"; do
   [ -f "$f" ] || continue
-  # skip test fixtures — they intentionally contain calques (the plugin's own
-  # oracles); lint-good.qmd stays gated: it must yield no errors
-  case "$f" in tests/fixtures/*|*/tests/fixtures/*) continue ;; esac
-  [ "$(realpath -- "$f")" = "$evalcorpus" ] && continue
+  fp="$(realpath -- "$f")" || fp="$f"
+  # only the plugin's own oracles are exempt (see above); lint-good.qmd stays
+  # gated: it must yield no errors
+  case "$fp" in "$fixturesdir"/*) continue ;; esac
+  [ "$fp" = "$evalcorpus" ] && continue
   # file BEFORE --diff: --diff has nargs="?", so a trailing filename would be
   # consumed as its optional REF value, leaving no positional. Files-first is unambiguous.
   if [ -n "$ref" ]; then

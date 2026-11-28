@@ -72,7 +72,8 @@ scientific-writing/                      # own git repo (see "Where it lives")
     render-review/SKILL.md                     # advisory render review: render_lint + render ensemble dimension
   agents/
     scientific-writer.md                 # spec/canon/genre-aware writer
-    prose-reviewer.md                    # one parameterized ensemble agent, dispatched once per dimension (dimension = arg)
+    prose-reviewer.md                    # the fast-lane ensemble dimensions (dimension = arg)
+    prose-reviewer-strong.md             # the strong-lane judgment dimensions (no model in frontmatter)
   hooks/
     hooks.json                           # PreToolUse registration (auto-read; never declared in plugin.json)
     text-lint.sh                         # gate gh pr create / git commit on linter ERROR findings
@@ -170,9 +171,12 @@ line) sits the eval layer, `tests/eval/`:
   `lint-good.qmd` stays gated.
 - `rewrite-cases.json` — meaning-damage minimal pairs (lost negation/quantifier/
   comparator, modality shifts, denominator change, dropped citation key, altered inline
-  code, plus clean controls) that the linter provably does not see: catching them is the
-  semantic reviewer's job, not the regex layer's. Gold set for the future revision
-  fidelity work.
+  code, plus clean controls) on which the linter raises no error-severity finding
+  (`test_rewrite_cases_are_invisible_to_the_linter`): catching them is the semantic
+  reviewer's job, not the regex layer's. The warn/info findings the pairs do carry are
+  pinned — their inventory is frozen by `test_rewrite_cases_non_error_inventory_is_frozen`,
+  so drift there is a conscious baseline update, not noise. Gold set for the future
+  revision fidelity work.
 - `/eval-prose` runs the deterministic baseline and the behavioral rewrite eval (hidden
   rubric, fresh subagents, gitignored JSON reports, A/B against a previous report);
   behavioral runs stay out of blocking CI.
@@ -260,7 +264,7 @@ Next to the overlay `dictionary.json` lives the pack — what every document of 
 shares: `name`, `genre_default`, `terms` (`canonical`, `forbidden`, `caution`, `note`),
 `abbreviations` (`abbr`, `expansion`), `passport` (the «Редакционного паспорта» keys),
 `norms` (`id`, `text`, `source` — project overrides of `canon/norms.json` by id),
-`samples`, `lanes`. All fields optional; a malformed file, an unknown key or a wrong
+`samples`, `lanes` (`{dimension id: fast|strong}` — the lanes override, see «Lanes» below). All fields optional; a malformed file, an unknown key or a wrong
 type raise `ConfigError` (CLI exit 3).
 
 `lib/house.py`:
@@ -384,15 +388,18 @@ The ensemble dispatch had a hand-maintained copy in each consumer
 (`skills/text-review/SKILL.md`, `skills/writing-scientific-documents/SKILL.md`,
 `agents/prose-reviewer.md`, `hermes/skills/scientific-writing/SKILL.md`). The single
 source is `canon/review-dimensions.json` — one record per dimension
-`{id, tier, when, skills, source}` (`tier` is `default` for all in v1; `source` anchors
-the contract at `agents/prose-reviewer.md#<id>`, which stays the home of the dimension
-contracts — the anchors name the bold list items, not headings; JSON carries no comments,
-so this caveat lives here; `skills` names the prose skills the reviewer applies) —
+`{id, tier, when, skills, source}` (`tier` is the lane: `strong` for the judgment
+dimensions `calques`/`discussion`/`argument`/`fidelity`/`evidence`, `fast` for the
+rest; `source` anchors the contract at the lane's agent file,
+`agents/prose-reviewer.md#<id>` or `agents/prose-reviewer-strong.md#<id>` — the anchors
+name the bold list items, not headings; JSON carries no comments, so this caveat lives
+here; `skills` names the prose skills the reviewer applies) —
 resolved per document by `lib/review_plan.py`:
 
 - `plan(doc, *, mode, spec=None, genre=None, before=None) -> ReviewPlan`;
-  `ReviewPlan(mode, dimensions)`, `PlanEntry(id, when, reason)` — included dimensions
-  only, `reason` is one line. Sections come from `qmd_prose.extract_prose`, the
+  `ReviewPlan(mode, dimensions)`, `PlanEntry(id, tier, when, reason)` — included
+  dimensions only, `reason` is one line, `tier` already carries the pack's `lanes`
+  override (see Lanes). Sections come from `qmd_prose.extract_prose`, the
   «Обсуждение» flag from `checks/genre._discussion_span`, registry validity from
   `claim_registry.check_document` (an existing `<doc>.claims.jsonl` with no `schema`
   findings).
@@ -404,7 +411,7 @@ resolved per document by `lib/review_plan.py`:
   lines of a substantive section (Введение, Методы, Результаты, Реферат/Аннотация,
   Заключение/Выводы) changed; `deep`/`full` take everything the conditions allow.
 - CLI: `python3 -m lib.review_plan <file.qmd> [--mode diff|light|deep|full]
-  [--before <path>] --json` → `{"mode", "dimensions": [{id, when, reason}]}`; exit 0
+  [--before <path>] --json` → `{"mode", "dimensions": [{id, tier, when, reason}]}`; exit 0
   normal, 2 missing file / usage error, 3 broken `canon/review-dimensions.json`
   (`ConfigError`, like the linter).
 
@@ -436,6 +443,13 @@ The deliverable for "разграничить pre/post review для кода и
   still runs on any prose also touched.
 - mixed → both gates apply.
 
+**Exemptions are path identity, not suffixes** (#89, #102): `text-lint.sh` exempts
+`tests/fixtures/` and `tests/eval/lint-bad.qmd` of the committing repo when it is the plugin
+itself (`.claude-plugin/plugin.json` at the toplevel — the dev checkout or a linked worktree),
+falling back to the running copy's otherwise; the hermes gate anchors the same toplevel
+identity for `tests/fixtures/` only (no eval-corpus exemption there — #108). A user file at
+either path in another repo is linted like any prose.
+
 Post-path formalization: `apply-docx-review` → `qmd-review-importer` already runs a prose pass (step 4, added
 2026-06-22); the plugin makes "apply → review → lint-clean before commit" the contract, closing the
 editor-reinjects-calque loop at its source.
@@ -464,6 +478,31 @@ markdown — a heading-anchored one in #22, 7 of 28 on a later live review.
 
 The educational profile is the explicit reason genre is its own layer: it overrides style rules the report
 profile enforces, while the universal calque/term discipline still applies.
+
+## Judges (added 2026-11-25)
+
+Meaning-damage review above the deterministic layers: a decision-model judge (Jev,
+`typesafe/jev-1.14`) answers typed questions about a small `{before, after}` state —
+an `noul` question returns a yes-probability in 0..1. `lib/judges.py` (stdlib
+`urllib`, no SDK) posts both questions of one pair in a single request; descriptors
+live in `canon/judges.json` — only `edit-fidelity` for now (the two
+rewrite-preservation questions); `claim-support` / `rhetoric-context` / `term-sense`
+wait for annotated material. Only input tokens are billed ($0.042 per million).
+
+| Aspect | Contract |
+|---|---|
+| Transport | `openrouter` → `POST https://openrouter.ai/api/alpha/decisions` with `OPENROUTER_API_KEY`; `typesafe` → `POST https://api.typesafe.ai/v1/systemone` with `TYPESAFE_API_KEY`; picked by `SW_JUDGE__TRANSPORT`, else openrouter-if-keyed, else typesafe, else `unavailable` |
+| `run_judge(judge_id, state)` → `JudgeResult` | `status` ∈ `ok / refused / skipped / unavailable / error` — `refused` when any question answers `type: "refusal"`, `skipped` when the state exceeds 32 000 bytes (larger fragments drift into the less accurate long-context mode), `error` on network failure, non-2xx HTTP responses or malformed JSON; `answers` holds probabilities when `ok`, the probabilities of the non-refusing questions when `refused`, and is empty for `skipped` / `unavailable` / `error` |
+| Privacy | keys are read from the environment per request and never logged or written to reports; texts leave the machine only when a judge actually runs — the pilot uses the plugin's own corpus, project texts need the owner's consent, patient identifiers never |
+| Pilot | `python3 -m lib.judges pilot --out tests/eval/judges-pilot.json` runs `edit-fidelity` over the 18 pairs of `tests/eval/rewrite-cases.json` (12 damage, 6 clean; only `before`/`after` travel in the request) and writes `{version, transport, status, cases: [{id, expect, answers, status, elapsed_ms}], usage}` — no pair texts, no thresholds, no verdicts; the step-0 question is whether Jev discriminates Russian scientific text at all, thresholds are calibrated on the stage-5 corpus |
+
+Pinned by `tests/test_judges.py` (network stubbed at `urllib.request.urlopen`; the
+recorded-response fixture is `THEORY (docs, not recorded)` — composed from the
+TypeSafe and OpenRouter Decisions docs, no key existed to capture a live payload).
+Without a key the judge reports `unavailable` and the pilot exits 0 — an edit is
+never blocked. Deliberately not wired into `/text-edit` yet
+(skills/text-edit/SKILL.md:33–36): enablement waits for the pilot and the owner's
+decision.
 
 ## Migration of existing assets
 
@@ -495,6 +534,66 @@ originals) needs a `~/.claude`-capable session — sequence in the plan.
 6. `skills/init-doc-spec/SKILL.md` + `agents/scientific-writer.md`.
 7. `.claude-plugin/{plugin.json,marketplace.json}`; install; rewire `init-article`.
 8. Validate on nir_liver `lesion_nature_report.qmd` (lint diff, /text-review, hook block, fix loop).
+
+## Lanes: models as a parameter (added 2026-11-26)
+
+Model identifiers never enter the repo — it is public, and the harness assigns models
+to lanes. The repo carries only lane vocabulary:
+
+- `lanes.json` (plugin root) — the declared role→lane map: `writer` → `fast`,
+  `judge` → `typesafe/jev-1.14`. The judge lane name is resolved by the harness;
+  nothing here names a model.
+- `tier` in `canon/review-dimensions.json` — the lane of each dimension: `strong` for
+  the judgment dimensions (`calques`, `discussion`, `argument`, `fidelity`,
+  `evidence`), `fast` for the rest. The project overrides per dimension in `house.json`
+  (`"lanes": {"<dimension id>": "fast|strong"}`); an id outside the registry or a value
+  outside `fast|strong` is `ConfigError` — never a silent `fast` routing a judgment
+  dimension to the weak lane.
+- `lib/lanes.py` — `load_lanes(doc_path=None) -> Lanes` (the role lanes plus the
+  resolved tiers: registry ⊕ house) and `tier_of(name, doc_path=None) -> str` — the
+  tier of a dimension or the declared lane of a role; an unknown name is a
+  `ValueError`. `lib/review_plan.effective_tiers` is the shared merge, and
+  `PlanEntry.tier` carries the override, so a dispatcher reads the plan and dispatches
+  by `entry.tier`. The dimension contracts handed to reviewers are extracted from the
+  anchored agent bullets by `review_plan.dimension_contracts()`.
+- ZCode: `agents/prose-reviewer-strong.md` carries the five judgment dimensions (no
+  model in its frontmatter — the model is pinned in Settings → Subagents or passed at
+  launch); `agents/prose-reviewer.md` keeps the `fast` dimensions.
+  `.zcode/workflows/sw-review.dwf.ts` reads the plan and the lanes, dispatches one
+  subagent per dimension with the explicit model of its tier (launch args `fast_model`
+  / `strong_model`; no model id in the file; `covered_by_lint` dimensions are skipped;
+  optional `dimensions` filter) and returns `{plan, runs: [{dimension, tier, findings}]}` —
+  the caller writes to disk. The actual assignment is shown by the read-only
+  `.zcode/scripts/lanes_check.py` (the pinning in `~/.zcode/v2/agents-state.json`, then
+  the frontmatter pseudo-alias, which does not set the model).
+- Hermes: `hermes/sw_bridge.py` turns the plan into ONE `delegate_task` batch — common
+  `group`, `goal` = the dimension contract, `output_schema` = the findings array
+  `{file, line, dimension, severity, problem, fix}`, `model` = the profile's
+  `model_map` key `sw-fast`/`sw-strong` by tier — and `audit_results` checks
+  `schema_valid` and the route against the lane. When the profile's
+  `delegation.backend` is not `model_map`, the bridge says so in the report and
+  `hermes/lanes_check.py` shows the same in its table; the live run waits for the
+  `advanced-delegation` plugin.
+- Measurement: `lib/lane_measure.py` scores reviewer findings against a human gold
+  table — a finding counts when its line falls inside the anchor range of a
+  same-dimension gold finding (`python -m lib.lane_measure --gold <table> --runs <dir>
+  --out <report.json>`, `--gold` required); it also reports the share of gold findings
+  at least one reviewer found, gives `no_verdict` below three gold findings, and does
+  not measure `fidelity` (minimal pairs, not line anchors). The gold table is
+  project-side data (`<git-root>/.claude/scientific-writing/gold/early_post_rfa_mri.json`);
+  the plugin keeps only that path convention. The acceptance criterion «each Hermes
+  task returns `schema_valid: true`, `route` matching the lane» is pinned by the
+  `audit_results` unit tests until the plugin is installed.
+
+Harness knowledge stays in the adapters: `.zcode/scripts/` and `hermes/` know the
+harness files, `lib/` and `canon/` do not, and the check scripts write nothing to disk.
+The boundary is pinned by `tests/test_lanes.py`
+(`test_core_free_of_harness_names`, `test_no_model_ids_outside_roadmap_workflow`,
+`test_check_scripts_write_nothing`, `test_tier_of_follows_house_json`,
+`test_registry_ids_split_across_agents_by_tier`, `test_build_tasks_batch_by_lane`,
+`test_audit_results_flags_schema_and_route`, `test_score_run_hits_only_in_anchor_ranges`,
+`test_measure_verdicts_and_any_reviewer`), alongside `tests/test_review_plan.py` for
+the registry/plan `tier` contract and `tests/test_house.py` for the `lanes` pack field.
 
 ## Open questions / risks
 

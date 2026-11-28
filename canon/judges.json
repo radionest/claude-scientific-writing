@@ -1,0 +1,12 @@
+{
+  "comment": "Дескрипторы судей — decision-модели (Jev, typesafe/jev-1.14): типизированные вопросы по одному фрагменту состояния. Вопрос noul — вероятность «да» 0..1; вопросы одной пары уходят одним запросом; отказ модели — ответ с type: refusal. Пока только edit-fidelity (сохранность смысла при правке); claim-support / rhetoric-context / term-sense появятся после разметки материала.",
+  "judges": {
+    "edit-fidelity": {
+      "state": ["before", "after"],
+      "questions": {
+        "meaning-kept": {"type": "noul", "question": "Смысл исходного текста сохранён в правке?"},
+        "new-claim": {"type": "noul", "question": "Появилось ли в правке утверждение, которого не было в исходнике?"}
+      }
+    }
+  }
+}

@@ -29,7 +29,7 @@ PACK = {
                "source": "протокол"}],
     "samples": ["Печень — орган-мишень.", "Зона абляции не видна на нативной КТ.",
                 "Очаг считали выявленным, если он был виден хотя бы нечётко."],
-    "lanes": ["хирургия"],
+    "lanes": {"calques": "fast"},
 }
 FORBIDDEN_DOC = "Печать прототипа заняла два дня.\n"
 CANON_DOC = "Печать мастер-модели заняла два дня.\n"
@@ -105,7 +105,7 @@ def test_load_house_parses_every_field(tmp_path):
     assert h.norms[0].id == "denominator-policy"
     assert h.samples == ("Печень — орган-мишень.", "Зона абляции не видна на нативной КТ.",
                          "Очаг считали выявленным, если он был виден хотя бы нечётко.")
-    assert h.lanes == ("хирургия",)
+    assert h.lanes == {"calques": "fast"}
 
 
 def test_load_house_none_without_pack(tmp_path):
@@ -142,7 +142,8 @@ def test_broken_json_raises(tmp_path):
     ({"passport": {"numbers": "  "}}, "не строковые значения"),
     ({"norms": [{"id": "x"}]}, "строкового поля"),
     ({"samples": ["", "x"]}, "списком непустых строк"),
-    ({"lanes": 5}, "списком непустых строк"),
+    ({"lanes": 5}, "объектом"),
+    ({"lanes": {"calques": 5}}, "значениями"),
 ])
 def test_malformed_pack_raises_configerror(tmp_path, bad, fragment):
     root = _git_repo(tmp_path)
@@ -295,7 +296,7 @@ def test_cli_json_carries_covered_by_lint(tmp_path, capsys):
     dims = json.loads(capsys.readouterr().out)["dimensions"]
     term = next(d for d in dims if d["id"] == "terminology")
     assert term["covered_by_lint"] is True
-    assert all(set(d) == {"id", "when", "reason", "covered_by_lint"} for d in dims)
+    assert all(set(d) == {"id", "tier", "when", "reason", "covered_by_lint"} for d in dims)
 
 
 # --- norms: canon defaults + the pack's overrides by id ---
